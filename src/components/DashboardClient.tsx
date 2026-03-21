@@ -128,9 +128,9 @@ export default function DashboardClient({
                   </button>
                 </>
               ) : (
-                <button className="text-secondary font-bold text-sm flex items-center gap-1 hover:underline">
-                    View Details <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                </button>
+                <Link href={`/messages/request/${req.id}`} className="text-secondary font-bold text-sm flex items-center gap-1 hover:underline">
+                    Message {isLenderView ? 'Borrower' : 'Lender'} <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                </Link>
               )}
             </div>
           </div>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import TopNavLinks from "./TopNavLinks";
 
 export default async function TopNav() {
   const supabase = await createClient();
@@ -29,20 +30,7 @@ export default async function TopNav() {
         </Link>
 
         {/* Desktop Nav Links */}
-        <div className="hidden md:flex items-center gap-8">
-          <Link
-            href="/"
-            className="text-slate-500 font-headline tracking-tight text-lg font-medium hover:text-secondary transition-colors duration-300"
-          >
-            Campus Hub
-          </Link>
-          <Link
-            href="/dashboard"
-            className="text-slate-500 font-headline tracking-tight text-lg font-medium hover:text-secondary transition-colors duration-300"
-          >
-            My Activity
-          </Link>
-        </div>
+        <TopNavLinks />
 
         {/* Right Side */}
         <div className="flex items-center gap-4">

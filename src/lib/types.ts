@@ -66,6 +66,7 @@ export interface Task {
   user_id: string;
   title: string;
   description: string | null;
+  category: string | null;
   reward_type: "karma" | "cash" | null;
   reward_amount: number | null;
   status: "open" | "claimed" | "done" | null;
@@ -76,6 +77,22 @@ export interface Task {
 
 export interface TaskWithProfile extends Task {
   profiles: Profile | null;
+}
+
+export interface TaskClaim {
+  id: string;
+  task_id: string;
+  claimed_by: string;
+  created_at: string;
+}
+
+export interface Message {
+  id: string;
+  request_id: string | null;
+  task_id: string | null;
+  sender_id: string;
+  content: string;
+  created_at: string;
 }
 
 /* ─── Category → Lucide Icon map for Low-Bandwidth mode ─── */
