@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Item, Profile, ItemRequest } from "@/lib/types";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 type DealTab = "made" | "received" | "my_listings";
@@ -27,6 +28,7 @@ export default function DashboardClient({
   const [activeTab, setActiveTab] = useState<DealTab>("received");
   const [localMade, setLocalMade] = useState<RequestWithRelations[]>(madeRequests);
   const [localReceived, setLocalReceived] = useState<RequestWithRelations[]>(receivedRequests);
+  const router = useRouter();
 
   const activeEarnings = items
     .filter((i) => i.status === "rented")
@@ -56,6 +58,47 @@ export default function DashboardClient({
     // Optimistic UI
     setLocalReceived(prev => prev.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
   }
+
+  const handleMessageUser = async (req: RequestWithRelations) => {
+    const lenderId = req.items?.user_id;
+    const borrowerId = req.requester_id;
+    if (!lenderId || !borrowerId) return;
+
+    try {
+      const supabase = createClient();
+      // 1. Check if conversation already exists for this deal
+      const { data: existingConv } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("deal_id", req.id)
+        .single();
+
+      if (existingConv) {
+         router.push(`/messages?id=${existingConv.id}`);
+         return;
+      }
+
+      // 2. Create the unified conversation room
+      const { data: newConv, error } = await supabase
+        .from("conversations")
+        .insert({
+           deal_id: req.id,
+           participant_1: borrowerId,
+           participant_2: lenderId
+        })
+        .select()
+        .single();
+
+      if (error || !newConv) {
+         toast.error("Could not start conversation");
+         return;
+      }
+
+      router.push(`/messages?id=${newConv.id}`);
+    } catch (e) {
+      toast.error("Error connecting to chat");
+    }
+  };
 
   const renderRequestCard = (req: RequestWithRelations, isLenderView: boolean) => {
     const otherPerson = isLenderView ? req.profiles : req.items?.profiles;
@@ -128,9 +171,9 @@ export default function DashboardClient({
                   </button>
                 </>
               ) : (
-                <Link href={`/messages/request/${req.id}`} className="text-secondary font-bold text-sm flex items-center gap-1 hover:underline">
+                <button onClick={() => handleMessageUser(req)} className="text-secondary font-bold text-sm flex items-center gap-1 hover:underline">
                     Message {isLenderView ? 'Borrower' : 'Lender'} <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                </Link>
+                </button>
               )}
             </div>
           </div>
