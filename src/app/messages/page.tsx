@@ -24,7 +24,8 @@ export default async function MessagesPage(props: {
       participant_2,
       created_at,
       p1:profiles!participant_1(id, full_name, avatar_url),
-      p2:profiles!participant_2(id, full_name, avatar_url)
+      p2:profiles!participant_2(id, full_name, avatar_url),
+      messages(id, content, created_at, sender_id, is_read)
     `)
     .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
     .order("created_at", { ascending: false });

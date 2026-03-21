@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import TopNavLinks from "./TopNavLinks";
+import NotificationBell from "./NotificationBell";
 
 export default async function TopNav() {
   const supabase = await createClient();
@@ -17,15 +18,15 @@ export default async function TopNav() {
         .select("full_name, karma_score, avatar_url")
         .eq("id", user.id)
         .single(),
-      supabase.rpc("count_unread_messages")
+      supabase.rpc("get_unread_notification_count")
     ]);
     profile = profileRes.data;
     unreadCount = unreadRes.data || 0;
   }
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-slate-50/85 backdrop-blur-xl shadow-sm">
-      <div className="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
+    <nav className="fixed top-0 w-full z-50 bg-slate-50/85 backdrop-blur-xl shadow-sm h-16 md:h-20 flex items-center">
+      <div className="flex justify-between items-center px-6 md:px-8 w-full max-w-7xl mx-auto">
         {/* Brand */}
         <Link
           href="/"
@@ -44,12 +45,7 @@ export default async function TopNav() {
               <Link href="/messages" className="material-symbols-outlined text-slate-500 hover:text-secondary transition-colors">
                 mail
               </Link>
-              <button className="relative material-symbols-outlined text-slate-500 hover:text-secondary transition-colors">
-                notifications
-                {unreadCount > 0 && (
-                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-error ring-2 ring-white"></span>
-                )}
-              </button>
+              <NotificationBell initialCount={unreadCount} userId={user.id} />
               {/* Karma Badge */}
               <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 bg-secondary/10 text-secondary rounded-full">
                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
