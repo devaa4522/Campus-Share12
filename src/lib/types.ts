@@ -88,11 +88,11 @@ export interface TaskClaim {
 
 export interface Message {
   id: string;
-  request_id: string | null;
-  task_id: string | null;
+  conversation_id: string;
   sender_id: string;
   content: string;
   created_at: string;
+  is_read: boolean;
 }
 
 /* ─── Category → Lucide Icon map for Low-Bandwidth mode ─── */

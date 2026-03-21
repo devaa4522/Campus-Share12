@@ -70,8 +70,9 @@ export default function MessageCenterClient({
           setConversations((prev) => 
             prev.map(c => {
               if (c.id === newMsg.conversation_id) {
-                const updatedMessages = [...c.messages, newMsg];
-                return { ...c, messages: updatedMessages };
+                // Filter out any optimistic temporary messages that match this new real payload
+                const filteredMessages = c.messages.filter(m => !(m.id.startsWith('temp-') && m.content === newMsg.content && m.sender_id === newMsg.sender_id));
+                return { ...c, messages: [...filteredMessages, newMsg] };
               }
               return c;
             })
@@ -128,6 +129,27 @@ export default function MessageCenterClient({
     const content = newMessage.trim();
     setNewMessage("");
 
+    // Zero-Lag Optimistic UI Injection
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: Message = {
+      id: tempId,
+      conversation_id: activeConversationId,
+      sender_id: userId,
+      content,
+      created_at: new Date().toISOString(),
+      is_read: false,
+    };
+
+    setConversations((prev) => 
+      prev.map(c => {
+        if (c.id === activeConversationId) {
+          return { ...c, messages: [...c.messages, optimisticMsg] };
+        }
+        return c;
+      })
+    );
+
+    // Sync to Database
     await supabase.from("messages").insert({
       conversation_id: activeConversationId,
       sender_id: userId,
