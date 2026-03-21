@@ -157,7 +157,8 @@ export default function OnboardingPage() {
                 value={degree}
                 onChange={(e) => setDegree(e.target.value)}
                 disabled={!department}
-                className="w-full bg-surface-container-lowest p-4 rounded-xl appearance-none font-body text-on-surface border border-outline-variant/20 focus:border-primary focus:ring-0 disabled:opacity-50"
+                className="w-full bg-surface-container-lowest p-4 pr-12 rounded-xl font-body text-on-surface border border-outline-variant/20 focus:border-primary focus:ring-0 disabled:opacity-50"
+                style={{ WebkitAppearance: "none", MozAppearance: "none", appearance: "none", backgroundImage: "none" }}
               >
                 <option value="">Select your degree...</option>
                 {degrees.map((d) => (

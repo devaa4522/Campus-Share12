@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { parseCollegeDomain, detectCollegeType } from "@/lib/college-utils";
 
 type AuthMode = "signin" | "signup";
 
@@ -23,7 +24,7 @@ export default function LoginPage() {
     const supabase = createClient();
 
     if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -35,6 +36,23 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
+
+      // The DB trigger auto-creates the profile row.
+      // Now update it with college_domain detected from their email.
+      if (signUpData.user) {
+        const domain = parseCollegeDomain(email);
+        const collegeType = detectCollegeType(domain);
+        await supabase.from("profiles").update({
+          college_domain: domain,
+          college_type: collegeType,
+          full_name: fullName,
+        }).eq("id", signUpData.user.id);
+      }
+
+      // Go straight to onboarding
+      router.push("/onboarding");
+      router.refresh();
+      return;
     } else {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -43,6 +61,21 @@ export default function LoginPage() {
       if (error) {
         setError(error.message);
         setLoading(false);
+        return;
+      }
+    }
+
+    // For existing users: check if they have completed onboarding
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (currentUser) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("college_domain, department")
+        .eq("id", currentUser.id)
+        .single();
+      if (!profile?.department) {
+        router.push("/onboarding");
+        router.refresh();
         return;
       }
     }
