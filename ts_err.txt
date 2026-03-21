@@ -1,0 +1,4 @@
+src/app/messages/page.tsx(39,9): error TS2322: Type '{ id: any; deal_id: any; participant_1: any; participant_2: any; created_at: any; p1: { id: any; full_name: any; avatar_url: any; }[]; p2: { id: any; full_name: any; avatar_url: any; }[]; }[]' is not assignable to type 'Conversation[]'.
+  Type '{ id: any; deal_id: any; participant_1: any; participant_2: any; created_at: any; p1: { id: any; full_name: any; avatar_url: any; }[]; p2: { id: any; full_name: any; avatar_url: any; }[]; }' is not assignable to type 'Conversation'.
+    Types of property 'p1' are incompatible.
+      Type '{ id: any; full_name: any; avatar_url: any; }[]' is missing the following properties from type 'Profile': id, full_name, avatar_url

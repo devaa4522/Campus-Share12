@@ -18,7 +18,7 @@
   --color-on-primary: #ffffff;
   --color-on-secondary-fixed-variant: #005307;
   --color-on-error: #ffffff;
-  --color-primary: #000000;
+  --color-primary: #000a1e;
   --color-surface-bright: #f7f9fb;
   --color-surface-container-high: #e6e8ea;
   --color-on-background: #191c1e;
@@ -50,7 +50,7 @@
   --color-tertiary: #000000;
   --color-outline-variant: #c5c6cd;
   --color-on-primary-fixed: #0f1c30;
-  --color-secondary: #016e0c;
+  --color-secondary: #006e0c;
 
   --font-headline: "Noto Serif", serif;
   --font-body: "Public Sans", sans-serif;

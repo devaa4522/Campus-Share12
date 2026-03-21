@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Noto_Serif, Public_Sans } from "next/font/google";
 import TopNav from "@/components/TopNav";
 import BottomNav from "@/components/BottomNav";
+import MessageFAB from "@/components/MessageFAB";
 import "./globals.css";
 
 const notoSerif = Noto_Serif({
@@ -58,6 +59,7 @@ export default function RootLayout({
         <Toaster position="top-center" />
         <TopNav />
         <main className="pt-24 min-h-screen pb-24 md:pb-8">{children}</main>
+        <MessageFAB />
         <BottomNav />
       </body>
     </html>

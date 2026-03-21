@@ -48,8 +48,32 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: an
 
       if (claimError) throw claimError;
 
-      toast.success("Task claimed! Opening mission thread...");
-      router.push(`/messages/task/${task.id}`);
+      // Create conversation
+      const { data: convData, error: convError } = await supabase
+        .from("conversations")
+        .insert({
+          deal_id: task.id,
+          participant_1: userId,
+          participant_2: task.user_id,
+        })
+        .select()
+        .single();
+        
+      if (convError || !convData) throw convError || new Error("Failed to create conversation");
+
+      // Insert system message
+      const { error: msgError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: convData.id,
+          sender_id: userId,
+          content: `I'm here to help with your task: ${task.title}`
+        });
+
+      if (msgError) throw msgError;
+
+      toast.success("Task claimed! Opening message thread...");
+      router.push(`/messages?id=${convData.id}`);
       
     } catch (error: any) {
       toast.error(error.message || "Failed to claim task");
