@@ -23,7 +23,7 @@ export default function TopNavLinks() {
             className={`font-serif tracking-tight text-lg transition-colors ${
               isActive 
                 ? "text-emerald-700 dark:text-emerald-500 font-bold border-b-2 border-emerald-700 dark:border-emerald-500 pb-1"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-700"
             }`}
           >
             {link.label}
