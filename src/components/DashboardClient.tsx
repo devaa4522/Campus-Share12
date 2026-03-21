@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
-type DealTab = "made" | "received" | "my_listings";
+type DealTab = "made" | "received" | "my_listings" | "task_requests" | "helping_with";
 
 interface RequestWithRelations extends ItemRequest {
   items: (Item & { profiles?: Profile | null }) | null;
@@ -19,15 +19,21 @@ export default function DashboardClient({
   items,
   madeRequests,
   receivedRequests,
+  myTaskRequests = [],
+  helpingWithTasks = [],
 }: {
   profile: Profile;
   items: Item[];
   madeRequests: any[];
   receivedRequests: any[];
+  myTaskRequests?: any[];
+  helpingWithTasks?: any[];
 }) {
   const [activeTab, setActiveTab] = useState<DealTab>("received");
   const [localMade, setLocalMade] = useState<RequestWithRelations[]>(madeRequests);
   const [localReceived, setLocalReceived] = useState<RequestWithRelations[]>(receivedRequests);
+  const [localTaskRequests, setLocalTaskRequests] = useState<any[]>(myTaskRequests);
+  const [localHelpingWith, setLocalHelpingWith] = useState<any[]>(helpingWithTasks);
   const router = useRouter();
 
   const activeEarnings = items
@@ -58,6 +64,48 @@ export default function DashboardClient({
     // Optimistic UI
     setLocalReceived(prev => prev.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
   }
+
+  async function handleMarkTaskDone(taskId: string) {
+    const supabase = createClient();
+    const { error } = await supabase.from("tasks").update({ status: "completed" }).eq("id", taskId);
+    if (!error) {
+       toast.success("Task completed & Karma awarded!");
+       setLocalTaskRequests(prev => prev.map(t => t.id === taskId ? { ...t, status: "completed" } : t));
+    } else {
+       toast.error("Error marking task as done.");
+    }
+  }
+
+  async function handleCancelHelp(claimId: string, taskId: string) {
+    const supabase = createClient();
+    const { error } = await supabase.from("task_claims").delete().eq("id", claimId);
+    if (!error) {
+       await supabase.from("tasks").update({ status: "open" }).eq("id", taskId);
+       toast.success("Help cancelled. Task is open again.");
+       setLocalHelpingWith(prev => prev.filter(c => c.id !== claimId));
+    } else {
+       toast.error("Error cancelling help.");
+    }
+  }
+
+  const handleMessageForTask = async (taskId: string) => {
+    try {
+      const supabase = createClient();
+      const { data: existingConv } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("deal_id", taskId)
+        .single();
+      
+      if (existingConv) {
+         router.push(`/messages?id=${existingConv.id}`);
+      } else {
+         toast.error("Message thread not found");
+      }
+    } catch (e) {
+      toast.error("Error opening chat");
+    }
+  };
 
   const handleMessageUser = async (req: RequestWithRelations) => {
     const lenderId = req.items?.user_id;
@@ -182,6 +230,124 @@ export default function DashboardClient({
     );
   };
 
+  const renderTaskRequestCard = (task: any) => {
+    const helperProfile = task.task_claims?.[0]?.profiles;
+    const deadlineText = task.deadline 
+      ? new Date(task.deadline).getTime() > new Date().getTime() 
+        ? Math.ceil((new Date(task.deadline).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) + ' Days Left'
+        : 'Overdue'
+      : 'Flexible Target';
+
+    return (
+      <div key={task.id} className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/10 flex flex-col md:flex-row gap-6">
+        <div className="flex-grow flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start mb-2">
+               <div>
+                  <span className={`px-2.5 py-0.5 rounded text-xs font-semibold tracking-wider uppercase mb-2 inline-block ${
+                    task.category === 'Academic' ? 'bg-primary/10 text-primary' :
+                    task.category === 'Delivery' ? 'bg-secondary/10 text-secondary' : 'bg-surface-container-high text-on-surface-variant'
+                  }`}>
+                    {task.category || 'General'}
+                  </span>
+                  <h3 className="font-headline text-xl font-bold text-primary">{task.title}</h3>
+               </div>
+               <div className="text-right">
+                 <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    task.status === 'open' ? 'bg-error/10 text-error' :
+                    task.status === 'claimed' ? 'bg-secondary-container text-on-secondary-container' : 'bg-primary text-white'
+                 }`}>
+                   {task.status}
+                 </span>
+                 <p className="text-[10px] text-on-surface-variant font-bold uppercase mt-1.5 tracking-widest">{deadlineText}</p>
+               </div>
+            </div>
+            
+            {task.status === 'claimed' && helperProfile && (
+              <div className="flex items-center gap-3 mt-4 py-3 border-y border-outline-variant/10">
+                <span className="text-xs uppercase font-bold tracking-widest text-on-surface-variant">Helper:</span>
+                <span className="text-sm font-semibold text-primary">{helperProfile.full_name}</span>
+                 <button onClick={() => handleMessageForTask(task.id)} className="ml-auto text-secondary text-xs uppercase font-bold hover:underline flex items-center gap-1">Message <span className="material-symbols-outlined text-[14px]">chevron_right</span></button>
+              </div>
+            )}
+            {task.status === 'completed' && helperProfile && (
+              <div className="flex items-center gap-3 mt-4 py-3 border-y border-outline-variant/10">
+                <span className="text-xs uppercase font-bold tracking-widest text-[#006e0c]">Completed By:</span>
+                <span className="text-sm font-semibold text-primary">{helperProfile.full_name}</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex gap-3 mt-4">
+            {task.status === 'claimed' && (
+              <button onClick={() => handleMarkTaskDone(task.id)} className="bg-primary text-white px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:bg-slate-800 transition-colors">
+                Mark as Done
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderHelpingCard = (claim: any) => {
+    const task = claim.tasks;
+    if (!task) return null;
+    const creator = task.profiles;
+
+    const deadlineText = task.deadline 
+      ? new Date(task.deadline).getTime() > new Date().getTime() 
+        ? Math.ceil((new Date(task.deadline).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) + ' Days Left'
+        : 'Overdue'
+      : 'Flexible Target';
+
+    return (
+      <div key={claim.id} className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/10 flex flex-col md:flex-row gap-6 border-l-4 border-l-secondary">
+        <div className="flex-grow flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start mb-2">
+               <div>
+                  <span className={`px-2.5 py-0.5 rounded text-xs font-semibold tracking-wider uppercase mb-2 inline-block bg-surface-container-high text-on-surface-variant`}>
+                    {task.category || 'General'}
+                  </span>
+                  <h3 className="font-headline text-xl font-bold text-primary">{task.title}</h3>
+               </div>
+               <div className="text-right">
+                 <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    task.status === 'claimed' ? 'bg-secondary-container text-on-secondary-container' : 'bg-primary text-white'
+                 }`}>
+                   {task.status}
+                 </span>
+                 <p className="text-[10px] text-on-surface-variant font-bold uppercase mt-1.5 tracking-widest">{deadlineText}</p>
+               </div>
+            </div>
+            
+            {creator && (
+              <div className="flex items-center gap-3 mt-4 py-3 border-y border-outline-variant/10">
+                <span className="text-xs uppercase font-bold tracking-widest text-on-surface-variant">Requester:</span>
+                <span className="text-sm font-semibold text-primary">{creator.full_name}</span>
+              </div>
+            )}
+            <p className="text-sm text-on-surface-variant mt-3 line-clamp-2">{task.description}</p>
+          </div>
+          
+          <div className="flex gap-4 mt-4 items-center">
+            {task.status === 'claimed' && (
+              <>
+                <button onClick={() => handleCancelHelp(claim.id, task.id)} className="border border-outline-variant/30 text-error px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-error/5 transition-colors">
+                  Cancel Help
+                </button>
+                <button onClick={() => handleMessageForTask(task.id)} className="text-secondary font-bold text-xs uppercase tracking-widest hover:underline flex items-center gap-1">
+                  Message Requester <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="px-6 max-w-7xl mx-auto min-h-screen pt-8">
       {/* Editorial Header */}
@@ -220,6 +386,18 @@ export default function DashboardClient({
             <span className="ml-2 px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-xs rounded-full">
               {items.length}
             </span>
+          </button>
+          <button 
+            onClick={() => setActiveTab("task_requests")}
+            className={`pb-4 tracking-tight transition-colors relative ${activeTab === "task_requests" ? "text-primary font-bold border-b-2 border-primary" : "text-on-surface-variant font-medium hover:text-primary"}`}
+          >
+            My Task Requests
+          </button>
+          <button 
+            onClick={() => setActiveTab("helping_with")}
+            className={`pb-4 tracking-tight transition-colors relative ${activeTab === "helping_with" ? "text-primary font-bold border-b-2 border-primary" : "text-on-surface-variant font-medium hover:text-primary"}`}
+          >
+            Helping With
           </button>
         </div>
 
@@ -262,6 +440,22 @@ export default function DashboardClient({
               ) : (
                 <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
                   You don't have any listings yet.
+                </div>
+              )
+            ) : activeTab === "task_requests" ? (
+              localTaskRequests.length > 0 ? (
+                localTaskRequests.map(task => renderTaskRequestCard(task))
+              ) : (
+                <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
+                  You haven't posted any tasks yet.
+                </div>
+              )
+            ) : activeTab === "helping_with" ? (
+              localHelpingWith.length > 0 ? (
+                localHelpingWith.map(claim => renderHelpingCard(claim))
+              ) : (
+                <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
+                  You aren't helping with any tasks right now.
                 </div>
               )
             ) : activeTab === "received" ? (

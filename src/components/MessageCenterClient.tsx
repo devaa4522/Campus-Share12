@@ -56,6 +56,7 @@ export default function MessageCenterClient({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [editingMsg, setEditingMsg] = useState<Message | null>(null);
   const [contextMenuMsgId, setContextMenuMsgId] = useState<string | null>(null);
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
 
   const activeConversation = conversations.find(
     (c) => c.id === activeConversationId
@@ -309,8 +310,16 @@ export default function MessageCenterClient({
               </div>
             </div>
             <div className="flex-1"></div>
-            <div className="flex items-center space-x-2 text-[#000a1e]/60">
-              <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#000a1e]/5 transition-colors"><span className="material-symbols-outlined text-[20px]">more_vert</span></button>
+            <div className="flex items-center space-x-2 text-[#000a1e]/60 relative">
+              <button onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#000a1e]/5 transition-colors"><span className="material-symbols-outlined text-[20px]">more_vert</span></button>
+              {isHeaderMenuOpen && (
+                 <div className="absolute top-12 right-0 bg-surface-container-lowest shadow-xl rounded-lg py-2 w-48 opacity-100 transition-opacity border border-outline-variant/10 z-50 text-on-surface">
+                   <button onClick={() => setIsHeaderMenuOpen(false)} className="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container-low transition-colors flex items-center gap-2"><span className="material-symbols-outlined text-[16px]">person</span> View Peer Profile</button>
+                   <button onClick={() => setIsHeaderMenuOpen(false)} className="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container-low transition-colors flex items-center gap-2"><span className="material-symbols-outlined text-[16px]">volume_off</span> Mute Notifications</button>
+                   <div className="border-t border-outline-variant/10 my-1"></div>
+                   <button onClick={() => setIsHeaderMenuOpen(false)} className="w-full text-left px-4 py-2 text-sm text-error hover:bg-error/5 transition-colors flex items-center gap-2"><span className="material-symbols-outlined text-[16px]">report</span> Report Issue</button>
+                 </div>
+              )}
             </div>
           </div>
 
@@ -353,15 +362,15 @@ export default function MessageCenterClient({
                       {isEditable && (
                         <>
                            {/* Hover Menu Trigger Desktop */}
-                           <div onClick={() => setContextMenuMsgId(msg.id)} className="hidden md:block absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-on-surface-variant">
-                             <span className="material-symbols-outlined text-sm">expand_more</span>
+                           <div onClick={(e) => { e.stopPropagation(); setContextMenuMsgId(msg.id) }} className="hidden md:block absolute top-2 right-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white/70 hover:text-white">
+                             <span className="material-symbols-outlined text-[14px] leading-none">expand_more</span>
                            </div>
                            
                            {/* Context Menu Toolkit */}
                            {contextMenuMsgId === msg.id && (
-                             <div className="absolute -left-20 top-0 bg-surface-container-lowest shadow-xl rounded-lg py-2 w-24 opacity-100 transition-opacity border border-outline-variant/10 z-10 text-on-surface">
-                               <button onClick={() => { setEditingMsg(msg); setNewMessage(msg.content); setContextMenuMsgId(null); }} className="w-full text-left px-4 py-1.5 text-xs text-on-surface-variant hover:bg-surface-container-low transition-colors">Edit</button>
-                               <button onClick={() => handleDeleteMessage(msg.id)} className="w-full text-left px-4 py-1.5 text-xs text-error hover:bg-error/5 transition-colors">Delete</button>
+                             <div className="absolute top-8 right-2 bg-surface-container-lowest shadow-xl rounded-lg py-2 w-28 opacity-100 transition-opacity border border-outline-variant/10 z-10 text-on-surface">
+                               <button onClick={(e) => { e.stopPropagation(); setEditingMsg(msg); setNewMessage(msg.content); setContextMenuMsgId(null); }} className="w-full text-left px-4 py-1.5 text-[13px] text-on-surface-variant hover:bg-surface-container-low transition-colors">Edit</button>
+                               <button onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); setContextMenuMsgId(null); }} className="w-full text-left px-4 py-1.5 text-[13px] text-error hover:bg-error/5 transition-colors">Delete</button>
                              </div>
                            )}
                         </>

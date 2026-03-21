@@ -20,6 +20,7 @@ export default function TopNavLinks() {
           <Link
             key={link.href}
             href={link.href}
+            prefetch={true}
             className={`font-label text-sm transition-colors ${
               isActive 
                 ? "text-white border-b-2 border-[#006e0c] pb-1 font-bold"

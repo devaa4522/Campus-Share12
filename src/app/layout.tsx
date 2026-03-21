@@ -61,6 +61,19 @@ export default function RootLayout({
         <main className="pt-24 min-h-screen pb-24 md:pb-8">{children}</main>
         <MessageFAB />
         <BottomNav />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

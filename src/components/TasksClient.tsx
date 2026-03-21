@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import toast from "react-hot-toast";
@@ -17,6 +17,30 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: an
 
   const categories = ["All", "Delivery", "Academic", "Labor/Help", "Tech Support", "General"];
 
+  useEffect(() => {
+    const channel = supabase
+      .channel('tasks-feed')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, (payload) => {
+        if (payload.new.status === 'open' && payload.new.user_id !== userId) {
+          setTasks(prev => [payload.new, ...prev]);
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, (payload) => {
+        setTasks(prev => {
+          if (payload.new.status !== 'open') {
+             return prev.filter(t => t.id !== payload.new.id);
+          }
+          return prev.map(t => t.id === payload.new.id ? payload.new : t);
+        });
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, (payload) => {
+        setTasks(prev => prev.filter(t => t.id !== payload.old.id));
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, userId]);
+
   const filteredTasks = activeCategory === "All" 
     ? tasks 
     : tasks.filter(t => t.category === activeCategory);
@@ -30,42 +54,21 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: an
     try {
       setClaimingId(task.id);
       
-      // Update task status
-      const { error: taskError } = await supabase
-        .from('tasks')
-        .update({ status: 'claimed' })
-        .eq('id', task.id);
+      const { data: result, error: rpcError } = await supabase.rpc('claim_task_atomic', {
+        t_id: task.id,
+        u_id: userId
+      });
 
-      if (taskError) throw taskError;
+      if (rpcError) throw rpcError;
 
-      // Create claim
-      const { error: claimError } = await supabase
-        .from('task_claims')
-        .insert({
-          task_id: task.id,
-          claimed_by: userId
-        });
-
-      if (claimError) throw claimError;
-
-      // Create conversation
-      const { data: convData, error: convError } = await supabase
-        .from("conversations")
-        .insert({
-          deal_id: task.id,
-          participant_1: userId,
-          participant_2: task.user_id,
-        })
-        .select()
-        .single();
-        
-      if (convError || !convData) throw convError || new Error("Failed to create conversation");
+      const convId = result?.conversation_id;
+      if (!convId) throw new Error("Conversation generation failed");
 
       // Insert system message
       const { error: msgError } = await supabase
         .from('messages')
         .insert({
-          conversation_id: convData.id,
+          conversation_id: convId,
           sender_id: userId,
           content: `I'm here to help with your task: ${task.title}`
         });
@@ -73,7 +76,7 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: an
       if (msgError) throw msgError;
 
       toast.success("Task claimed! Opening message thread...");
-      router.push(`/messages?id=${convData.id}`);
+      router.push(`/messages?id=${convId}`);
       
     } catch (error: any) {
       toast.error(error.message || "Failed to claim task");

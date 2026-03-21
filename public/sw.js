@@ -1,68 +1,54 @@
-const CACHE_NAME = "academic-exchange-v2";
-const STATIC_ASSETS = ["/", "/manifest.json"];
+const CACHE_NAME = 'campus-share-v1';
+const FONT_CACHE = 'campus-share-fonts-v1';
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
+self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-self.addEventListener("activate", (event) => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
+    caches.keys().then((cacheNames) => 
       Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
+        cacheNames.map((name) => {
+          if (name !== CACHE_NAME && name !== FONT_CACHE) {
+            return caches.delete(name);
+          }
+        })
       )
     )
   );
   self.clients.claim();
 });
 
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
 
-  // Skip non-GET and external requests
-  if (request.method !== "GET" || url.origin !== self.location.origin) return;
-
-  // API routes: network-first
-  if (url.pathname.startsWith("/api") || url.pathname.startsWith("/auth")) {
+  // Cache-First for static fonts/css from Google
+  if (url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com') {
     event.respondWith(
-      fetch(request).catch(() => caches.match(request))
-    );
-    return;
-  }
-
-  // Static assets: cache-first
-  if (
-    url.pathname.startsWith("/_next/static") ||
-    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|css|js|woff2?)$/)
-  ) {
-    event.respondWith(
-      caches.match(request).then(
-        (cached) =>
-          cached ||
-          fetch(request).then((response) => {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-            return response;
-          })
+      caches.match(event.request).then((cachedResponse) => 
+        cachedResponse || fetch(event.request).then((networkResponse) => {
+          const responseClone = networkResponse.clone();
+          caches.open(FONT_CACHE).then((cache) => cache.put(event.request, responseClone));
+          return networkResponse;
+        })
       )
     );
     return;
   }
 
-  // HTML pages: network-first with cache fallback
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        return response;
+  // Stale-While-Revalidate for application HTML / data queries (except POST/API)
+  if (event.request.method === 'GET' && !url.pathname.startsWith('/api/') && !url.origin.includes('supabase.co')) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        const fetchPromise = fetch(event.request).then((networkResponse) => {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          return networkResponse;
+        }).catch(() => {});
+        
+        return cachedResponse || fetchPromise;
       })
-      .catch(() => caches.match(request))
-  );
+    );
+  }
 });

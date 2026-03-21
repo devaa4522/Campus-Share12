@@ -27,27 +27,43 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Do not fetch user here on every request unless necessary, but good for refreshing tokens
-  // We will handle protected routes within the app components where possible, or in this middleware.
-  
-  // Requirement: "New users must be redirected to the /onboarding page (Template 3) to fill in their Major and Year before they can access the full app."
-  // Wait, let's implement the route protection.
   const { data: { user } } = await supabase.auth.getUser();
-  const url = request.nextUrl.clone();
-  const isAuthPage = url.pathname.startsWith("/login");
-  const isOnboardingPge = url.pathname.startsWith("/onboarding");
-  const isHomePage = url.pathname === "/";
 
-  // If user is authenticated
-  if (user) {
-    if (isAuthPage) {
-      url.pathname = "/";
+  const url = request.nextUrl.clone();
+  
+  // Public routes that don't need auth
+  const isAuthPage = url.pathname.startsWith("/login") || url.pathname.startsWith("/signup");
+  const isOnboardingPage = url.pathname.startsWith("/onboarding");
+  
+  const isProtectedPath = url.pathname === "/" ||
+                          url.pathname.startsWith("/tasks") ||
+                          url.pathname.startsWith("/messages") ||
+                          url.pathname.startsWith("/notifications") ||
+                          url.pathname.startsWith("/dashboard") ||
+                          url.pathname.startsWith("/post") ||
+                          url.pathname.startsWith("/profile");
+
+  // 1. Unauthenticated users cannot access protected paths
+  if (!user && isProtectedPath) {
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // 2. Authenticated users cannot access login/signup pages
+  if (user && isAuthPage) {
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+
+  // 3. Onboarding Guard: if user exists and is accessing protected info, check profile department safely
+  if (user && isProtectedPath && !isOnboardingPage) {
+    const { data: profile } = await supabase.from('profiles').select('department').eq('id', user.id).single();
+    
+    // If profile exists and department is exactly null, force them to onboarding.
+    if (profile && profile.department === null) {
+      url.pathname = "/onboarding";
       return NextResponse.redirect(url);
     }
-    
-    // Check if onboarding is complete (we will check profiles logic separately in pages or here)
-    // Actually fetching profiles in middleware is slow and not recommended since it requires another roundtrip.
-    // It's better to do the onboarding check in layout or server components where needed.
   }
 
   return supabaseResponse;
