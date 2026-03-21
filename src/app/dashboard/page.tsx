@@ -25,10 +25,24 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
+  const { data: madeRequests } = await supabase
+    .from("item_requests")
+    .select("*, items(*, profiles(*))")
+    .eq("requester_id", user.id)
+    .order("created_at", { ascending: false });
+
+  const { data: receivedRequests } = await supabase
+    .from("item_requests")
+    .select("*, items!inner(*), profiles(*)")
+    .eq("items.user_id", user.id)
+    .order("created_at", { ascending: false });
+
   return (
     <DashboardClient
       profile={profile as Profile}
       items={(myItems ?? []) as Item[]}
+      madeRequests={madeRequests ?? []}
+      receivedRequests={receivedRequests ?? []}
     />
   );
 }

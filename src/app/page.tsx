@@ -17,6 +17,8 @@ export default async function HomePage() {
       .from("items")
       .select("*, profiles(*)")
       .eq("status", "available")
+      .eq("is_hidden", false)
+      .neq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(6);
     featuredItems = (items ?? []) as ItemWithProfile[];

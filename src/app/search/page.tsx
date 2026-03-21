@@ -14,11 +14,13 @@ export default function SearchPage() {
   const [activePriceType, setActivePriceType] = useState<string>("All");
   const [activeCondition, setActiveCondition] = useState<string>("All");
   const [authed, setAuthed] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push("/login"); return; }
+      setUserId(user.id);
       setAuthed(true);
     });
   }, [router]);
@@ -31,6 +33,8 @@ export default function SearchPage() {
     let q = supabase
       .from("items")
       .select("*, profiles(*)")
+      .eq("is_hidden", false)
+      .neq("user_id", userId as string)
       .order("created_at", { ascending: false });
 
     if (activePriceType !== "All") {

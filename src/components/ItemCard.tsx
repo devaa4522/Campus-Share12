@@ -13,7 +13,7 @@ export default function ItemCard({ item }: { item: ItemWithProfile }) {
       {/* Image */}
       <div className="aspect-video w-full rounded-lg mb-4 bg-surface-container-low overflow-hidden relative">
         <ImageWithFallback
-          src={item.images?.[0]}
+          src={item.thumbnail_url || item.images?.[0]}
           alt={item.title}
           category={item.category}
           fill

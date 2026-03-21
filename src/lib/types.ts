@@ -34,10 +34,31 @@ export interface Item {
   images: string[] | null;
   created_at: string | null;
   college_domain: string | null;
+  is_hidden: boolean;
+  thumbnail_url: string | null;
 }
 
 export interface ItemWithProfile extends Item {
   profiles: Profile | null;
+}
+
+export interface ItemRequest {
+  id: string;
+  item_id: string;
+  requester_id: string;
+  duration_days: number;
+  status: "pending" | "accepted" | "declined";
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  is_read: boolean;
+  created_at: string;
 }
 
 export interface Task {

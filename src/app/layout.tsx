@@ -35,6 +35,8 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+import { Toaster } from 'react-hot-toast';
+
 export default function RootLayout({
   children,
 }: {
@@ -53,8 +55,9 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-surface text-on-surface font-body">
+        <Toaster position="top-center" />
         <TopNav />
-        <main className="pt-16 pb-24 md:pb-8">{children}</main>
+        <main className="pt-24 min-h-screen pb-24 md:pb-8">{children}</main>
         <BottomNav />
       </body>
     </html>
