@@ -25,12 +25,12 @@ export default async function TopNav() {
   }
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-slate-50/85 backdrop-blur-xl shadow-sm h-16 md:h-20 flex items-center">
+    <nav className="fixed top-0 w-full z-50 bg-[#000a1e] dark:bg-[#000a1e] shadow-[0px_12px_32px_rgba(0,10,30,0.06)] h-16 md:h-20 flex items-center">
       <div className="flex justify-between items-center px-6 md:px-8 w-full max-w-7xl mx-auto">
         {/* Brand */}
         <Link
           href="/"
-          className="font-headline text-2xl font-bold tracking-tighter text-primary"
+          className="font-headline text-2xl font-bold tracking-tighter text-white"
         >
           Campus Share
         </Link>
@@ -39,11 +39,11 @@ export default async function TopNav() {
         <TopNavLinks />
 
         {/* Right Side */}
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-5 text-white">
           {user && profile ? (
             <>
-              <Link href="/messages" className="material-symbols-outlined text-slate-500 hover:text-secondary transition-colors">
-                mail
+              <Link href="/messages" className="hover:bg-white/10 p-2 rounded-full transition-all duration-200 scale-95 active:scale-90 relative flex items-center justify-center">
+                <span className="material-symbols-outlined">mail</span>
               </Link>
               <NotificationBell initialCount={unreadCount} userId={user.id} />
               {/* Karma Badge */}

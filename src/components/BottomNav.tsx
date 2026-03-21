@@ -15,7 +15,7 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 bg-slate-50/85 backdrop-blur-xl border-t border-slate-200/30 shadow-[0_-4px_20px_rgba(0,10,30,0.04)] rounded-t-xl pb-safe">
+    <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 bg-white/85 dark:bg-[#000a1e]/85 backdrop-blur-xl shadow-[0px_-4px_16px_rgba(0,10,30,0.04)] rounded-t-xl pb-safe">
       <div className="flex justify-around items-center h-16 px-4 max-w-7xl mx-auto w-full">
         {NAV_ITEMS.map((item) => {
           const isActive =
@@ -27,10 +27,10 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center w-full h-full transition-all active:scale-95 duration-200 ${
+              className={`flex flex-col items-center justify-center w-full h-full transition-all active:bg-slate-100 dark:active:bg-slate-800 ${
                 isActive
-                  ? "text-secondary relative after:content-[''] after:absolute after:bottom-1 after:w-1 after:h-1 after:bg-secondary after:rounded-full"
-                  : "text-slate-400 hover:text-primary"
+                  ? "text-[#006e0c] relative after:content-[''] after:w-1 after:h-1 after:bg-[#006e0c] after:rounded-full after:mt-1"
+                  : "text-slate-500 dark:text-slate-400"
               }`}
             >
               <span

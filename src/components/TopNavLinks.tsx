@@ -20,10 +20,10 @@ export default function TopNavLinks() {
           <Link
             key={link.href}
             href={link.href}
-            className={`font-serif tracking-tight text-lg transition-colors ${
+            className={`font-label text-sm transition-colors ${
               isActive 
-                ? "text-emerald-700 dark:text-emerald-500 font-bold border-b-2 border-emerald-700 dark:border-emerald-500 pb-1"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-700"
+                ? "text-white border-b-2 border-[#006e0c] pb-1 font-bold"
+                : "text-slate-300 hover:text-white font-medium"
             }`}
           >
             {link.label}

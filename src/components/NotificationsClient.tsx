@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { createClient } from "@/utils/supabase/client";
 
 type Notification = {
   id: string;
@@ -42,8 +43,19 @@ function timeAgo(dateString: string) {
 
 export default function NotificationsClient({ initialNotifications }: { initialNotifications: Notification[] }) {
   const [filter, setFilter] = useState("All Updates");
+  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  
+  const supabase = createClient();
 
-  const filtered = initialNotifications.filter((n) => {
+  const handleClearArchive = async () => {
+    // Optimistic flush
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    
+    // DB RPC
+    await supabase.rpc('clear_user_notifications');
+  };
+
+  const filtered = notifications.filter((n) => {
     if (filter === "All Updates") return true;
     if (filter === "Deal Updates") return n.type === "message" || n.type === "deal";
     if (filter === "System Alerts") return n.type === "system";
@@ -68,14 +80,20 @@ export default function NotificationsClient({ initialNotifications }: { initialN
   return (
     <main className="pt-24 pb-20 px-4 md:px-8 max-w-4xl mx-auto w-full">
       {/* Editorial Header */}
-      <header className="mb-12">
-        <h1 className="font-headline text-4xl md:text-5xl font-bold tracking-tight text-primary-container mb-2">
-          Notification Center
-        </h1>
-        <p className="text-on-surface-variant font-body text-lg">
-          Your curated feed of campus exchanges and system health.
-        </p>
-      </header>
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+        <div className="space-y-2">
+          <h1 className="font-headline text-4xl md:text-5xl font-bold tracking-tight text-primary-container mb-2">
+            Activity Feed
+          </h1>
+          <p className="text-on-surface-variant font-body text-lg max-w-md">
+            Your curated archive of academic exchanges and campus logistics.
+          </p>
+        </div>
+        <button onClick={handleClearArchive} className="group flex items-center space-x-2 px-6 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-full hover:bg-primary-container hover:text-white transition-all duration-300 shadow-sm">
+          <span className="font-label text-sm font-semibold tracking-wide">Clear Notification Archive</span>
+          <span className="material-symbols-outlined text-sm">archive</span>
+        </button>
+      </div>
 
       {/* Bento Filter Tabs */}
       <div className="flex flex-wrap gap-3 mb-10">

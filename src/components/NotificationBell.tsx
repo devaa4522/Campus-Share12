@@ -29,10 +29,10 @@ export default function NotificationBell({ initialCount, userId }: { initialCoun
   }, [userId, supabase]);
 
   return (
-    <Link href="/notifications" className="relative material-symbols-outlined text-slate-500 hover:text-secondary transition-colors block leading-none">
-      notifications
+    <Link href="/notifications" className="relative hover:bg-white/10 p-2 rounded-full transition-all duration-200 scale-95 active:scale-90 flex items-center justify-center text-white block leading-none">
+      <span className="material-symbols-outlined">notifications</span>
       {count > 0 && (
-        <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-error text-[9px] font-bold text-white shadow-sm ring-2 ring-white">
+        <span className="absolute top-1 right-2 flex h-3 w-3 items-center justify-center rounded-full bg-error text-[8px] font-bold text-white shadow-sm ring-2 ring-[#000a1e]">
           {count > 99 ? '99+' : count}
         </span>
       )}
