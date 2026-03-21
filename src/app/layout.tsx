@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   description:
     "Exchange academic resources, campus errands, and student favors within your college network.",
   manifest: "/manifest.json",
-  icons: { icon: "/favicon.ico" },
+  icons: { icon: "/C:/Users/deven/Downloads/icons8-university-100.png" },
 };
 
 export const viewport: Viewport = {
