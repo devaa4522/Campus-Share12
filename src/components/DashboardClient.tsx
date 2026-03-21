@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Item, Profile, ItemRequest } from "@/lib/types";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import QRCode from "react-qr-code";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 type DealTab = "made" | "received" | "my_listings" | "task_requests" | "helping_with";
 
@@ -34,7 +36,48 @@ export default function DashboardClient({
   const [localReceived, setLocalReceived] = useState<RequestWithRelations[]>(receivedRequests);
   const [localTaskRequests, setLocalTaskRequests] = useState<any[]>(myTaskRequests);
   const [localHelpingWith, setLocalHelpingWith] = useState<any[]>(helpingWithTasks);
+  const [showQrModal, setShowQrModal] = useState<string | null>(null);
+  const [showScannerModal, setShowScannerModal] = useState<string | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!showScannerModal) return;
+
+    const scanner = new Html5QrcodeScanner(
+      "qr-reader",
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      /* verbose= */ false
+    );
+
+    scanner.render(
+      async (decodedText) => {
+        scanner.clear();
+        setShowScannerModal(null);
+        handleQRConfirm(decodedText, showScannerModal);
+      },
+      (error) => { /* ignore */ }
+    );
+
+    return () => {
+      scanner.clear().catch(e => console.error(e));
+    };
+  }, [showScannerModal]);
+
+  async function handleQRConfirm(scannedPayload: string, expectedTaskId: string) {
+    if (scannedPayload !== expectedTaskId) {
+      toast.error('Invalid QR Code for this specific task!');
+      return;
+    }
+    const supabase = createClient();
+    const { error } = await supabase.rpc('complete_task_handshake', { qr_payload: expectedTaskId });
+    
+    if (!error) {
+       toast.success("Task formally completed! Escrow released & Karma awarded.");
+       setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? { ...t, status: "completed" } : t));
+    } else {
+       toast.error(error.message || "Confirmation failed");
+    }
+  }
 
   const activeEarnings = items
     .filter((i) => i.status === "rented")
@@ -78,13 +121,17 @@ export default function DashboardClient({
 
   async function handleCancelHelp(claimId: string, taskId: string) {
     const supabase = createClient();
-    const { error } = await supabase.from("task_claims").delete().eq("id", claimId);
+    const { data: result, error } = await supabase.rpc("cancel_task_claim", { c_id: claimId, u_id: profile.id });
+    
     if (!error) {
-       await supabase.from("tasks").update({ status: "open" }).eq("id", taskId);
-       toast.success("Help cancelled. Task is open again.");
+       if (result?.penalty_applied) {
+           toast.error("Help cancelled. 10% Escrow Penalty applied due to 10-Minute rule.");
+       } else {
+           toast.success("Help cancelled. Escrow refunded safely.");
+       }
        setLocalHelpingWith(prev => prev.filter(c => c.id !== claimId));
     } else {
-       toast.error("Error cancelling help.");
+       toast.error(error.message || "Error cancelling help.");
     }
   }
 
@@ -280,8 +327,8 @@ export default function DashboardClient({
           
           <div className="flex gap-3 mt-4">
             {task.status === 'claimed' && (
-              <button onClick={() => handleMarkTaskDone(task.id)} className="bg-primary text-white px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:bg-slate-800 transition-colors">
-                Mark as Done
+              <button onClick={() => setShowScannerModal(task.id)} className="bg-primary text-white px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:bg-slate-800 transition-colors flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan to Confirm
               </button>
             )}
           </div>
@@ -318,7 +365,10 @@ export default function DashboardClient({
                  }`}>
                    {task.status}
                  </span>
-                 <p className="text-[10px] text-on-surface-variant font-bold uppercase mt-1.5 tracking-widest">{deadlineText}</p>
+                 {task.status === 'claimed' && (
+                    <p className="text-[10px] text-error font-bold uppercase mt-1.5 tracking-widest">Escrow: {Math.floor((task.reward_amount || 0) * 0.1)} CP Locked</p>
+                 )}
+                 <p className="text-[10px] text-on-surface-variant font-bold uppercase mt-1 tracking-widest">{deadlineText}</p>
                </div>
             </div>
             
@@ -334,11 +384,14 @@ export default function DashboardClient({
           <div className="flex gap-4 mt-4 items-center">
             {task.status === 'claimed' && (
               <>
+                <button onClick={() => setShowQrModal(task.id)} className="bg-primary text-white shadow-md shadow-primary/20 px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px]">qr_code_2</span> Complete Task
+                </button>
                 <button onClick={() => handleCancelHelp(claim.id, task.id)} className="border border-outline-variant/30 text-error px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-error/5 transition-colors">
                   Cancel Help
                 </button>
                 <button onClick={() => handleMessageForTask(task.id)} className="text-secondary font-bold text-xs uppercase tracking-widest hover:underline flex items-center gap-1">
-                  Message Requester <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                  Message <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                 </button>
               </>
             )}
@@ -349,7 +402,45 @@ export default function DashboardClient({
   };
 
   return (
-    <div className="px-6 max-w-7xl mx-auto min-h-screen pt-8">
+    <>
+      {showQrModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/80 backdrop-blur-md p-4">
+          <div className="bg-surface-container-lowest rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-8">
+            <button
+               onClick={() => setShowQrModal(null)}
+               className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors"
+            >
+               <span className="material-symbols-outlined text-on-surface-variant">close</span>
+            </button>
+            <h2 className="font-headline font-bold text-2xl text-primary mb-2">Proof of Work</h2>
+            <p className="text-on-surface-variant font-body text-sm mb-6 leading-relaxed">Present this encrypted Handshake to the Task Creator. Verifying this grants your total Karma Reward and unbinds Escrow.</p>
+            <div className="bg-white p-6 rounded-2xl inline-block shadow-lg mx-auto mb-6 border-4 border-[#006e0c]">
+               <QRCode value={showQrModal} size={220} fgColor="#000a1e" />
+            </div>
+            <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#006e0c]">Encrypted Subroutine Active</p>
+          </div>
+        </div>
+      )}
+
+      {showScannerModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/80 backdrop-blur-md p-4">
+          <div className="bg-surface-container-lowest rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-8">
+            <button
+               onClick={() => setShowScannerModal(null)}
+               className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors z-10"
+            >
+               <span className="material-symbols-outlined text-on-surface-variant">close</span>
+            </button>
+            <h2 className="font-headline font-bold text-2xl text-primary mb-2">Scan Handshake</h2>
+            <p className="text-on-surface-variant font-body text-sm mb-6">Point your camera strictly at the Helper&apos;s Proof of Work QR schema to mathematically conclude this transaction.</p>
+            <div className="bg-black rounded-2xl overflow-hidden shadow-inner border-4 border-primary">
+               <div id="qr-reader" className="w-full"></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+    <div className="px-6 max-w-7xl mx-auto min-h-screen pt-24 pb-8">
       {/* Editorial Header */}
       <header className="mb-10">
         <h1 className="font-headline text-4xl font-bold tracking-tight text-primary mb-2">Deal Manager</h1>
@@ -519,5 +610,6 @@ export default function DashboardClient({
         </div>
       </div>
     </div>
+    </>
   );
 }
