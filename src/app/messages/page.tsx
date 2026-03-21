@@ -35,7 +35,7 @@ export default async function MessagesPage(props: {
   }
 
   return (
-    <div className="bg-[#f7f9fb] font-body text-[#000a1e] flex flex-col pt-24 h-screen">
+    <div className="bg-[#f7f9fb] font-body text-[#000a1e] flex flex-col pt-16 md:pt-20">
       <MessageCenterClient
         initialConversations={conversations as any}
         activeConversationId={activeId}

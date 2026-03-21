@@ -40,9 +40,36 @@ export default function MessageCenterClient({
   const supabase = createClient();
   
   const [conversations, setConversations] = useState<Conversation[]>(
-    initialConversations.map(c => ({
+    Object.values(
+      initialConversations.reduce((acc, conv) => {
+        const peerId = conv.p1.id === userId ? conv.p2.id : conv.p1.id;
+        const currentLastTime = conv.messages?.length > 0 
+          ? new Date(conv.messages[conv.messages.length - 1].created_at).getTime() 
+          : new Date(conv.created_at).getTime();
+
+        if (!acc[peerId]) {
+          acc[peerId] = conv;
+        } else {
+          const existingConv = acc[peerId];
+          const existingLastTime = existingConv.messages?.length > 0 
+            ? new Date(existingConv.messages[existingConv.messages.length - 1].created_at).getTime() 
+            : new Date(existingConv.created_at).getTime();
+            
+          if (currentLastTime > existingLastTime) {
+            acc[peerId] = conv;
+          }
+        }
+        return acc;
+      }, {} as Record<string, Conversation>)
+    )
+    .sort((a, b) => {
+      const aTime = a.messages?.length > 0 ? new Date(a.messages[a.messages.length - 1].created_at).getTime() : new Date(a.created_at).getTime();
+      const bTime = b.messages?.length > 0 ? new Date(b.messages[b.messages.length - 1].created_at).getTime() : new Date(b.created_at).getTime();
+      return bTime - aTime;
+    })
+    .map(c => ({
       ...c,
-      messages: c.messages ? [...c.messages].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) : []
+      messages: c.messages ? [...c.messages].sort((x, y) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime()) : []
     }))
   );
   
@@ -221,10 +248,10 @@ export default function MessageCenterClient({
   };
 
   return (
-    <div className="flex flex-1 h-full max-w-7xl mx-auto w-full px-4 md:px-6 py-6 pb-20 md:pb-6 gap-6">
+    <div className="flex w-full max-w-7xl mx-auto h-[calc(100vh-theme(spacing.16))] md:h-[calc(100vh-theme(spacing.20))] overflow-hidden px-0 md:px-6 py-0 md:py-6 pb-16 md:pb-6 gap-0 md:gap-6">
       {/* Left Sidebar: Conversation List */}
-      <aside className={`w-full md:w-96 flex flex-col bg-surface-container-low rounded-xl overflow-hidden shadow-sm border border-outline-variant/10 ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-6 pb-4 border-b border-[#000a1e]/10">
+      <aside className={`w-full md:w-96 flex flex-col h-full bg-surface-container-low rounded-none md:rounded-xl overflow-hidden shadow-sm border-r md:border border-outline-variant/10 ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
+        <div className="p-4 md:p-6 pb-4 border-b border-[#000a1e]/10">
           <h1 className="font-headline text-2xl font-bold tracking-tight text-[#000a1e] mb-5">Messages</h1>
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
@@ -290,9 +317,9 @@ export default function MessageCenterClient({
 
       {/* Right Pane: Active Chat */}
       {activeConversationId ? (
-        <section className={`flex-1 flex flex-col bg-[#f7f9fb] rounded-xl border border-[#000a1e]/10 shadow-[0px_12px_32px_rgba(0,10,30,0.06)] overflow-hidden ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
+        <section className={`flex-1 flex flex-col relative h-full bg-[#f7f9fb] rounded-none md:rounded-xl border-none md:border border-[#000a1e]/10 shadow-none md:shadow-[0px_12px_32px_rgba(0,10,30,0.06)] overflow-hidden ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
           {/* Chat Header */}
-          <div className="px-6 md:px-8 py-4 flex items-center gap-4 border-b border-[#000a1e]/10 bg-[#f7f9fb]/85 backdrop-blur-md z-10 sticky top-0 shadow-sm">
+          <div className="px-4 md:px-8 py-3 md:py-4 flex items-center gap-4 border-b border-[#000a1e]/10 bg-[#f7f9fb]/85 backdrop-blur-md z-10 sticky top-0 shadow-sm shrink-0">
             <button className="md:hidden material-symbols-outlined text-[#000a1e]/60 p-2 -ml-2 rounded-full hover:bg-[#000a1e]/5" onClick={() => router.push('/messages')}>arrow_back</button>
             <div className="flex items-center space-x-3 cursor-pointer">
               <div className="w-10 h-10 rounded-full bg-[#f7f9fb] border border-[#000a1e]/10 flex items-center justify-center overflow-hidden">
@@ -402,11 +429,11 @@ export default function MessageCenterClient({
               </div>
             )}
             
-            <div ref={messagesEndRef} className="h-2" />
+            <div ref={messagesEndRef} className="h-20" />
           </div>
 
           {/* Message Input */}
-          <div className="p-3 md:p-5 bg-surface-container-lowest/90 backdrop-blur-md relative border-t border-outline-variant/10">
+          <div className="p-3 md:p-5 bg-surface-container-lowest/90 backdrop-blur-md absolute bottom-0 left-0 right-0 w-full border-t border-outline-variant/10 z-20">
             {showEmojiPicker && (
                <div className="absolute bottom-20 left-4 z-50">
                    <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)}></div>

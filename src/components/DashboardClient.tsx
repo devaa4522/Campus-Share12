@@ -80,10 +80,10 @@ export default function DashboardClient({
          toast.success("Task formally completed! Escrow released & Karma awarded.");
          setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? { ...t, status: "completed" } : t));
       } else {
-         toast.error("Campus Network Busy: Please try again.");
+         toast.error("Service temporary unavailable. Our team is looking into it.");
       }
     } catch (e) {
-      toast.error("Campus Network Busy: Please try again.");
+      toast.error("Service temporary unavailable. Our team is looking into it.");
     }
   }
 
@@ -124,10 +124,10 @@ export default function DashboardClient({
          toast.success("Task completed & Karma awarded!");
          setLocalTaskRequests(prev => prev.map(t => t.id === taskId ? { ...t, status: "completed" } : t));
       } else {
-         toast.error("Campus Network Busy: Please try again.");
+         toast.error("Service temporary unavailable. Our team is looking into it.");
       }
     } catch (e) {
-      toast.error("Campus Network Busy: Please try again.");
+      toast.error("Service temporary unavailable. Our team is looking into it.");
     }
   }
 
@@ -144,10 +144,10 @@ export default function DashboardClient({
          }
          setLocalHelpingWith(prev => prev.filter(c => c.id !== claimId));
       } else {
-         toast.error("Campus Network Busy: Please try again.");
+         toast.error("Service temporary unavailable. Our team is looking into it.");
       }
     } catch (e) {
-      toast.error("Campus Network Busy: Please try again.");
+      toast.error("Service temporary unavailable. Our team is looking into it.");
     }
   }
 
@@ -163,10 +163,10 @@ export default function DashboardClient({
       if (existingConv) {
          router.push(`/messages?id=${existingConv.id}`);
       } else {
-         toast.error("Campus Network Busy: Please try again.");
+         toast.error("Service temporary unavailable. Our team is looking into it.");
       }
     } catch (e) {
-      toast.error("Campus Network Busy: Please try again.");
+      toast.error("Service temporary unavailable. Our team is looking into it.");
     }
   };
 

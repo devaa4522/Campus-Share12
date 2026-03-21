@@ -79,7 +79,7 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: an
       router.push(`/messages?id=${convId}`);
       
     } catch (error: any) {
-      toast.error(error.message || "Failed to claim task");
+      toast.error("Service temporary unavailable. Our team is looking into it.");
       setClaimingId(null);
     }
   };

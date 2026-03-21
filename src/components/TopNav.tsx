@@ -28,19 +28,22 @@ export default async function TopNav() {
   return (
     <nav className="fixed top-0 w-full z-50 bg-[#000a1e] dark:bg-[#000a1e] shadow-[0px_12px_32px_rgba(0,10,30,0.06)] h-16 md:h-20 flex items-center">
       <div className="flex justify-between items-center px-6 md:px-8 w-full max-w-7xl mx-auto">
-        {/* Brand */}
-        <Link
-          href="/"
-          className="font-headline text-2xl font-bold tracking-tighter whitespace-nowrap text-white"
-        >
-          Campus Share
-        </Link>
+        <div className="flex-1">
+          <Link
+            href="/"
+            className="font-headline text-2xl font-bold tracking-tighter whitespace-nowrap text-white"
+          >
+            Campus Share
+          </Link>
+        </div>
 
         {/* Desktop Nav Links */}
-        <TopNavLinks />
+        <div className="flex-1 flex justify-center hidden md:flex">
+          <TopNavLinks />
+        </div>
 
         {/* Right Side */}
-        <div className="flex items-center gap-5 text-white">
+        <div className="flex-1 flex items-center justify-end gap-3 md:gap-4 text-white">
           {user && profile ? (
             <>
               <Link href="/messages" className="hover:bg-white/10 p-2 rounded-full transition-all duration-200 scale-95 active:scale-90 relative flex items-center justify-center">
