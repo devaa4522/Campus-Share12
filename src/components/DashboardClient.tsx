@@ -80,10 +80,10 @@ export default function DashboardClient({
          toast.success("Task formally completed! Escrow released & Karma awarded.");
          setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? { ...t, status: "completed" } : t));
       } else {
-         toast.error("Service temporary unavailable. Our team is looking into it.");
+         toast.error("Action could not be completed. We are working on a fix.");
       }
     } catch (e) {
-      toast.error("Service temporary unavailable. Our team is looking into it.");
+      toast.error("Action could not be completed. We are working on a fix.");
     }
   }
 
@@ -124,10 +124,10 @@ export default function DashboardClient({
          toast.success("Task completed & Karma awarded!");
          setLocalTaskRequests(prev => prev.map(t => t.id === taskId ? { ...t, status: "completed" } : t));
       } else {
-         toast.error("Service temporary unavailable. Our team is looking into it.");
+         toast.error("Action could not be completed. We are working on a fix.");
       }
     } catch (e) {
-      toast.error("Service temporary unavailable. Our team is looking into it.");
+      toast.error("Action could not be completed. We are working on a fix.");
     }
   }
 
@@ -144,10 +144,10 @@ export default function DashboardClient({
          }
          setLocalHelpingWith(prev => prev.filter(c => c.id !== claimId));
       } else {
-         toast.error("Service temporary unavailable. Our team is looking into it.");
+         toast.error("Action could not be completed. We are working on a fix.");
       }
     } catch (e) {
-      toast.error("Service temporary unavailable. Our team is looking into it.");
+      toast.error("Action could not be completed. We are working on a fix.");
     }
   }
 
@@ -163,10 +163,10 @@ export default function DashboardClient({
       if (existingConv) {
          router.push(`/messages?id=${existingConv.id}`);
       } else {
-         toast.error("Service temporary unavailable. Our team is looking into it.");
+         toast.error("Action could not be completed. We are working on a fix.");
       }
     } catch (e) {
-      toast.error("Service temporary unavailable. Our team is looking into it.");
+      toast.error("Action could not be completed. We are working on a fix.");
     }
   };
 

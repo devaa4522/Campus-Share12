@@ -43,16 +43,19 @@ export default async function TopNav() {
         </div>
 
         {/* Right Side */}
-        <div className="flex-1 flex items-center justify-end gap-3 md:gap-4 text-white">
+        <div className="flex-1 flex justify-end items-center gap-5 text-white">
           {user && profile ? (
             <>
-              <Link href="/messages" className="hover:bg-white/10 p-2 rounded-full transition-all duration-200 scale-95 active:scale-90 relative flex items-center justify-center">
-                <span className="material-symbols-outlined">mail</span>
-              </Link>
-              <NotificationBell initialCount={unreadCount} userId={user.id} />
-              {/* Karma Badge */}
-              <KarmaBadgeClient initialKarma={profile.karma_score ?? 0} userId={user.id} />
-              {/* Avatar */}
+              <div className="flex items-center gap-3">
+                <Link href="/messages" className="hover:bg-white/10 p-2 rounded-full transition-all duration-200 scale-95 active:scale-90 relative flex items-center justify-center">
+                  <span className="material-symbols-outlined">mail</span>
+                </Link>
+                <NotificationBell initialCount={unreadCount} userId={user.id} />
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Karma Badge */}
+                <KarmaBadgeClient initialKarma={profile.karma_score ?? 0} userId={user.id} />
+                {/* Avatar */}
               <Link
                 href="/profile"
                 className="w-9 h-9 rounded-full bg-surface-container-highest overflow-hidden border-2 border-outline-variant/30 hover:border-secondary transition-colors flex items-center justify-center"
@@ -69,6 +72,7 @@ export default async function TopNav() {
                   </span>
                 )}
               </Link>
+              </div>
             </>
           ) : (
             <Link
