@@ -87,7 +87,7 @@ export default function SearchPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Filter Sidebar */}
-        <aside className="lg:col-span-3 space-y-8 sticky top-24">
+        <aside className="lg:col-span-3 space-y-8 sticky top-24 z-40 bg-surface-container-low p-6 rounded-xl shadow-md border border-outline-variant/10">
           {/* Price Type */}
           <section>
             <h3 className="font-headline text-xl mb-4 text-on-surface">Price</h3>
@@ -128,7 +128,7 @@ export default function SearchPage() {
         </aside>
 
         {/* Results Grid */}
-        <div className="lg:col-span-9">
+        <div className="lg:col-span-9 relative z-10 pb-24">
           <div className="flex items-baseline justify-between mb-8 border-b border-outline-variant/10 pb-4">
             <p className="font-body text-outline text-sm">
               <span className="font-bold text-on-surface">{items.length}</span> results

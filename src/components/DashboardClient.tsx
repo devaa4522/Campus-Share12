@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import QRCode from "react-qr-code";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 
 type DealTab = "made" | "received" | "my_listings" | "task_requests" | "helping_with";
 
@@ -43,23 +43,27 @@ export default function DashboardClient({
   useEffect(() => {
     if (!showScannerModal) return;
 
-    const scanner = new Html5QrcodeScanner(
-      "qr-reader",
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      /* verbose= */ false
-    );
+    const html5QrCode = new Html5Qrcode("qr-reader");
 
-    scanner.render(
-      async (decodedText) => {
-        scanner.clear();
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => {
         setShowScannerModal(null);
         handleQRConfirm(decodedText, showScannerModal);
       },
       (error) => { /* ignore */ }
-    );
+    ).catch(err => {
+      console.error(err);
+      toast.error("Camera access failed. Please check permissions.");
+    });
 
     return () => {
-      scanner.clear().catch(e => console.error(e));
+      if (html5QrCode.isScanning) {
+        html5QrCode.stop().catch(e => console.error(e));
+      } else {
+        html5QrCode.clear();
+      }
     };
   }, [showScannerModal]);
 
@@ -68,14 +72,18 @@ export default function DashboardClient({
       toast.error('Invalid QR Code for this specific task!');
       return;
     }
-    const supabase = createClient();
-    const { error } = await supabase.rpc('complete_task_handshake', { qr_payload: expectedTaskId });
-    
-    if (!error) {
-       toast.success("Task formally completed! Escrow released & Karma awarded.");
-       setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? { ...t, status: "completed" } : t));
-    } else {
-       toast.error(error.message || "Confirmation failed");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.rpc('complete_task_handshake', { qr_payload: expectedTaskId });
+      
+      if (!error) {
+         toast.success("Task formally completed! Escrow released & Karma awarded.");
+         setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? { ...t, status: "completed" } : t));
+      } else {
+         toast.error("Campus Network Busy: Please try again.");
+      }
+    } catch (e) {
+      toast.error("Campus Network Busy: Please try again.");
     }
   }
 
@@ -109,29 +117,37 @@ export default function DashboardClient({
   }
 
   async function handleMarkTaskDone(taskId: string) {
-    const supabase = createClient();
-    const { error } = await supabase.from("tasks").update({ status: "completed" }).eq("id", taskId);
-    if (!error) {
-       toast.success("Task completed & Karma awarded!");
-       setLocalTaskRequests(prev => prev.map(t => t.id === taskId ? { ...t, status: "completed" } : t));
-    } else {
-       toast.error("Error marking task as done.");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("tasks").update({ status: "completed" }).eq("id", taskId);
+      if (!error) {
+         toast.success("Task completed & Karma awarded!");
+         setLocalTaskRequests(prev => prev.map(t => t.id === taskId ? { ...t, status: "completed" } : t));
+      } else {
+         toast.error("Campus Network Busy: Please try again.");
+      }
+    } catch (e) {
+      toast.error("Campus Network Busy: Please try again.");
     }
   }
 
   async function handleCancelHelp(claimId: string, taskId: string) {
-    const supabase = createClient();
-    const { data: result, error } = await supabase.rpc("cancel_task_claim", { c_id: claimId, u_id: profile.id });
-    
-    if (!error) {
-       if (result?.penalty_applied) {
-           toast.error("Help cancelled. 10% Escrow Penalty applied due to 10-Minute rule.");
-       } else {
-           toast.success("Help cancelled. Escrow refunded safely.");
-       }
-       setLocalHelpingWith(prev => prev.filter(c => c.id !== claimId));
-    } else {
-       toast.error(error.message || "Error cancelling help.");
+    try {
+      const supabase = createClient();
+      const { data: result, error } = await supabase.rpc("cancel_task_claim", { c_id: claimId, u_id: profile.id });
+      
+      if (!error) {
+         if (result?.penalty_applied) {
+             toast.error("Help cancelled. 10% Escrow Penalty applied due to 10-Minute rule.");
+         } else {
+             toast.success("Help cancelled. Escrow refunded safely.");
+         }
+         setLocalHelpingWith(prev => prev.filter(c => c.id !== claimId));
+      } else {
+         toast.error("Campus Network Busy: Please try again.");
+      }
+    } catch (e) {
+      toast.error("Campus Network Busy: Please try again.");
     }
   }
 
@@ -147,10 +163,10 @@ export default function DashboardClient({
       if (existingConv) {
          router.push(`/messages?id=${existingConv.id}`);
       } else {
-         toast.error("Message thread not found");
+         toast.error("Campus Network Busy: Please try again.");
       }
     } catch (e) {
-      toast.error("Error opening chat");
+      toast.error("Campus Network Busy: Please try again.");
     }
   };
 
@@ -427,14 +443,14 @@ export default function DashboardClient({
           <div className="bg-surface-container-lowest rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-8">
             <button
                onClick={() => setShowScannerModal(null)}
-               className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors z-10"
+               className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-error/10 hover:bg-error/20 transition-colors z-[120]"
             >
-               <span className="material-symbols-outlined text-on-surface-variant">close</span>
+               <span className="material-symbols-outlined text-error font-bold block">close</span>
             </button>
             <h2 className="font-headline font-bold text-2xl text-primary mb-2">Scan Handshake</h2>
             <p className="text-on-surface-variant font-body text-sm mb-6">Point your camera strictly at the Helper&apos;s Proof of Work QR schema to mathematically conclude this transaction.</p>
-            <div className="bg-black rounded-2xl overflow-hidden shadow-inner border-4 border-primary">
-               <div id="qr-reader" className="w-full"></div>
+            <div className="bg-[#000a1e] rounded-2xl overflow-hidden shadow-inner border-4 border-error mb-2">
+               <div id="qr-reader" className="w-full h-full min-h-[250px] bg-black"></div>
             </div>
           </div>
         </div>

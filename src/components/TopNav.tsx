@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import TopNavLinks from "./TopNavLinks";
 import NotificationBell from "./NotificationBell";
+import KarmaBadgeClient from "./KarmaBadgeClient";
 
 export default async function TopNav() {
   const supabase = await createClient();
@@ -30,7 +31,7 @@ export default async function TopNav() {
         {/* Brand */}
         <Link
           href="/"
-          className="font-headline text-2xl font-bold tracking-tighter text-white"
+          className="font-headline text-2xl font-bold tracking-tighter whitespace-nowrap text-white"
         >
           Campus Share
         </Link>
@@ -47,12 +48,7 @@ export default async function TopNav() {
               </Link>
               <NotificationBell initialCount={unreadCount} userId={user.id} />
               {/* Karma Badge */}
-              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 bg-secondary/10 text-secondary rounded-full">
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14l-5-4.87 6.91-1.01z" />
-                </svg>
-                {profile.karma_score ?? 0}
-              </span>
+              <KarmaBadgeClient initialKarma={profile.karma_score ?? 0} userId={user.id} />
               {/* Avatar */}
               <Link
                 href="/profile"
