@@ -1,0 +1,18 @@
+{
+  "name": "The Academic Exchange",
+  "short_name": "AcadExchange",
+  "description": "Exchange insights, resources, and intellectual capital within a verified network of global scholars.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1c30",
+  "theme_color": "#0f1c30",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["education", "productivity"]
+}
