@@ -11,6 +11,18 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [karmaScore, setKarmaScore] = useState(0);
+  const [collegeDomain, setCollegeDomain] = useState<string | null>(null);
+
+  // Modal State
+  const [showModal, setShowModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newTask, setNewTask] = useState({
+    title: "",
+    description: "",
+    reward_type: "karma" as "karma" | "cash",
+    reward_amount: "",
+    deadline: "",
+  });
 
   useEffect(() => {
     const supabase = createClient();
@@ -20,10 +32,11 @@ export default function TasksPage() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("karma_score")
+        .select("karma_score, college_domain")
         .eq("id", user.id)
         .single();
       setKarmaScore(profile?.karma_score ?? 0);
+      setCollegeDomain(profile?.college_domain ?? null);
 
       const { data } = await supabase
         .from("tasks")
@@ -48,6 +61,37 @@ export default function TasksPage() {
     await supabase.from("tasks").update({ status: "claimed" }).eq("id", taskId);
     // Remove from list
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  }
+
+  async function handleCreateTask(e: React.FormEvent) {
+    e.preventDefault();
+    if (!userId || !collegeDomain) return;
+    setIsSubmitting(true);
+
+    const supabase = createClient();
+    const { data: task, error } = await supabase
+      .from("tasks")
+      .insert({
+        user_id: userId,
+        title: newTask.title,
+        description: newTask.description,
+        reward_type: newTask.reward_type,
+        reward_amount: parseFloat(newTask.reward_amount) || 0,
+        deadline: newTask.deadline ? (new Date(newTask.deadline)).toISOString() : null,
+        status: "open",
+        college_domain: collegeDomain,
+      })
+      .select("*, profiles(*)")
+      .single();
+
+    if (!error && task) {
+      setTasks((prev) => [task as TaskWithProfile, ...prev]);
+      setShowModal(false);
+      setNewTask({ title: "", description: "", reward_type: "karma", reward_amount: "", deadline: "" });
+    } else {
+      console.error(error);
+    }
+    setIsSubmitting(false);
   }
 
   function formatDeadline(deadline: string | null): string {
@@ -86,11 +130,20 @@ export default function TasksPage() {
   return (
     <main className="pt-8 pb-32 px-6 max-w-7xl mx-auto">
       {/* Header */}
-      <header className="mb-12">
-        <h1 className="font-headline text-5xl font-bold tracking-tight text-primary mb-4">Task Marketplace</h1>
-        <p className="font-body text-lg text-on-surface-variant max-w-2xl leading-relaxed">
-          Connect with fellow scholars. Trade skills, time, and karma points to keep the campus moving.
-        </p>
+      <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="font-headline text-5xl font-bold tracking-tight text-primary mb-4">Task Marketplace</h1>
+          <p className="font-body text-lg text-on-surface-variant max-w-2xl leading-relaxed">
+            Connect with fellow scholars. Trade skills, time, and karma points to keep the campus moving.
+          </p>
+        </div>
+        <button 
+          onClick={() => setShowModal(true)} 
+          className="px-6 py-3 bg-secondary text-white font-bold rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2"
+        >
+          <span className="material-symbols-outlined">add</span>
+          Post a Task
+        </button>
       </header>
 
       {/* Bento Grid */}
@@ -268,6 +321,88 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+
+      {/* Post Task Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+          <div className="bg-surface-container-lowest rounded-2xl p-8 max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 text-on-surface-variant hover:text-primary transition-colors"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+            <h2 className="font-headline text-2xl font-bold text-primary mb-6">Create a Task</h2>
+            <form onSubmit={handleCreateTask} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-primary mb-1">Title</label>
+                <input
+                  required
+                  type="text"
+                  value={newTask.title}
+                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                  className="w-full bg-surface-container-low border border-outline-variant/20 rounded-lg px-4 py-3"
+                  placeholder="Need help moving a couch"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-primary mb-1">Description</label>
+                <textarea
+                  required
+                  value={newTask.description}
+                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                  className="w-full bg-surface-container-low border border-outline-variant/20 rounded-lg px-4 py-3"
+                  placeholder="Help me move my couch from north campus dorms to..."
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-primary mb-1">Reward Type</label>
+                  <select
+                    value={newTask.reward_type}
+                    onChange={(e) => setNewTask({ ...newTask, reward_type: e.target.value as "karma" | "cash" })}
+                    className="w-full bg-surface-container-low border border-outline-variant/20 rounded-lg px-4 py-3 appearance-none"
+                    style={{ WebkitAppearance: "none", backgroundImage: "none" }}
+                  >
+                    <option value="karma">Karma</option>
+                    <option value="cash">Cash ($)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-primary mb-1">Amount</label>
+                  <input
+                    required
+                    type="number"
+                    value={newTask.reward_amount}
+                    onChange={(e) => setNewTask({ ...newTask, reward_amount: e.target.value })}
+                    className="w-full bg-surface-container-low border border-outline-variant/20 rounded-lg px-4 py-3"
+                    placeholder={newTask.reward_type === "cash" ? "20.00" : "150"}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-primary mb-1">Deadline <span className="font-normal opacity-50 text-xs">(optional)</span></label>
+                <input
+                  type="datetime-local"
+                  value={newTask.deadline}
+                  onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
+                  className="w-full bg-surface-container-low border border-outline-variant/20 rounded-lg px-4 py-3 text-sm"
+                />
+              </div>
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-primary text-white font-bold py-4 rounded-xl hover:shadow-lg transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {isSubmitting ? "Posting..." : "Post Task"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

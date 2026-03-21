@@ -223,7 +223,7 @@ export default function PostPage() {
       {/* ─── Form Canvas ─── */}
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="flex-grow p-6 md:p-12 lg:max-w-4xl space-y-16 pt-32 lg:pt-12"
+        className="flex-grow p-6 md:p-12 lg:max-w-4xl space-y-16 pt-40 lg:pt-12"
       >
         {/* Step 1: Essentials */}
         <section ref={(el) => { sectionRefs.current[0] = el; }} className="scroll-mt-32" id="step-1">

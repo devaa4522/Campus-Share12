@@ -45,14 +45,17 @@ export default function DashboardClient({
               </span>
             </p>
           </div>
-          <div className="mt-8 h-24 w-full flex items-end gap-1">
-            {[40, 55, 35, 70, 50, 65, 80].map((h, i) => (
+          <div className="mt-8">
+            <div className="flex justify-between items-center text-xs opacity-70 font-semibold uppercase tracking-wider mb-2">
+              <span>Trust Impact</span>
+              <span>{Math.min(100, Math.round(((profile.karma_score ?? 0) / 2000) * 100))}%</span>
+            </div>
+            <div className="w-full bg-primary-container/20 h-2 rounded-full overflow-hidden">
               <div
-                key={i}
-                className="bg-primary-container/10 hover:bg-primary-container transition-colors w-full rounded-t-sm"
-                style={{ height: `${h}%` }}
+                className="bg-primary-container h-full rounded-full transition-all duration-1000"
+                style={{ width: `${Math.min(100, Math.max(5, ((profile.karma_score ?? 0) / 2000) * 100))}%` }}
               />
-            ))}
+            </div>
           </div>
         </div>
 

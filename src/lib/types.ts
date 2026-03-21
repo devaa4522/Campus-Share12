@@ -15,8 +15,10 @@ export interface Profile {
   college_type: string | null;
   department: string | null;
   degree: string | null;
-  branch: string | null;
-  bio: string | null;
+  branch?: string | null;
+  bio?: string | null;
+  notifications_enabled?: boolean | null;
+  profile_public?: boolean | null;
 }
 
 export interface Item {

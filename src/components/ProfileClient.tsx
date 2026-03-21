@@ -32,6 +32,8 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
   const [branch, setBranch] = useState(profile.branch ?? "");
   const [yearOfStudy, setYearOfStudy] = useState(profile.year_of_study ?? "");
   const [fullName, setFullName] = useState(profile.full_name ?? "");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(profile.notifications_enabled ?? true);
+  const [profilePublic, setProfilePublic] = useState(profile.profile_public ?? true);
 
   const branches = getBranchesForDepartment(profile.department ?? "");
   const trustScore = Math.min(100, Math.round(((profile.karma_score ?? 0) / 2000) * 100));
@@ -75,6 +77,20 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
     setBranch(profile.branch ?? "");
     setYearOfStudy(profile.year_of_study ?? "");
     setFullName(profile.full_name ?? "");
+  }
+
+  async function toggleNotifications() {
+    const newValue = !notificationsEnabled;
+    setNotificationsEnabled(newValue);
+    const supabase = createClient();
+    await supabase.from("profiles").update({ notifications_enabled: newValue }).eq("id", profile.id);
+  }
+
+  async function togglePublicProfile() {
+    const newValue = !profilePublic;
+    setProfilePublic(newValue);
+    const supabase = createClient();
+    await supabase.from("profiles").update({ profile_public: newValue }).eq("id", profile.id);
   }
 
   return (
@@ -272,33 +288,43 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
         </div>
 
         {/* Preference Toggles */}
-        <div className="md:col-span-6 bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center text-secondary-fixed">
-              <span className="material-symbols-outlined">notifications_active</span>
+        <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${notificationsEnabled ? "bg-primary-container text-secondary-fixed" : "bg-surface-container text-outline"}`}>
+                <span className="material-symbols-outlined">notifications_active</span>
+              </div>
+              <div>
+                <h4 className="font-headline font-semibold">Activity Alerts</h4>
+                <p className="text-xs text-on-surface-variant">Push notifications for tasks</p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-headline font-semibold">Activity Alerts</h4>
-              <p className="text-xs text-on-surface-variant">Push notifications for tasks</p>
-            </div>
+            <button
+              type="button"
+              onClick={toggleNotifications}
+              className={`w-12 h-6 rounded-full relative transition-colors ${notificationsEnabled ? "bg-secondary" : "bg-surface-dim"}`}
+            >
+              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${notificationsEnabled ? "right-1" : "left-1"}`} />
+            </button>
           </div>
-          <div className="w-12 h-6 bg-secondary rounded-full relative cursor-pointer">
-            <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
-          </div>
-        </div>
 
-        <div className="md:col-span-6 bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined">visibility</span>
+          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${profilePublic ? "bg-primary-container text-secondary-fixed" : "bg-surface-container text-outline"}`}>
+                <span className="material-symbols-outlined">visibility</span>
+              </div>
+              <div>
+                <h4 className="font-headline font-semibold">Public Profile</h4>
+                <p className="text-xs text-on-surface-variant">Visible to campus peers</p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-headline font-semibold">Public Profile</h4>
-              <p className="text-xs text-on-surface-variant">Visible to campus peers</p>
-            </div>
-          </div>
-          <div className="w-12 h-6 bg-surface-dim rounded-full relative cursor-pointer">
-            <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full" />
+            <button
+              type="button"
+              onClick={togglePublicProfile}
+              className={`w-12 h-6 rounded-full relative transition-colors ${profilePublic ? "bg-secondary" : "bg-surface-dim"}`}
+            >
+              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${profilePublic ? "right-1" : "left-1"}`} />
+            </button>
           </div>
         </div>
 
