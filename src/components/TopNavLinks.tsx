@@ -8,7 +8,7 @@ export default function TopNavLinks() {
   
   const links = [
     { href: "/", label: "Home" },
-    { href: "/hub", label: "Search" },
+    { href: "/hub", label: "Hub" },
     { href: "/tasks", label: "Tasks" },
     { href: "/dashboard", label: "Ledger" }
   ];

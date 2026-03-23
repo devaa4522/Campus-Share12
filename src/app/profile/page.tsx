@@ -23,11 +23,41 @@ export default async function ProfilePage() {
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id);
 
+  // Fetch recent exchanges (completed item_requests)
+  const { data: recentRequests } = await supabase
+    .from("item_requests")
+    .select("*, items(*)")
+    .or(`requester_id.eq.${user.id},items.user_id.eq.${user.id}`)
+    .in("status", ["completed", "returned"])
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  // Construct category reliability based on successful trades
+  const categoryReliability: Record<string, number> = {};
+  if (recentRequests) {
+    recentRequests.forEach((req: any) => {
+      const cat = req.items?.category || "General";
+      categoryReliability[cat] = (categoryReliability[cat] || 0) + 1;
+    });
+  }
+
+  // Convert map to array format for easy mapping
+  const reliableCategories = Object.keys(categoryReliability).map(cat => ({
+    name: cat,
+    count: categoryReliability[cat]
+  })).sort((a, b) => b.count - a.count);
+
+  // Scrub Supabase objects to plain JSON to prevent NEXT_RSC_ERR_ENQUEUE_MODEL
+  const safeProfile = JSON.parse(JSON.stringify(profile));
+  const safeExchanges = JSON.parse(JSON.stringify(recentRequests || []));
+
   return (
     <ProfileClient
-      profile={profile}
+      profile={safeProfile}
       email={user.email ?? ""}
       itemCount={count ?? 0}
+      recentExchanges={safeExchanges}
+      reliableCategories={reliableCategories}
     />
   );
 }

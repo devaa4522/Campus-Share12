@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Hub", icon: "grid_view" },
-  { href: "/hub", label: "Search", icon: "search" },
+  { href: "/", label: "Home", icon: "grid_view" },
+  { href: "/hub", label: "Hub", icon: "search" },
   { href: "/post", label: "Post", icon: "add_circle" },
   { href: "/tasks", label: "Tasks", icon: "task_alt" },
   { href: "/dashboard", label: "Activity", icon: "explore" },

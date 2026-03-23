@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { Profile } from "@/lib/types";
@@ -11,6 +11,8 @@ interface Props {
   profile: Profile;
   email: string;
   itemCount: number;
+  recentExchanges: any[];
+  reliableCategories: { name: string; count: number }[];
 }
 
 const ACADEMIC_YEARS = [
@@ -21,20 +23,19 @@ const ACADEMIC_YEARS = [
   "Graduate Student",
 ];
 
-export default function ProfileClient({ profile: initialProfile, email, itemCount }: Props) {
+export default function ProfileClient({ profile: initialProfile, email, itemCount, recentExchanges, reliableCategories }: Props) {
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Time-based re-render for countdowns
-  const [, setTick] = useState(0);
-  import("react").then((React) => {
-    React.useEffect(() => {
-      const interval = setInterval(() => setTick((t) => t + 1), 60000);
-      return () => clearInterval(interval);
-    }, []);
-  });
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Form fields
   const [bio, setBio] = useState(profile.bio ?? "");
@@ -46,6 +47,14 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
 
   const branches = getBranchesForDepartment(profile.department ?? "");
   const trustScore = Math.min(100, Math.round(((profile.karma_score ?? 0) / 2000) * 100));
+
+  // Determine shadowban status safely (with tick dependency for live updates)
+  const isBanned = Boolean(profile?.banned_until && new Date(profile.banned_until).getTime() > new Date().getTime());
+  const distance = isBanned ? new Date(profile.banned_until!).getTime() - new Date().getTime() : 0;
+  const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+  const s = Math.floor((distance % (1000 * 60)) / 1000);
+  const timeLeftStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -76,7 +85,6 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
       setProfile((p) => ({ ...p, full_name: fullName, bio, branch, year_of_study: yearOfStudy }));
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-      router.refresh();
     }
     setSaving(false);
   }
@@ -86,6 +94,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
     setBranch(profile.branch ?? "");
     setYearOfStudy(profile.year_of_study ?? "");
     setFullName(profile.full_name ?? "");
+    setIsEditing(false);
   }
 
   async function toggleNotifications() {
@@ -105,9 +114,20 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
   return (
     <main className="pt-8 pb-32 px-4 max-w-5xl mx-auto">
       {/* Header */}
-      <header className="mb-10 text-center md:text-left">
-        <h1 className="font-headline text-4xl font-bold tracking-tight text-primary mb-2">Edit Profile</h1>
-        <p className="text-on-surface-variant font-medium">Update your digital identity within the campus ecosystem.</p>
+      <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between text-center md:text-left gap-6">
+        <div>
+          <h1 className="font-headline text-4xl font-bold tracking-tight text-primary mb-2">My Profile</h1>
+          <p className="text-on-surface-variant font-medium">Manage your digital identity and reputation insights.</p>
+        </div>
+        {!isEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-[#000a1e] text-white rounded-lg font-bold shadow-md hover:bg-[#000a1e]/90 transition-all active:scale-95"
+          >
+            <span className="material-symbols-outlined text-[18px]">edit</span>
+            Edit Portfolio
+          </button>
+        )}
       </header>
 
       {/* Bento Grid */}
@@ -124,36 +144,28 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
                 </div>
               )}
             </div>
-            <label className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full shadow-lg flex items-center justify-center hover:bg-primary/80 transition-colors cursor-pointer">
-              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-              <span className="material-symbols-outlined text-sm">edit</span>
-            </label>
           </div>
           <div className="flex-1 space-y-4 text-center md:text-left">
             <div className="flex flex-col md:flex-row md:items-center gap-3 justify-center md:justify-start">
-              <input
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="font-headline text-2xl font-semibold bg-transparent border-none focus:ring-0 p-0 text-center md:text-left"
-                placeholder="Your Name"
-              />
+              <h2 className="font-headline text-2xl font-semibold bg-transparent border-none focus:ring-0 p-0 text-center md:text-left">{fullName || "Your Name"}</h2>
               {profile.is_verified && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold uppercase tracking-wider">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#006e0c]/10 text-[#006e0c] rounded-full text-xs font-bold uppercase tracking-wider border border-[#006e0c]/20">
                   <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
                   Verified Student
                 </div>
               )}
             </div>
             <p className="text-on-surface-variant text-sm">{email} • {itemCount} listings</p>
+            <p className="text-on-surface-variant text-sm italic py-2">{profile.bio ? `"${profile.bio}"` : ""}</p>
             <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-2">
               {profile.department && (
-                <span className="px-3 py-1 bg-surface-container-low text-on-surface-variant text-xs rounded-lg font-semibold tracking-wide border border-outline-variant/20">
+                <span className="px-3 py-1 bg-surface-container-low text-[#000a1e] text-xs rounded-lg font-bold tracking-wide border border-outline-variant/20 shadow-sm">
                   {profile.department}
                 </span>
               )}
-              {profile.degree && (
-                <span className="px-3 py-1 bg-surface-container-low text-on-surface-variant text-xs rounded-lg font-semibold tracking-wide border border-outline-variant/20">
-                  {profile.degree}
+              {profile.year_of_study && (
+                <span className="px-3 py-1 bg-surface-container-low text-[#000a1e] text-xs rounded-lg font-bold tracking-wide border border-outline-variant/20 shadow-sm">
+                  {profile.year_of_study}
                 </span>
               )}
             </div>
@@ -180,8 +192,8 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
                   {trustScore >= 90
                     ? '"Elite Sharer. Your peers consider you exceptionally reliable."'
                     : trustScore >= 50
-                    ? '"Active Peer. Keep completing exchanges to build your reputation."'
-                    : '"Caution: Low reliability. Fulfill your task claims to improve."'}
+                      ? '"Active Peer. Keep completing exchanges to build your reputation."'
+                      : '"Caution: Low reliability. Fulfill your task claims to improve."'}
                 </p>
               </div>
             </div>
@@ -197,57 +209,34 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
             <span className="material-symbols-outlined text-[#006e0c]">admin_panel_settings</span>
             Trust & Safety Console
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Sanctions & Ban Status */}
             <div className="space-y-4">
-              {(() => {
-                const now = new Date().getTime();
-                const bannedUntil = profile.banned_until ? new Date(profile.banned_until).getTime() : 0;
-                const isBanned = bannedUntil > now;
-
-                if (isBanned) {
-                  const hoursLeft = Math.ceil((bannedUntil - now) / (1000 * 60 * 60));
-                  return (
-                    <div className="flex items-start gap-4 p-5 bg-[#ba1a1a]/10 rounded-xl border border-[#ba1a1a]/20">
-                      <span className="material-symbols-outlined text-[#ba1a1a] text-3xl">gavel</span>
-                      <div>
-                        <h4 className="font-bold text-[#ba1a1a] mb-1">Account Shadowbanned</h4>
-                        <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
-                          Your listings are temporarily hidden from the Hub due to multiple community reports.
-                        </p>
-                        <div className="inline-flex items-center gap-2 bg-[#ba1a1a] text-white px-3 py-1.5 rounded text-xs font-bold tracking-widest uppercase">
-                          <span className="material-symbols-outlined text-[14px]">timer</span>
-                          Lifts in {hoursLeft} hour{hoursLeft !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="flex items-center justify-between p-5 bg-[#006e0c]/10 rounded-xl border border-[#006e0c]/20">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-[#006e0c] text-white rounded-full">
-                         <span className="material-symbols-outlined block text-[20px]">check_circle</span>
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-[#006e0c]">Status: Active</h4>
-                        <p className="text-xs text-on-surface-variant">Your account is in good standing.</p>
-                      </div>
+              {isBanned && (
+                <div className="flex items-start gap-4 p-5 bg-[#ba1a1a]/10 rounded-xl border border-[#ba1a1a]/20">
+                  <span className="material-symbols-outlined text-[#ba1a1a] text-3xl">gavel</span>
+                  <div>
+                    <h4 className="font-bold text-[#ba1a1a] mb-1">Account Shadowbanned</h4>
+                    <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
+                      Your listings are temporarily hidden from the Hub due to multiple community reports.
+                    </p>
+                    <div className="inline-flex items-center gap-2 bg-[#ba1a1a] text-white px-3 py-1.5 rounded text-xs font-bold tracking-widest uppercase">
+                      <span className="material-symbols-outlined text-[14px]">timer</span>
+                      Lifts in {timeLeftStr}
                     </div>
                   </div>
-                );
-              })()}
+                </div>
+              )}
             </div>
 
             {/* Flags Gauge */}
             <div className="bg-surface-container-low p-6 rounded-xl border border-outline-variant/20">
               <h3 className="text-sm font-bold mb-4 flex items-center gap-2 text-[#000a1e]">
-                <span className="material-symbols-outlined text-outline text-[20px]">flag</span> 
+                <span className="material-symbols-outlined text-outline text-[20px]">flag</span>
                 Active Safety Flags
               </h3>
-              
+
               {(() => {
                 const flagsCount = profile.flags_count ?? 0;
                 const maxFlags = 12;
@@ -281,119 +270,68 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
           </div>
         </div>
 
-        {/* Main Edit Form */}
-        <div className="md:col-span-12 bg-surface-container-lowest rounded-xl p-10 shadow-[0_12px_32px_rgba(0,10,30,0.06)]">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-            {/* Bio */}
-            <div className="md:col-span-2 space-y-2">
-              <label className="font-headline text-sm font-semibold text-on-surface">Bio</label>
-              <div className="border border-outline-variant/20 focus-within:border-primary rounded-lg bg-surface-container-low overflow-hidden transition-colors">
-                <textarea
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value.slice(0, 160))}
-                  className="w-full bg-transparent border-none focus:ring-0 p-4 text-on-surface placeholder:text-outline"
-                  placeholder="Tell the campus community about yourself..."
-                  rows={4}
-                />
-              </div>
-              <p className="text-[11px] text-on-surface-variant uppercase tracking-widest font-bold">
-                Character limit: {bio.length}/160
-              </p>
-            </div>
 
-            {/* Branch */}
-            <div className="space-y-2">
-              <label className="font-headline text-sm font-semibold text-on-surface">Academic Branch</label>
-              <div className="border border-outline-variant/20 focus-within:border-primary rounded-lg bg-surface-container-low overflow-hidden transition-colors">
-                <select
-                  value={branch}
-                  onChange={(e) => setBranch(e.target.value)}
-                  className="w-full bg-transparent border-none focus:ring-0 p-4 text-on-surface appearance-none"
-                >
-                  <option value="">Select branch...</option>
-                  {branches.map((b) => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
 
-            {/* Year */}
-            <div className="space-y-2">
-              <label className="font-headline text-sm font-semibold text-on-surface">Academic Year</label>
-              <div className="border border-outline-variant/20 focus-within:border-primary rounded-lg bg-surface-container-low overflow-hidden transition-colors">
-                <select
-                  value={yearOfStudy}
-                  onChange={(e) => setYearOfStudy(e.target.value)}
-                  className="w-full bg-transparent border-none focus:ring-0 p-4 text-on-surface appearance-none"
-                >
-                  <option value="">Select year...</option>
-                  {ACADEMIC_YEARS.map((y) => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
+        {/* --- Category Reliability --- */}
+        <div className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-[0_12px_32px_rgba(0,10,30,0.06)] border border-outline-variant/20 mt-2">
+          <h2 className="text-2xl font-headline font-bold mb-6 text-[#000a1e] flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#006e0c]">workspace_premium</span>
+            Category Reliability
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {reliableCategories.length > 0 ? (
+              reliableCategories.map((cat, idx) => (
+                <div key={idx} className="p-5 bg-surface-container-low rounded-xl border border-outline-variant/30 flex flex-col gap-2 items-center text-center">
+                  <span className="text-xl font-bold text-[#000a1e]">{cat.count}</span>
+                  <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">{cat.name} Tracker</span>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full py-8 text-center text-on-surface-variant text-sm border-2 border-dashed border-outline-variant/20 rounded-xl">
+                No completed exchanges yet. Complete deals to build Category Reliability.
               </div>
-            </div>
-
-            {/* College Domain (Read-only) */}
-            <div className="space-y-2">
-              <label className="font-headline text-sm font-semibold text-on-surface">College Domain</label>
-              <div className="border border-outline-variant/20 rounded-lg bg-surface-container-low overflow-hidden">
-                <input
-                  value={profile.college_domain ?? "Not set"}
-                  disabled
-                  className="w-full bg-transparent border-none focus:ring-0 p-4 text-on-surface-variant"
-                />
-              </div>
-            </div>
-
-            {/* Email (Read-only) */}
-            <div className="space-y-2">
-              <label className="font-headline text-sm font-semibold text-on-surface">Institutional Email</label>
-              <div className="border border-outline-variant/20 rounded-lg bg-surface-container-low overflow-hidden">
-                <input
-                  value={email}
-                  disabled
-                  className="w-full bg-transparent border-none focus:ring-0 p-4 text-on-surface-variant"
-                />
-              </div>
-            </div>
+            )}
           </div>
+        </div>
 
-          {/* Form Actions */}
-          <div className="mt-12 pt-8 border-t border-surface-container flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2 text-on-surface-variant">
-              <span className="material-symbols-outlined text-secondary">lock_open</span>
-              <span className="text-xs font-semibold uppercase tracking-wider">Privacy Settings: Campus Only</span>
-            </div>
-            <div className="flex items-center gap-4 w-full md:w-auto">
-              {saved && (
-                <span className="text-secondary font-medium text-sm flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">check_circle</span>
-                  Saved!
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="flex-1 md:flex-none px-8 py-3 rounded-lg border border-outline-variant font-semibold text-on-surface-variant hover:bg-surface-container-low transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-1 md:flex-none px-10 py-3 rounded-lg bg-secondary text-white font-bold shadow-lg shadow-secondary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
+        {/* --- Recent Exchanges --- */}
+        <div className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-[0_12px_32px_rgba(0,10,30,0.06)] border border-outline-variant/20 mt-2">
+          <h2 className="text-2xl font-headline font-bold mb-6 text-[#000a1e] flex items-center gap-2">
+            <span className="material-symbols-outlined text-outline">history</span>
+            Recent Exchanges
+          </h2>
+          <div className="flex flex-col gap-3">
+            {recentExchanges.length > 0 ? (
+              recentExchanges.map((excl, i) => (
+                <div key={i} className="flex justify-between items-center p-4 border border-outline-variant/30 rounded-lg bg-surface-container-lowest hover:bg-surface-container transition-colors cursor-pointer" onClick={() => router.push(`/items/${excl.item_id}`)}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-surface-container-highest rounded flex items-center justify-center text-on-surface-variant">
+                      <span className="material-symbols-outlined">inventory_2</span>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#000a1e] text-sm">{excl.items?.title || "Unknown Listing"}</h4>
+                      <p className="text-xs text-on-surface-variant">{new Date(excl.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-3 py-1 bg-[#006e0c]/10 text-[#006e0c] rounded text-[11px] font-bold uppercase tracking-wider">
+                    <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                    Successful Trade
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="flex items-center justify-center py-10 border-2 border-dashed border-outline-variant/20 rounded-xl">
+                <p className="text-on-surface-variant text-sm font-medium flex items-center gap-2">
+                  <span className="material-symbols-outlined text-outline">hourglass_empty</span>
+                  No recent exchanges to display.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Preference Toggles */}
-        <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+        <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
           <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-full flex items-center justify-center ${notificationsEnabled ? "bg-primary-container text-secondary-fixed" : "bg-surface-container text-outline"}`}>
@@ -444,6 +382,136 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
           </a>
         </div>
       </div>
+
+      {/* Profile Edit Modal (Institutional V2) */}
+      {isEditing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" style={{ margin: 0 }}>
+          {/* Backdrop */}
+          <div onClick={handleCancel} className="absolute inset-0 bg-[#000a1e]/60 backdrop-blur-sm animate-in fade-in duration-200"></div>
+          
+          {/* Modal Content */}
+          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 border border-outline-variant/20">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-lowest shrink-0">
+              <h2 className="text-xl font-headline font-bold text-[#000a1e]">Edit Portfolio</h2>
+              <button onClick={handleCancel} className="p-2 text-on-surface-variant hover:text-[#000a1e] hover:bg-surface-container rounded-full transition-colors active:scale-95">
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+            
+            {/* Body */}
+            <div className="p-8 overflow-y-auto space-y-8 flex-1 bg-surface-container-lowest">
+              
+              {/* Avatar & Name Row */}
+              <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-outline-variant/10">
+                <div className="relative shrink-0">
+                  <div className="w-32 h-32 rounded-2xl overflow-hidden bg-surface-container-high focus-within:ring-4 focus-within:ring-[#006e0c]/20 transition-all border-4 border-white shadow-sm">
+                    {profile.avatar_url ? (
+                      <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-5xl font-bold text-on-surface-variant">
+                        {(fullName || "U").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <label className="absolute -bottom-2 -right-2 bg-[#006e0c] text-white p-2 rounded-xl shadow-lg flex items-center justify-center hover:bg-[#006e0c]/90 transition-colors cursor-pointer border-2 border-white transform hover:scale-105 active:scale-95">
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                    <span className="material-symbols-outlined text-[16px]">edit</span>
+                  </label>
+                </div>
+                
+                <div className="flex-1 w-full space-y-2">
+                  <label className="font-headline text-sm font-semibold text-[#000a1e]">Given Name</label>
+                  <div className="relative group">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant group-focus-within:text-[#006e0c] transition-colors">person</span>
+                    <input
+                      type="text"
+                      className="w-full pl-12 pr-4 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-[#006e0c] focus:ring-1 focus:ring-[#006e0c] focus:bg-white text-[#000a1e] transition-all outline-none font-medium"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Your Full Name"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Branch */}
+                <div className="space-y-2">
+                  <label className="font-headline text-sm font-semibold text-[#000a1e]">Academic Department</label>
+                  <div className="relative group">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant pointer-events-none group-focus-within:text-[#006e0c] transition-colors">domain</span>
+                    <select
+                      value={branch}
+                      onChange={(e) => setBranch(e.target.value)}
+                      className="w-full pl-12 pr-10 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-[#006e0c] focus:ring-1 focus:ring-[#006e0c] focus:bg-white appearance-none outline-none text-[#000a1e] font-medium transition-all"
+                    >
+                      <option value="">Select branch...</option>
+                      {branches.map((b) => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant pointer-events-none">expand_more</span>
+                  </div>
+                </div>
+
+                {/* Year */}
+                <div className="space-y-2">
+                  <label className="font-headline text-sm font-semibold text-[#000a1e]">Academic Year</label>
+                  <div className="relative group">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant pointer-events-none group-focus-within:text-[#006e0c] transition-colors">history_edu</span>
+                    <select
+                      value={yearOfStudy}
+                      onChange={(e) => setYearOfStudy(e.target.value)}
+                      className="w-full pl-12 pr-10 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-[#006e0c] focus:ring-1 focus:ring-[#006e0c] focus:bg-white appearance-none outline-none text-[#000a1e] font-medium transition-all"
+                    >
+                      <option value="">Select year...</option>
+                      {ACADEMIC_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant pointer-events-none">expand_more</span>
+                  </div>
+                </div>
+
+                {/* Bio */}
+                <div className="md:col-span-2 space-y-2 pt-2">
+                  <div className="flex justify-between items-center">
+                    <label className="font-headline text-sm font-semibold text-[#000a1e]">Bio & Professional Summary</label>
+                    <span className="text-[11px] text-[#000a1e]/60 font-bold bg-[#000a1e]/5 px-2.5 py-1 rounded-full uppercase tracking-wider">{bio.length}/160</span>
+                  </div>
+                  <textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value.slice(0, 160))}
+                    className="w-full p-4 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-[#006e0c] focus:ring-1 focus:ring-[#006e0c] focus:bg-white transition-all outline-none resize-none text-[#000a1e] leading-relaxed"
+                    placeholder="Tell the campus community about your academic focus and goals..."
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+            </div>
+            
+            {/* Footer */}
+            <div className="px-6 py-5 border-t border-outline-variant/20 bg-surface-container-low flex flex-col sm:flex-row items-center justify-between shrink-0 gap-4 sm:gap-0">
+              <div className="flex items-center gap-2 text-on-surface-variant w-full sm:w-auto justify-center sm:justify-start">
+                <span className="material-symbols-outlined text-[#006e0c] text-[18px]">lock</span>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-[#000a1e]/60">Privacy Locked</span>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button type="button" onClick={handleCancel} className="px-5 py-2.5 rounded-xl font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm border border-transparent hover:border-outline-variant/30 flex-1 sm:flex-none">
+                  Cancel
+                </button>
+                <button type="button" onClick={handleSave} disabled={saving} className="px-8 py-2.5 rounded-xl bg-[#006e0c] hover:bg-[#006e0c]/90 shadow-md hover:shadow-lg text-white font-bold transition-all active:scale-95 text-sm disabled:opacity-50 flex items-center justify-center gap-2 flex-1 sm:flex-none">
+                  {saving ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                      Saving...
+                    </>
+                  ) : "Save Changes"}
+                </button>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      )}
     </main>
   );
 }
