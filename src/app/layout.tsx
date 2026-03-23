@@ -61,12 +61,19 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="flex flex-col h-[100dvh] overflow-hidden bg-surface text-on-surface font-body">
+      {/* REMOVED overflow-hidden and ADDED overflow-x-hidden */}
+      <body className="flex flex-col min-h-[100dvh] overflow-x-hidden bg-surface text-on-surface font-body">
         <ServiceWorkerRegister />
         <OfflineBanner />
         <Toaster position="top-center" />
+        
         <TopNav />
-        <MainWrapper>{children}</MainWrapper>
+        
+        {/* MainWrapper should be the one handling the growth and scroll */}
+        <MainWrapper>
+          {children}
+        </MainWrapper>
+        
         <MessageFAB />
         <BottomNav />
       </body>
