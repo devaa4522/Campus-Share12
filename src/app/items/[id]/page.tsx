@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import type { ItemWithProfile } from "@/lib/types";
 import ImageWithFallback from "@/components/ImageWithFallback";
 import RequestButton from "@/components/RequestButton";
+import ReportAction from "@/components/ReportAction";
 
 export default async function ItemDetailPage({
   params,
@@ -22,6 +23,14 @@ export default async function ItemDetailPage({
 
   const typedItem = item as ItemWithProfile;
   const profile = typedItem.profiles;
+
+  let tradeCount = 0;
+  let trustScore = 98;
+  if (profile) {
+    tradeCount = Math.floor((profile.karma_score || 0) / 10);
+    const { data: trustData } = await supabase.rpc("get_trust_score", { user_id: profile.id });
+    if (trustData) trustScore = trustData;
+  }
 
   const {
     data: { user },
@@ -48,30 +57,29 @@ export default async function ItemDetailPage({
         </div>
 
         {/* Right: Details */}
-        <div className="lg:col-span-5 space-y-8">
-          {/* Item Meta */}
+        <div className="lg:col-span-5 space-y-6">
           <section>
-            <nav className="flex items-center gap-2 text-xs font-medium text-on-surface-variant mb-4 uppercase tracking-widest">
+            <nav className="flex items-center gap-2 text-xs font-semibold text-on-surface-variant mb-4 uppercase tracking-widest">
               <span>{typedItem.category}</span>
               <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-              <span className={typedItem.status === "available" ? "text-secondary" : "text-error"}>
+              <span className={typedItem.status === "available" ? "text-[#006e0c]" : "text-error"}>
                 {typedItem.status === "available" ? "Available" : "Rented"}
               </span>
             </nav>
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-primary mb-4 font-headline">
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#000a1e] mb-4 font-headline leading-tight">
               {typedItem.title}
             </h1>
-            <p className="text-on-surface-variant leading-relaxed mb-6 text-lg">
+            <p className="text-lg text-on-surface-variant leading-relaxed mb-6 font-normal">
               {typedItem.description}
             </p>
             <div className="flex flex-wrap gap-3">
               {typedItem.condition && (
-                <span className="px-4 py-2 rounded-lg bg-surface-container-low text-on-surface text-sm font-medium flex items-center gap-2">
+                <span className="px-4 py-2 rounded-lg bg-surface-container-low text-[#000a1e] text-sm font-semibold flex items-center gap-2 border border-outline-variant/10">
                   <span className="material-symbols-outlined text-sm">verified</span>
                   {typedItem.condition}
                 </span>
               )}
-              <span className="px-4 py-2 rounded-lg bg-surface-container-low text-on-surface text-sm font-medium flex items-center gap-2">
+              <span className="px-4 py-2 rounded-lg bg-surface-container-low text-[#000a1e] text-sm font-semibold flex items-center gap-2 border border-outline-variant/10">
                 <span className="material-symbols-outlined text-sm">sell</span>
                 {typedItem.price_type === "Free"
                   ? "Free Exchange"
@@ -80,79 +88,106 @@ export default async function ItemDetailPage({
             </div>
           </section>
 
-          {/* Lender Trust Card */}
+          {/* Detailed Lender Verification Card */}
           {profile && (
-            <div className="bg-surface-container-lowest rounded-xl p-8 editorial-shadow border border-outline-variant/10">
+            <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_8px_24px_rgba(0,10,30,0.04)] border border-outline-variant/20">
               <div className="flex justify-between items-start mb-6">
-                <div>
-                  <p className="text-[10px] font-bold text-outline uppercase tracking-[0.2em] mb-2">
-                    {profile.is_verified ? "Verified Lender" : "Lender"}
-                  </p>
-                  <h3 className="text-2xl font-bold tracking-tight text-primary">
-                    {profile.full_name ?? "Anonymous"}
-                  </h3>
-                  <p className="text-sm text-on-surface-variant">
-                    {profile.major ?? "Undeclared"}, {profile.year_of_study ?? "Student"}
-                  </p>
-                </div>
-                <div className="relative">
-                  <div className="w-16 h-16 rounded-full bg-surface-container-highest overflow-hidden border-2 border-surface-container-highest flex items-center justify-center">
+                <div className="flex gap-4">
+                  <div className="relative">
                     {profile.avatar_url ? (
                       <img
                         src={profile.avatar_url}
                         alt={profile.full_name ?? ""}
-                        className="w-full h-full object-cover"
+                        className="w-14 h-14 rounded-full object-cover border-2 border-surface-container-highest"
                       />
                     ) : (
-                      <span className="text-xl font-bold text-on-surface-variant">
-                        {(profile.full_name ?? "?").charAt(0)}
-                      </span>
+                      <div className="w-14 h-14 rounded-full bg-surface-container-highest border-2 border-surface-container-highest flex items-center justify-center">
+                        <span className="text-xl font-bold text-on-surface-variant">
+                          {(profile.full_name ?? "?").charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                    {profile.is_verified && (
+                      <div className="absolute -bottom-1 -right-1 bg-[#006e0c] text-white rounded-full p-0.5 border-2 border-white">
+                        <span
+                          className="material-symbols-outlined text-[10px] block"
+                          style={{ fontVariationSettings: "'FILL' 1" }}
+                        >
+                          verified
+                        </span>
+                      </div>
                     )}
                   </div>
-                  {profile.is_verified && (
-                    <div className="absolute -bottom-1 -right-1 bg-secondary text-white rounded-full p-1 border-2 border-surface-container-lowest">
-                      <span
-                        className="material-symbols-outlined text-[12px] block"
-                        style={{ fontVariationSettings: "'FILL' 1" }}
-                      >
-                        verified
-                      </span>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-[0.2em] mb-0.5">
+                      {profile.is_verified ? "Verified Lender" : "Lender"}
+                    </p>
+                    <h3 className="text-xl font-bold tracking-tight text-[#000a1e]">
+                      {profile.full_name ?? "Anonymous"}
+                    </h3>
+                    <p className="text-xs text-on-surface-variant font-medium">
+                      {profile.department ?? profile.major ?? "Scholar"}, {profile.year_of_study ?? "Student"}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* Karma Badge */}
-              <div className="flex items-center justify-between p-4 bg-secondary/5 rounded-xl border border-secondary/10">
+              {/* Lender Stats Grid */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                 <div className="bg-[#006e0c]/10 border border-[#006e0c]/20 p-3 rounded-lg flex flex-col items-center justify-center text-center">
+                    <p className="text-[10px] font-bold text-[#006e0c] uppercase tracking-widest mb-1">Trust Score</p>
+                    <div className="flex items-baseline gap-1">
+                       <span className="text-2xl font-black text-[#006e0c]">{trustScore}%</span>
+                    </div>
+                 </div>
+                 <div className="bg-[#000a1e]/5 border border-[#000a1e]/10 p-3 rounded-lg flex flex-col items-center justify-center text-center">
+                    <p className="text-[10px] font-bold text-[#000a1e] uppercase tracking-widest mb-1">Trade Count</p>
+                    <div className="flex items-baseline gap-1">
+                       <span className="text-2xl font-black text-[#000a1e]">{tradeCount}</span>
+                       <span className="text-[10px] font-bold text-[#000a1e]/60 uppercase">Trades</span>
+                    </div>
+                 </div>
+              </div>
+
+              {/* Karma Score Banner */}
+              <div className="flex items-center justify-between p-4 bg-[#006e0c]/5 rounded-xl border border-[#006e0c]/10">
                 <div>
-                  <p className="text-xs font-semibold text-secondary uppercase tracking-widest mb-1">
+                  <p className="text-xs font-semibold text-[#006e0c] uppercase tracking-widest mb-1">
                     Karma Score
                   </p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-black text-secondary">
+                  <div className="flex items-baseline gap-1 text-[#006e0c]">
+                    <span className="text-2xl font-black">
                       {profile.karma_score ?? 0}
                     </span>
+                    <span className="text-[10px] font-medium opacity-60">/ 1000</span>
                   </div>
                 </div>
                 <div className="flex flex-col items-end">
                   <span
-                    className="material-symbols-outlined text-secondary text-3xl"
+                    className="material-symbols-outlined text-[#006e0c] text-2xl"
                     style={{ fontVariationSettings: "'FILL' 1" }}
                   >
                     star
+                  </span>
+                  <span className="text-[9px] font-bold text-[#006e0c] uppercase tracking-tighter">
+                    {profile.karma_score && profile.karma_score >= 800 ? "Top 1% Peer" : "Active Peer"}
                   </span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Details */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-4 py-4 border-b border-outline-variant/20">
+          {/* Reporting & Security */}
+          <div className="space-y-3">
+             {profile && (
+               <ReportAction targetUserId={profile.id} itemId={typedItem.id} />
+             )}
+             
+            <div className="flex items-center gap-4 py-3 border-t border-outline-variant/10 mt-4 pt-4">
               <span className="material-symbols-outlined text-on-surface-variant">security</span>
               <div>
-                <h4 className="text-sm font-bold text-primary">Academic Integrity Protection</h4>
-                <p className="text-xs text-on-surface-variant leading-tight">
+                <h4 className="text-xs font-bold text-[#000a1e]">Academic Integrity Protection</h4>
+                <p className="text-[11px] text-on-surface-variant leading-tight">
                   Borrowing is logged via campus credentials for safe return.
                 </p>
               </div>

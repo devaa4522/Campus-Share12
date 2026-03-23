@@ -37,18 +37,58 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network-First Fallback-to-Cache for Supabase Queries
+  if (event.request.method === 'GET' && url.origin.includes('supabase.co')) {
+    event.respondWith(
+      fetch(event.request).then((networkResponse) => {
+        const responseClone = networkResponse.clone();
+        caches.open('campus-share-supabase-v1').then((cache) => cache.put(event.request, responseClone));
+        return networkResponse;
+      }).catch(() => {
+        return caches.match(event.request);
+      })
+    );
+    return;
+  }
+
   // Stale-While-Revalidate for application HTML / data queries (except POST/API)
-  if (event.request.method === 'GET' && !url.pathname.startsWith('/api/') && !url.origin.includes('supabase.co')) {
+  if (event.request.method === 'GET' && !url.pathname.startsWith('/api/')) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         const fetchPromise = fetch(event.request).then((networkResponse) => {
           const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          if (event.request.url.startsWith('http')) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          }
           return networkResponse;
         }).catch(() => {});
         
         return cachedResponse || fetchPromise;
       })
+    );
+  }
+});
+
+self.addEventListener('push', function(event) {
+  if (event.data) {
+    const data = event.data.json();
+    const options = {
+      body: data.body,
+      icon: '/icons8-university-100.png',
+      badge: '/icons8-university-100.png',
+      data: data.url || '/'
+    };
+    event.waitUntil(
+      self.registration.showNotification(data.title, options)
+    );
+  }
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  if (event.notification.data) {
+    event.waitUntil(
+      clients.openWindow(event.notification.data)
     );
   }
 });

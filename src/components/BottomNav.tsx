@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/", label: "Hub", icon: "grid_view" },
-  { href: "/search", label: "Search", icon: "search" },
+  { href: "/hub", label: "Search", icon: "search" },
   { href: "/post", label: "Post", icon: "add_circle" },
   { href: "/tasks", label: "Tasks", icon: "task_alt" },
   { href: "/dashboard", label: "Activity", icon: "explore" },
@@ -15,7 +15,7 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 bg-white/85 dark:bg-[#000a1e]/85 backdrop-blur-xl shadow-[0px_-4px_16px_rgba(0,10,30,0.04)] rounded-t-xl pb-safe">
+    <nav className="md:hidden flex-none fixed bottom-0 left-0 w-full z-50 bg-white/85 dark:bg-[#000a1e]/85 backdrop-blur-xl shadow-[0px_-4px_16px_rgba(0,10,30,0.04)] rounded-t-xl pb-safe">
       <div className="flex justify-around items-center h-16 px-4 max-w-7xl mx-auto w-full">
         {NAV_ITEMS.map((item) => {
           const isActive =

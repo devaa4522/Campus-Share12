@@ -41,6 +41,13 @@ export default function DashboardClient({
   const router = useRouter();
 
   useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    }
+  }, []);
+
+  useEffect(() => {
     if (!showScannerModal) return;
 
     const html5QrCode = new Html5Qrcode("qr-reader");
@@ -69,21 +76,41 @@ export default function DashboardClient({
 
   async function handleQRConfirm(scannedPayload: string, expectedTaskId: string) {
     if (scannedPayload !== expectedTaskId) {
-      toast.error('Invalid QR Code for this specific task!');
+      toast.error('Invalid QR Code for this specific arrangement!');
       return;
     }
     try {
       const supabase = createClient();
-      const { error } = await supabase.rpc('complete_task_handshake', { qr_payload: expectedTaskId });
       
-      if (!error) {
-         toast.success("Task formally completed! Escrow released & Karma awarded.");
-         setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? { ...t, status: "completed" } : t));
-      } else {
-         toast.error("Action could not be completed. We are working on a fix.");
+      const isTask = localTaskRequests.some(t => t.id === expectedTaskId) || localHelpingWith.some(t => t.id === expectedTaskId);
+      const itemReq = localReceived.find(r => r.id === expectedTaskId) || localMade.find(r => r.id === expectedTaskId);
+      
+      if (isTask) {
+        const { error } = await supabase.rpc('complete_task_handshake', { qr_payload: expectedTaskId });
+        if (!error) {
+           toast.success("Task formally completed! Escrow released & Karma awarded.");
+           setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? { ...t, status: "completed" } : t));
+           setLocalHelpingWith(prev => prev.map(t => t.id === expectedTaskId ? { ...t, tasks: { ...t.tasks, status: "completed" } } : t));
+        } else {
+           toast.error("Action could not be completed.");
+        }
+      } else if (itemReq) {
+         if (itemReq.status === 'accepted') {
+             await supabase.from("items").update({ status: 'rented' }).eq("id", itemReq.item_id);
+             await supabase.from("item_requests").update({ status: 'rented' }).eq("id", itemReq.id);
+             toast.success("Item handed over!");
+             setLocalReceived(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'rented' } : r));
+             setLocalMade(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'rented' } : r));
+         } else if (itemReq.status === 'returning') {
+             await supabase.from("items").update({ status: 'available' }).eq("id", itemReq.item_id);
+             await supabase.from("item_requests").update({ status: 'completed' }).eq("id", itemReq.id);
+             toast.success("Item returned safely!");
+             setLocalReceived(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'completed' } : r));
+             setLocalMade(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'completed' } : r));
+         }
       }
     } catch (e) {
-      toast.error("Action could not be completed. We are working on a fix.");
+      toast.error("Action could not be completed.");
     }
   }
 
@@ -158,7 +185,7 @@ export default function DashboardClient({
         .from("conversations")
         .select("id")
         .eq("deal_id", taskId)
-        .single();
+        .maybeSingle();
       
       if (existingConv) {
          router.push(`/messages?id=${existingConv.id}`);
@@ -182,7 +209,7 @@ export default function DashboardClient({
         .from("conversations")
         .select("id")
         .eq("deal_id", req.id)
-        .single();
+        .maybeSingle();
 
       if (existingConv) {
          router.push(`/messages?id=${existingConv.id}`);
@@ -198,7 +225,7 @@ export default function DashboardClient({
            participant_2: lenderId
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error || !newConv) {
          toast.error("Could not start conversation");
@@ -216,6 +243,13 @@ export default function DashboardClient({
     const item = req.items;
     if (!item) return null;
 
+    let statusColor = 'bg-surface-container-high text-on-surface-variant';
+    if (req.status === 'accepted') statusColor = 'bg-secondary-container text-on-secondary-container';
+    else if (req.status === 'rented') statusColor = 'bg-blue-600/10 text-blue-600';
+    else if (req.status === 'returning') statusColor = 'bg-error/10 text-error';
+    else if (req.status === 'completed') statusColor = 'bg-primary/10 text-primary';
+    else if (req.status === 'declined') statusColor = 'bg-error/10 text-error';
+
     return (
       <div key={req.id} className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] border border-outline-variant/10 group hover:border-primary/20 transition-all duration-300">
         <div className="flex flex-col md:flex-row gap-6">
@@ -231,15 +265,7 @@ export default function DashboardClient({
           <div className="flex-grow">
             <div className="flex justify-between items-start mb-2">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`px-2.5 py-0.5 rounded text-xs font-semibold tracking-wider uppercase ${
-                    req.status === 'pending' ? 'bg-surface-container-high text-on-surface-variant' :
-                    req.status === 'accepted' ? 'bg-secondary-container text-on-secondary-container' :
-                    'bg-error/10 text-error'
-                  }`}>
-                    {req.status}
-                  </span>
-                </div>
+                <span className={`px-2.5 py-0.5 rounded text-xs font-semibold tracking-wider uppercase mb-2 inline-block ${statusColor}`}>{req.status}</span>
                 <h3 className="font-headline text-xl font-bold text-primary">{item.title}</h3>
               </div>
             </div>
@@ -257,7 +283,6 @@ export default function DashboardClient({
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-primary">{otherPerson?.full_name || "Unknown User"}</p>
-                  <p className="text-xs text-on-surface-variant">{otherPerson?.department || "Student"}</p>
                 </div>
               </div>
               <div className="h-8 w-[1px] bg-outline-variant/30"></div>
@@ -267,25 +292,40 @@ export default function DashboardClient({
               </div>
             </div>
 
-            <div className="flex gap-3">
-              {isLenderView && req.status === "pending" ? (
+            <div className="flex gap-3 flex-wrap">
+              {req.status === "pending" && isLenderView && (
                 <>
-                  <button 
-                    onClick={() => handleUpdateStatus(req.id, "accepted", item.id)}
-                    className="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-900 transition-all active:scale-95">
-                    Accept Deal
-                  </button>
-                  <button 
-                    onClick={() => handleUpdateStatus(req.id, "declined")}
-                    className="border border-outline-variant/30 text-on-surface-variant px-6 py-2.5 rounded-lg font-bold text-sm hover:border-primary hover:text-primary transition-all active:scale-95">
-                    Decline
-                  </button>
+                  <button onClick={() => handleUpdateStatus(req.id, "accepted", item.id)} className="bg-primary text-on-primary px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:bg-slate-900 transition-colors">Accept Deal</button>
+                  <button onClick={() => handleUpdateStatus(req.id, "declined")} className="border border-outline-variant/30 text-on-surface-variant px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:border-primary hover:text-primary transition-colors">Decline</button>
                 </>
-              ) : (
-                <button onClick={() => handleMessageUser(req)} className="text-secondary font-bold text-sm flex items-center gap-1 hover:underline">
-                    Message {isLenderView ? 'Borrower' : 'Lender'} <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                </button>
               )}
+              
+              {req.status === "accepted" && isLenderView && (
+                 <button onClick={() => setShowScannerModal(req.id)} className="bg-[#006e0c] text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan Borrower's QR</button>
+              )}
+              {req.status === "accepted" && !isLenderView && (
+                 <button onClick={() => setShowQrModal(req.id)} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_2</span> Show Receive QR</button>
+              )}
+
+              {req.status === "rented" && !isLenderView && (
+                 <button onClick={async () => {
+                    const supabase = createClient();
+                    await supabase.from("item_requests").update({ status: 'returning' }).eq("id", req.id);
+                    toast.success("Return initiated!");
+                    setLocalMade(prev => prev.map(r => r.id === req.id ? { ...r, status: 'returning' } : r));
+                 }} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2"><span className="material-symbols-outlined text-[16px]">assignment_return</span> Initiate Return</button>
+              )}
+
+              {req.status === "returning" && isLenderView && (
+                 <button onClick={() => setShowQrModal(req.id)} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_2</span> Show Return QR</button>
+              )}
+              {req.status === "returning" && !isLenderView && (
+                 <button onClick={() => setShowScannerModal(req.id)} className="bg-[#006e0c] text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan Lender's QR</button>
+              )}
+
+              <button onClick={() => handleMessageUser(req)} className="border border-outline-variant/30 text-secondary px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:border-secondary transition-colors flex items-center gap-1">
+                 Message {isLenderView ? 'Borrower' : 'Lender'}
+              </button>
             </div>
           </div>
         </div>
@@ -418,7 +458,7 @@ export default function DashboardClient({
   };
 
   return (
-    <>
+    <div className="h-[calc(100dvh-4rem)] md:h-[calc(100vh-5rem)] overflow-y-auto w-full pb-24">
       {showQrModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/80 backdrop-blur-md p-4">
           <div className="bg-surface-container-lowest rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-8">
@@ -626,6 +666,6 @@ export default function DashboardClient({
         </div>
       </div>
     </div>
-    </>
+    </div>
   );
 }

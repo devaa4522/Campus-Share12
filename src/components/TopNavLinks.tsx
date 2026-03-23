@@ -7,9 +7,10 @@ export default function TopNavLinks() {
   const pathname = usePathname();
   
   const links = [
-    { href: "/", label: "Hub" },
+    { href: "/", label: "Home" },
+    { href: "/hub", label: "Search" },
     { href: "/tasks", label: "Tasks" },
-    { href: "/dashboard", label: "Activity" }
+    { href: "/dashboard", label: "Ledger" }
   ];
 
   return (

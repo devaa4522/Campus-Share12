@@ -3,6 +3,9 @@ import { Noto_Serif, Public_Sans } from "next/font/google";
 import TopNav from "@/components/TopNav";
 import BottomNav from "@/components/BottomNav";
 import MessageFAB from "@/components/MessageFAB";
+import OfflineBanner from "@/components/OfflineBanner";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import MainWrapper from "@/components/MainWrapper";
 import "./globals.css";
 
 const notoSerif = Noto_Serif({
@@ -27,7 +30,7 @@ export const metadata: Metadata = {
   description:
     "Exchange academic resources, campus errands, and student favors within your college network.",
   manifest: "/manifest.json",
-  icons: { icon: "/icons8-university-100.png", apple: "/icons8-university-100.png" },
+  icons: { icon: "public/icons8-university-100.png", apple: "public/icons8-university-100.png" },
 };
 
 export const viewport: Viewport = {
@@ -55,25 +58,14 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-surface text-on-surface font-body">
+      <body className="flex flex-col h-[100dvh] overflow-hidden bg-surface text-on-surface font-body">
+        <ServiceWorkerRegister />
+        <OfflineBanner />
         <Toaster position="top-center" />
         <TopNav />
-        <main className="pt-24 min-h-screen pb-24 md:pb-8">{children}</main>
+        <MainWrapper>{children}</MainWrapper>
         <MessageFAB />
         <BottomNav />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
-                    console.log('ServiceWorker registration failed: ', err);
-                  });
-                });
-              }
-            `,
-          }}
-        />
       </body>
     </html>
   );

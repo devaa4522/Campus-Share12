@@ -19,6 +19,8 @@ export interface Profile {
   bio?: string | null;
   notifications_enabled?: boolean | null;
   profile_public?: boolean | null;
+  flags_count?: number | null;
+  banned_until?: string | null;
 }
 
 export interface Item {
@@ -30,7 +32,7 @@ export interface Item {
   condition: string | null;
   price_type: "Free" | "Karma" | "Rental" | null;
   price_amount: number | null;
-  status: "available" | "rented" | null;
+  status: "available" | "rented" | "returning" | null;
   images: string[] | null;
   created_at: string | null;
   college_domain: string | null;
@@ -47,7 +49,7 @@ export interface ItemRequest {
   item_id: string;
   requester_id: string;
   duration_days: number;
-  status: "pending" | "accepted" | "declined";
+  status: "pending" | "accepted" | "declined" | "rented" | "returning" | "completed";
   created_at: string;
 }
 

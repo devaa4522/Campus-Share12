@@ -27,6 +27,15 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Time-based re-render for countdowns
+  const [, setTick] = useState(0);
+  import("react").then((React) => {
+    React.useEffect(() => {
+      const interval = setInterval(() => setTick((t) => t + 1), 60000);
+      return () => clearInterval(interval);
+    }, []);
+  });
+
   // Form fields
   const [bio, setBio] = useState(profile.bio ?? "");
   const [branch, setBranch] = useState(profile.branch ?? "");
@@ -151,28 +160,124 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
           </div>
         </div>
 
-        {/* Account Status Card */}
-        <div className="md:col-span-4 bg-primary-container rounded-xl p-8 flex flex-col justify-between text-white overflow-hidden relative">
+        {/* Trust Score & Badges Card */}
+        <div className="md:col-span-4 bg-[#000a1e] rounded-xl p-8 flex flex-col justify-between text-white overflow-hidden relative shadow-[0_12px_32px_rgba(0,10,30,0.15)]">
           <div className="relative z-10">
-            <h3 className="font-headline text-xl mb-4">Account Status</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center text-sm">
-                <span className="opacity-70">Trust Score</span>
-                <span className="font-bold">{trustScore}/100</span>
+            <h3 className="font-headline text-xl mb-6 font-bold flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#006e0c]">verified</span>
+              Campus Trust
+            </h3>
+            <div className="space-y-5">
+              <div className="flex justify-between items-baseline">
+                <span className="opacity-80 text-sm font-medium tracking-wide">Reliability Score</span>
+                <span className="font-black text-2xl text-[#006e0c] drop-shadow-sm">{trustScore}%</span>
               </div>
-              <div className="w-full bg-white/10 h-1.5 rounded-full">
-                <div className="bg-secondary-fixed h-full rounded-full transition-all" style={{ width: `${trustScore}%` }} />
+              <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                <div className="bg-[#006e0c] h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${trustScore}%` }} />
               </div>
-              <p className="text-xs opacity-60 leading-relaxed italic">
-                {trustScore > 80
-                  ? '"Your reputation as a reliable campus peer is outstanding."'
-                  : '"Keep building trust by completing more exchanges."'
-                }
-              </p>
+              <div className="p-4 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm">
+                <p className="text-xs opacity-80 leading-relaxed font-medium">
+                  {trustScore >= 90
+                    ? '"Elite Sharer. Your peers consider you exceptionally reliable."'
+                    : trustScore >= 50
+                    ? '"Active Peer. Keep completing exchanges to build your reputation."'
+                    : '"Caution: Low reliability. Fulfill your task claims to improve."'}
+                </p>
+              </div>
             </div>
           </div>
-          <div className="absolute -right-4 -bottom-4 opacity-10">
-            <span className="material-symbols-outlined text-8xl">shield_person</span>
+          <div className="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
+            <span className="material-symbols-outlined text-[150px]">hub</span>
+          </div>
+        </div>
+
+        {/* --- Trust & Safety Console (Private) --- */}
+        <div className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-[0_12px_32px_rgba(0,10,30,0.06)] border-t-4 border-[#006e0c]">
+          <h2 className="text-2xl font-headline font-bold mb-6 text-[#000a1e] flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#006e0c]">admin_panel_settings</span>
+            Trust & Safety Console
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Sanctions & Ban Status */}
+            <div className="space-y-4">
+              {(() => {
+                const now = new Date().getTime();
+                const bannedUntil = profile.banned_until ? new Date(profile.banned_until).getTime() : 0;
+                const isBanned = bannedUntil > now;
+
+                if (isBanned) {
+                  const hoursLeft = Math.ceil((bannedUntil - now) / (1000 * 60 * 60));
+                  return (
+                    <div className="flex items-start gap-4 p-5 bg-[#ba1a1a]/10 rounded-xl border border-[#ba1a1a]/20">
+                      <span className="material-symbols-outlined text-[#ba1a1a] text-3xl">gavel</span>
+                      <div>
+                        <h4 className="font-bold text-[#ba1a1a] mb-1">Account Shadowbanned</h4>
+                        <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
+                          Your listings are temporarily hidden from the Hub due to multiple community reports.
+                        </p>
+                        <div className="inline-flex items-center gap-2 bg-[#ba1a1a] text-white px-3 py-1.5 rounded text-xs font-bold tracking-widest uppercase">
+                          <span className="material-symbols-outlined text-[14px]">timer</span>
+                          Lifts in {hoursLeft} hour{hoursLeft !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="flex items-center justify-between p-5 bg-[#006e0c]/10 rounded-xl border border-[#006e0c]/20">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 bg-[#006e0c] text-white rounded-full">
+                         <span className="material-symbols-outlined block text-[20px]">check_circle</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#006e0c]">Status: Active</h4>
+                        <p className="text-xs text-on-surface-variant">Your account is in good standing.</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Flags Gauge */}
+            <div className="bg-surface-container-low p-6 rounded-xl border border-outline-variant/20">
+              <h3 className="text-sm font-bold mb-4 flex items-center gap-2 text-[#000a1e]">
+                <span className="material-symbols-outlined text-outline text-[20px]">flag</span> 
+                Active Safety Flags
+              </h3>
+              
+              {(() => {
+                const flagsCount = profile.flags_count ?? 0;
+                const maxFlags = 12;
+                const fillWidth = Math.min(100, (flagsCount / maxFlags) * 100);
+                let colorClass = "bg-[#006e0c]";
+                if (flagsCount >= 3 && flagsCount <= 5) colorClass = "bg-[#eab308]";
+                if (flagsCount >= 6) colorClass = "bg-[#ba1a1a]";
+
+                return (
+                  <>
+                    <div className="h-3 w-full bg-surface-container-highest rounded-full overflow-hidden mb-3 relative shadow-inner">
+                      <div className={`h-full rounded-full transition-all duration-1000 ${colorClass}`} style={{ width: `${fillWidth}%` }}></div>
+                      {/* Demarcation markers for 3, 6, 9 flags */}
+                      <div className="absolute top-0 bottom-0 left-[25%] border-l border-white/50 w-px"></div>
+                      <div className="absolute top-0 bottom-0 left-[50%] border-l border-white/50 w-px"></div>
+                      <div className="absolute top-0 bottom-0 left-[75%] border-l border-white/50 w-px"></div>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold">
+                      <span className="text-on-surface-variant">{flagsCount} Flags</span>
+                      <span className="text-outline uppercase tracking-widest text-[10px]">Max {maxFlags}</span>
+                    </div>
+                    {flagsCount > 0 && (
+                      <p className="mt-3 text-[11px] text-on-surface-variant italic leading-relaxed">
+                        Flags slowly decay over time. Excessive flags result in automated shadowbans.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
           </div>
         </div>
 
