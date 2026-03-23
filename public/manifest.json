@@ -9,18 +9,13 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/icons8-university-100.png",
-      "sizes": "100x100",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons8-university-100.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     },
     {
-      "src": "/icons8-university-100.png",
+      "src": "/icon-192.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

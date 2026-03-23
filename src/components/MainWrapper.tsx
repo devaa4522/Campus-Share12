@@ -5,17 +5,19 @@ import React from "react";
 
 export default function MainWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  
-  // Specific routes that demand a locked layout for custom internal scrolling (App Shell style)
   const isLockedRoute = pathname.startsWith("/messages") || pathname.startsWith("/dashboard");
 
   return (
     <main 
-      className={`flex-1 flex flex-col w-full relative pt-16 md:pt-20 pb-20 md:pb-0 ${
-        isLockedRoute ? "overflow-hidden" : "overflow-y-auto no-scrollbar"
+      className={`flex-1 w-full relative pt-16 pb-24 ${
+        isLockedRoute ? "overflow-hidden" : "overflow-y-auto"
       }`}
+      /* This style ensures the main area is exactly the space between navs */
+      style={{ height: 'calc(100dvh - 64px)' }} 
     >
-      {children}
+      <div className="max-w-7xl mx-auto px-4 w-full">
+         {children}
+      </div>
     </main>
   );
 }
