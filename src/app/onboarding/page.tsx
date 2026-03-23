@@ -73,7 +73,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 md:py-24 -mt-16">
+    <main className="min-h-full flex flex-col items-center justify-center px-6 py-12 md:py-24 -mt-16">
       {/* Decorative elements */}
       <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-primary z-[100]" />
       <div className="fixed -bottom-24 -left-24 w-96 h-96 bg-secondary/5 rounded-full blur-3xl pointer-events-none" />

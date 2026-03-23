@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen pt-24 pb-20 px-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col items-center justify-center min-h-full pt-24 pb-20 px-6 max-w-7xl mx-auto w-full">
       <section className="w-full max-w-4xl bg-surface-container-lowest rounded-3xl p-8 shadow-[0px_12px_32px_rgba(0,10,30,0.06)] overflow-hidden relative group border border-outline-variant/10">
         <div className="flex justify-between items-center mb-6">
           <h3 className="font-headline text-lg font-bold text-[#000a1e]">Campus Share</h3>

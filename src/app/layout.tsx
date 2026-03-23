@@ -30,13 +30,14 @@ export const metadata: Metadata = {
   description:
     "Exchange academic resources, campus errands, and student favors within your college network.",
   manifest: "/manifest.json",
-  icons: { icon: "public/icons8-university-100.png", apple: "public/icons8-university-100.png" },
+  icons: { icon: "/icons8-university-100.png", apple: "/icons8-university-100.png" },
 };
 
 export const viewport: Viewport = {
   themeColor: "#0f1c30",
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 import { Toaster } from 'react-hot-toast';
@@ -53,6 +54,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
           rel="stylesheet"

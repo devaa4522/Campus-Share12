@@ -11,7 +11,7 @@ export default function MainWrapper({ children }: { children: React.ReactNode })
 
   return (
     <main 
-      className={`flex-1 flex flex-col w-full relative ${
+      className={`flex-1 flex flex-col w-full relative pt-16 md:pt-20 pb-20 md:pb-0 ${
         isLockedRoute ? "overflow-hidden" : "overflow-y-auto no-scrollbar"
       }`}
     >

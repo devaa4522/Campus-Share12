@@ -40,12 +40,7 @@ export default function DashboardClient({
   const [showScannerModal, setShowScannerModal] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    }
-  }, []);
+  // Removed body scroll-lock — MainWrapper handles overflow via the sandwich layout
 
   useEffect(() => {
     if (!showScannerModal) return;
@@ -458,7 +453,7 @@ export default function DashboardClient({
   };
 
   return (
-    <div className="h-[calc(100dvh-4rem)] md:h-[calc(100vh-5rem)] overflow-y-auto w-full pb-24">
+    <div className="h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] overflow-y-auto w-full pb-24">
       {showQrModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/80 backdrop-blur-md p-4">
           <div className="bg-surface-container-lowest rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-8">
@@ -496,7 +491,7 @@ export default function DashboardClient({
         </div>
       )}
 
-    <div className="px-6 max-w-7xl mx-auto min-h-screen pt-24 pb-8">
+    <div className="px-6 max-w-7xl mx-auto min-h-full pt-24 pb-8">
       {/* Editorial Header */}
       <header className="mb-10">
         <h1 className="font-headline text-4xl font-bold tracking-tight text-primary mb-2">Deal Manager</h1>

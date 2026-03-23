@@ -25,7 +25,7 @@ export default async function NotificationsPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <div className="min-h-screen bg-background border-none w-full flex">
+    <div className="min-h-full bg-background border-none w-full flex">
       <NotificationsClient initialNotifications={notifications || []} />
     </div>
   );

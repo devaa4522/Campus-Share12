@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="flex flex-col pt-24 pb-20 px-4 md:px-8 max-w-4xl mx-auto w-full min-h-screen">
+    <div className="flex flex-col pt-24 pb-20 px-4 md:px-8 max-w-4xl mx-auto w-full min-h-full">
       <section className="w-full bg-[#000a1e] rounded-3xl p-6 md:p-8 shadow-[0px_12px_32px_rgba(0,10,30,0.06)] relative overflow-hidden border border-[#000a1e]/10">
         <div className="relative z-10">
           <div className="flex justify-between items-center mb-8">

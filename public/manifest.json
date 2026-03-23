@@ -5,7 +5,26 @@
   "display": "standalone",
   "theme_color": "#000a1e",
   "background_color": "#f7f9fb",
+  "orientation": "portrait-primary",
+  "scope": "/",
   "icons": [
+    {
+      "src": "/icons8-university-100.png",
+      "sizes": "100x100",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons8-university-100.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons8-university-100.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/favicon.ico",
       "sizes": "64x64",

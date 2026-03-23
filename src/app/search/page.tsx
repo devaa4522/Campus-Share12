@@ -60,7 +60,7 @@ export default function SearchPage() {
   if (!authed) return null;
 
   return (
-    <div className="px-6 max-w-7xl mx-auto min-h-screen">
+    <div className="px-6 max-w-7xl mx-auto min-h-full">
       {/* Header */}
       <header className="mb-12 pt-8">
         <div className="bg-surface-container-low rounded-xl p-8 relative overflow-hidden">

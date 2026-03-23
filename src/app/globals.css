@@ -63,8 +63,13 @@
 }
 
 @layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
   html {
     scroll-behavior: smooth;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
   body {
     background-color: var(--color-surface);

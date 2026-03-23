@@ -25,7 +25,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-full">
       {/* Hero Section */}
       <section
         className="relative mb-12 rounded-[2rem] overflow-hidden min-h-[420px] flex flex-col justify-center items-center text-center px-6 mx-4 md:mx-6 mt-8"
