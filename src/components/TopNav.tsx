@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import TopNavLinks from "./TopNavLinks";
 import NotificationBell from "./NotificationBell";
@@ -58,13 +59,15 @@ export default async function TopNav() {
                 {/* Avatar */}
               <Link
                 href="/profile"
-                className="w-9 h-9 rounded-full bg-surface-container-highest overflow-hidden border-2 border-outline-variant/30 hover:border-secondary transition-colors flex items-center justify-center"
+                className="relative w-9 h-9 rounded-full bg-surface-container-highest overflow-hidden border-2 border-outline-variant/30 hover:border-secondary transition-colors flex items-center justify-center"
               >
                 {profile.avatar_url ? (
-                  <img
+                  <Image
                     src={profile.avatar_url}
                     alt={profile.full_name ?? "User"}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="36px"
+                    className="object-cover"
                   />
                 ) : (
                   <span className="text-xs font-bold text-on-surface-variant">

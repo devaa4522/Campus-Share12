@@ -48,11 +48,23 @@ export default function NotificationsClient({ initialNotifications }: { initialN
   const supabase = createClient();
 
   const handleClearArchive = async () => {
-    // Optimistic flush
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    if (notifications.length === 0) return;
     
-    // DB RPC
-    await supabase.rpc('clear_user_notifications');
+    // Optimistic UI clear
+    const backup = [...notifications];
+    setNotifications([]);
+    
+    // Delete all notifications for this user from DB
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', notifications[0].user_id);
+
+    if (error) {
+      console.error('Failed to clear notifications:', error);
+      // Rollback on error
+      setNotifications(backup);
+    }
   };
 
   const filtered = notifications.filter((n) => {
@@ -89,9 +101,15 @@ export default function NotificationsClient({ initialNotifications }: { initialN
             Your curated archive of academic exchanges and campus logistics.
           </p>
         </div>
-        <button onClick={handleClearArchive} className="group flex items-center space-x-2 px-6 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-full hover:bg-primary-container hover:text-white transition-all duration-300 shadow-sm">
-          <span className="font-label text-sm font-semibold tracking-wide">Clear Notification Archive</span>
-          <span className="material-symbols-outlined text-sm">archive</span>
+        <button 
+          onClick={handleClearArchive} 
+          disabled={notifications.length === 0}
+          className="group flex items-center space-x-2 px-6 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-full hover:bg-error hover:text-white transition-all duration-300 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span className="font-label text-sm font-semibold tracking-wide">
+            {notifications.length === 0 ? 'Archive Empty' : 'Clear All Notifications'}
+          </span>
+          <span className="material-symbols-outlined text-sm">delete_sweep</span>
         </button>
       </div>
 

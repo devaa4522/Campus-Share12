@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import type { Profile } from "@/lib/types";
 import { getBranchesForDepartment } from "@/lib/college-utils";
 import imageCompression from "browser-image-compression";
+import Image from "next/image";
 
 interface Props {
   profile: Profile;
@@ -135,9 +136,9 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
         {/* Profile Overview Card */}
         <div className="md:col-span-8 bg-surface-container-lowest rounded-xl p-8 shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex flex-col md:flex-row gap-8 items-center md:items-start">
           <div className="relative">
-            <div className="w-32 h-32 rounded-full overflow-hidden bg-surface-container-high ring-4 ring-surface-container-lowest">
+            <div className="w-32 h-32 rounded-full overflow-hidden bg-surface-container-high ring-4 ring-surface-container-lowest relative">
               {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt={fullName || "Profile"} className="w-full h-full object-cover" />
+                <Image src={profile.avatar_url} alt={fullName || "Profile"} fill sizes="128px" className="object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-on-surface-variant">
                   {(fullName || "U").charAt(0).toUpperCase()}
@@ -405,9 +406,9 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
               {/* Avatar & Name Row */}
               <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-outline-variant/10">
                 <div className="relative shrink-0">
-                  <div className="w-32 h-32 rounded-2xl overflow-hidden bg-surface-container-high focus-within:ring-4 focus-within:ring-[#006e0c]/20 transition-all border-4 border-white shadow-sm">
+                  <div className="w-32 h-32 rounded-2xl overflow-hidden bg-surface-container-high focus-within:ring-4 focus-within:ring-[#006e0c]/20 transition-all border-4 border-white shadow-sm relative">
                     {profile.avatar_url ? (
-                      <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                      <Image src={profile.avatar_url} alt="Profile" fill sizes="128px" className="object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-5xl font-bold text-on-surface-variant">
                         {(fullName || "U").charAt(0).toUpperCase()}

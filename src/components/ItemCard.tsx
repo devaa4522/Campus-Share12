@@ -1,8 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { ItemWithProfile } from "@/lib/types";
 import ImageWithFallback from "@/components/ImageWithFallback";
 
-export default function ItemCard({ item }: { item: ItemWithProfile }) {
+export default function ItemCard({ item, priority }: { item: ItemWithProfile; priority?: boolean }) {
   const profile = item.profiles;
 
   return (
@@ -18,6 +19,7 @@ export default function ItemCard({ item }: { item: ItemWithProfile }) {
           category={item.category}
           fill
           className="object-cover"
+          priority={priority}
         />
       </div>
 
@@ -46,12 +48,14 @@ export default function ItemCard({ item }: { item: ItemWithProfile }) {
       {/* Footer: User + Price */}
       <div className="flex items-center justify-between pt-4 border-t border-outline-variant/10">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden flex items-center justify-center relative">
             {profile?.avatar_url ? (
-              <img
+              <Image
                 src={profile.avatar_url}
                 alt={profile.full_name ?? ""}
-                className="w-full h-full object-cover"
+                fill
+                sizes="32px"
+                className="object-cover"
               />
             ) : (
               <span className="text-xs font-bold text-on-surface-variant">

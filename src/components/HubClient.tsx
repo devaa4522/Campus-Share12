@@ -14,6 +14,12 @@ export default function HubClient({ userId }: { userId: string }) {
   const [activeDepartment, setActiveDepartment] = useState<string>("All");
   const [minKarma, setMinKarma] = useState<number>(0);
   const [isListView, setIsListView] = useState(false);
+  const [currentTime, setCurrentTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setCurrentTime(Date.now()), 0);
+    return () => clearTimeout(t);
+  }, []);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -44,7 +50,8 @@ export default function HubClient({ userId }: { userId: string }) {
 
   // Memoized shadowban filter to avoid re-computation on every render
   const visibleItems = useMemo(() => {
-    const nowStamp = Date.now();
+    if (!currentTime) return items;
+    const nowStamp = currentTime;
     return items.filter((item) => {
       if (item.profiles?.banned_until) {
         const banStamp = new Date(item.profiles.banned_until).getTime();
@@ -52,7 +59,7 @@ export default function HubClient({ userId }: { userId: string }) {
       }
       return true;
     });
-  }, [items]);
+  }, [items, currentTime]);
 
   useEffect(() => {
     const timer = setTimeout(fetchItems, 400);

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { Item, Profile, ItemRequest } from "@/lib/types";
 import { createClient } from "@/utils/supabase/client";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -41,33 +42,6 @@ export default function DashboardClient({
   const router = useRouter();
 
   // Removed body scroll-lock — MainWrapper handles overflow via the sandwich layout
-
-  useEffect(() => {
-    if (!showScannerModal) return;
-
-    const html5QrCode = new Html5Qrcode("qr-reader");
-
-    html5QrCode.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      (decodedText) => {
-        setShowScannerModal(null);
-        handleQRConfirm(decodedText, showScannerModal);
-      },
-      (error) => { /* ignore */ }
-    ).catch(err => {
-      console.error(err);
-      toast.error("Camera access failed. Please check permissions.");
-    });
-
-    return () => {
-      if (html5QrCode.isScanning) {
-        html5QrCode.stop().catch(e => console.error(e));
-      } else {
-        html5QrCode.clear();
-      }
-    };
-  }, [showScannerModal]);
 
   async function handleQRConfirm(scannedPayload: string, expectedTaskId: string) {
     if (scannedPayload !== expectedTaskId) {
@@ -108,6 +82,33 @@ export default function DashboardClient({
       toast.error("Action could not be completed.");
     }
   }
+
+  useEffect(() => {
+    if (!showScannerModal) return;
+
+    const html5QrCode = new Html5Qrcode("qr-reader");
+
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => {
+        setShowScannerModal(null);
+        handleQRConfirm(decodedText, showScannerModal);
+      },
+      (error) => { /* ignore */ }
+    ).catch(err => {
+      console.error(err);
+      toast.error("Camera access failed. Please check permissions.");
+    });
+
+    return () => {
+      if (html5QrCode.isScanning) {
+        html5QrCode.stop().catch(e => console.error(e));
+      } else {
+        html5QrCode.clear();
+      }
+    };
+  }, [showScannerModal]);
 
   const activeEarnings = items
     .filter((i) => i.status === "rented")
@@ -250,7 +251,7 @@ export default function DashboardClient({
         <div className="flex flex-col md:flex-row gap-6">
           <div className="w-full md:w-32 h-32 rounded-lg bg-surface-container overflow-hidden flex-shrink-0 relative">
             {item.images?.[0] ? (
-              <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover" />
+              <Image src={item.images[0]} alt={item.title} fill sizes="(max-width: 768px) 100vw, 128px" className="object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-surface-container text-on-surface-variant font-bold text-lg">
                 No Image
@@ -267,9 +268,9 @@ export default function DashboardClient({
             
             <div className="flex items-center gap-4 py-4 mb-4 border-y border-outline-variant/10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-surface-container overflow-hidden flex-shrink-0 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-surface-container overflow-hidden flex-shrink-0 flex items-center justify-center relative">
                    {otherPerson?.avatar_url ? (
-                     <img src={otherPerson.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                     <Image src={otherPerson.avatar_url} alt="Profile" fill className="object-cover" />
                    ) : (
                      <span className="font-bold">
                        {otherPerson?.full_name?.charAt(0) || "?"}
@@ -554,7 +555,7 @@ export default function DashboardClient({
                   <div key={item.id} className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/10 flex flex-col md:flex-row gap-6">
                     <div className="w-full md:w-32 h-32 rounded-lg bg-surface-container overflow-hidden flex-shrink-0 relative">
                       {(item.thumbnail_url || item.images?.[0]) ? (
-                        <img src={item.thumbnail_url || item.images![0]} alt={item.title} className="w-full h-full object-cover" />
+                        <Image src={item.thumbnail_url || item.images![0]} alt={item.title} fill sizes="(max-width: 768px) 100vw, 128px" className="object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-surface-container text-on-surface-variant font-bold text-lg">
                           No Image

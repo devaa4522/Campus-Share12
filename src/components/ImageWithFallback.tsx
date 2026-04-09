@@ -26,6 +26,7 @@ interface ImageWithFallbackProps {
   fill?: boolean;
   className?: string;
   priority?: boolean;
+  sizes?: string;
 }
 
 export default function ImageWithFallback({
@@ -37,6 +38,7 @@ export default function ImageWithFallback({
   fill,
   className = "",
   priority = false,
+  sizes,
 }: ImageWithFallbackProps) {
   const lowBandwidth = useAppStore((s) => s.lowBandwidth);
 
@@ -61,6 +63,7 @@ export default function ImageWithFallback({
       fill={fill}
       className={className}
       priority={priority}
+      sizes={sizes || (fill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined)}
     />
   );
 }

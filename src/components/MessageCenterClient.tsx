@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import EmojiPicker from "emoji-picker-react";
+import Image from "next/image";
 import toast from "react-hot-toast";
 import QRCode from "react-qr-code";
 import { Html5Qrcode } from "html5-qrcode";
@@ -216,32 +216,6 @@ export default function MessageCenterClient({
     fetchDeal();
   }, [activeConversationId, activeConversation?.deal_id]);
 
-  useEffect(() => {
-    if (!showScannerModal) return;
-
-    const html5QrCode = new Html5Qrcode("qr-reader");
-    html5QrCode.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      (decodedText) => {
-        setShowScannerModal(null);
-        handleQRConfirm(decodedText, showScannerModal);
-      },
-      (error) => { /* ignore normal scanning errors */ }
-    ).catch(err => {
-      console.error(err);
-      toast.error("Camera access failed. Please check permissions.");
-    });
-
-    return () => {
-      if (html5QrCode.isScanning) {
-        html5QrCode.stop().catch(e => console.error(e));
-      } else {
-        html5QrCode.clear();
-      }
-    };
-  }, [showScannerModal]);
-
   const handleQRConfirm = async (scannedPayload: string, expectedId: string) => {
     if (scannedPayload !== expectedId) {
       toast.error('Invalid QR Code for this specific deal!');
@@ -278,6 +252,34 @@ export default function MessageCenterClient({
       toast.error("Action could not be completed.");
     }
   };
+
+  useEffect(() => {
+    if (!showScannerModal) return;
+
+    const html5QrCode = new Html5Qrcode("qr-reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => {
+        setShowScannerModal(null);
+        handleQRConfirm(decodedText, showScannerModal);
+      },
+      (error) => { /* ignore normal scanning errors */ }
+    ).catch(err => {
+      console.error(err);
+      toast.error("Camera access failed. Please check permissions.");
+    });
+
+    return () => {
+      if (html5QrCode.isScanning) {
+        html5QrCode.stop().catch(e => console.error(e));
+      } else {
+        html5QrCode.clear();
+      }
+    };
+  }, [showScannerModal]);
+
+
 
   const handleAcceptDecline = async (action: 'accepted' | 'declined') => {
     if (!dealInfo) return;
@@ -504,7 +506,9 @@ export default function MessageCenterClient({
          </div>
          <div className="p-3 flex gap-3 bg-surface-container-low">
              {dealInfo.image_url ? (
-               <img src={dealInfo.image_url} alt="Item" className="w-16 h-16 rounded-md object-cover" />
+               <div className="w-16 h-16 rounded-md relative overflow-hidden">
+                 <Image src={dealInfo.image_url} alt="Item" fill sizes="64px" className="object-cover" />
+               </div>
              ) : (
                <div className="w-16 h-16 rounded-md bg-surface-variant flex items-center justify-center">
                  <span className="material-symbols-outlined text-outline">inventory_2</span>
@@ -587,7 +591,7 @@ export default function MessageCenterClient({
     <div className="flex-1 w-full h-full flex overflow-hidden relative">
       {/* Sidebar: Conversation List */}
       <aside className={`w-full md:w-[420px] flex-col bg-surface-container-lowest border-r border-[#000a1e]/5 shrink-0 overflow-hidden ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-4 md:p-6 pb-4 border-b border-[#000a1e]/5 shrink-0 bg-surface-container-lowest/90 backdrop-blur-sm z-10 relative">
+        <div className="p-4 md:p-6 pt-6 md:pt-10 pb-4 border-b border-[#000a1e]/5 shrink-0 bg-surface-container-lowest/90 backdrop-blur-sm z-10 relative">
           <h1 className="font-headline text-2xl font-bold tracking-tight text-[#000a1e] mb-4">Messages</h1>
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
@@ -613,13 +617,18 @@ export default function MessageCenterClient({
                     isActive ? "bg-primary/5 active:bg-primary/10 border-l-4 border-l-primary/60 pl-3 md:border-l-0 md:pl-4" : "hover:bg-surface-variant/40"
                   }`}
                 >
-                  <div className="relative shrink-0">
+                  <div className="relative shrink-0 w-12 h-12">
                     {cp.avatar_url ? (
-                      <img className={`w-12 h-12 rounded-full object-cover shadow-sm ${onlinePeers.includes(cp.id) ? 'ring-2 ring-secondary ring-offset-1' : ''}`} src={cp.avatar_url} alt={cp.full_name} />
+                      <div className={`w-full h-full rounded-full overflow-hidden shadow-sm relative ${onlinePeers.includes(cp.id) ? 'ring-2 ring-secondary ring-offset-1' : ''}`}>
+                        <Image src={cp.avatar_url} alt={cp.full_name} fill sizes="48px" className="object-cover" />
+                      </div>
                     ) : (
                       <div className={`w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-bold font-serif shadow-sm ${onlinePeers.includes(cp.id) ? 'ring-2 ring-secondary ring-offset-1' : ''}`}>
                         {cp.full_name.charAt(0).toUpperCase()}
                       </div>
+                    )}
+                    {onlinePeers.includes(cp.id) && (
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-sm" />
                     )}
                   </div>
                   <div className="ml-4 flex-1 min-w-0">
@@ -653,20 +662,22 @@ export default function MessageCenterClient({
       {activeConversationId ? (
         <section className={`absolute inset-0 z-20 md:relative md:inset-auto md:z-0 flex-1 h-full flex flex-col bg-surface overflow-hidden ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
           {/* Header */}
-          <header className="flex-none bg-surface-container-lowest/85 backdrop-blur-md px-4 py-3 border-b border-outline-variant/10 shadow-sm flex justify-between items-center z-30">
+          <header className="flex-none bg-surface-container-lowest/85 backdrop-blur-md px-4 py-4 md:py-6 border-b border-outline-variant/10 shadow-sm flex justify-between items-center z-30">
             <div className="flex items-center gap-3">
               <button className="md:hidden material-symbols-outlined text-[#000a1e] p-2 -ml-2 rounded-full active:bg-[#000a1e]/10 transition-colors" onClick={() => router.push('/messages')}>arrow_back</button>
-              <div className="relative">
+              <div className="relative w-10 h-10">
                 {peer?.avatar_url ? (
-                  <img className="w-10 h-10 rounded-full object-cover shadow-sm" src={peer.avatar_url} alt={peer.full_name} />
+                  <div className="w-full h-full rounded-full overflow-hidden shadow-sm relative">
+                    <Image src={peer.avatar_url} alt={peer.full_name} fill sizes="40px" className="object-cover" />
+                  </div>
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold shadow-sm">{peer?.full_name?.charAt(0)}</div>
                 )}
-                {onlinePeers.includes(peer?.id || '') && <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-secondary border-2 border-white rounded-full"></div>}
+                {onlinePeers.includes(peer?.id || '') && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>}
               </div>
               <div className="flex flex-col">
                 <h4 className="font-serif font-bold text-[#000a1e] text-sm leading-tight">{peer?.full_name}</h4>
-                <span className="text-[10px] text-outline font-medium uppercase tracking-widest">{onlinePeers.includes(peer?.id || '') ? 'Active Now' : 'Offline'}</span>
+                <span className={`text-[10px] font-medium uppercase tracking-widest ${onlinePeers.includes(peer?.id || '') ? 'text-green-600' : 'text-outline'}`}>{onlinePeers.includes(peer?.id || '') ? 'Active Now' : 'Offline'}</span>
               </div>
             </div>
           </header>
@@ -693,8 +704,8 @@ export default function MessageCenterClient({
                return (
                   <div key={msg.id} className={`flex ${isMe ? "flex-col items-end self-end max-w-[85%] md:max-w-[75%]" : "gap-3 max-w-[85%] md:max-w-[75%] self-start w-full"} group relative`}>
                     {!isMe && (
-                        <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0 overflow-hidden self-end hidden md:block border border-outline-variant/20 shadow-sm">
-                            {peer?.avatar_url ? <img src={peer.avatar_url} className="w-full h-full object-cover" /> : null}
+                        <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0 overflow-hidden self-end hidden md:block border border-outline-variant/20 shadow-sm relative">
+                            {peer?.avatar_url ? <Image src={peer.avatar_url} alt="Profile" fill className="object-cover" /> : null}
                         </div>
                     )}
                     
@@ -744,7 +755,7 @@ export default function MessageCenterClient({
                 </div>
             )}
             
-            <div ref={messagesEndRef} className="h-6" />
+            <div ref={messagesEndRef} className="h-4" />
           </div>
 
           {/* Input Area */}

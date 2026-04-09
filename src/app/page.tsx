@@ -68,8 +68,8 @@ export default async function HomePage() {
       {user ? (
         <section className="px-4 md:px-6 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {featuredItems.map((item) => (
-              <ItemCard key={item.id} item={item} />
+            {featuredItems.map((item, index) => (
+              <ItemCard key={item.id} item={item} priority={index < 2} />
             ))}
           </div>
 

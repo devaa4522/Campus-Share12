@@ -51,8 +51,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-While-Revalidate for application HTML / data queries (except POST/API)
-  if (event.request.method === 'GET' && !url.pathname.startsWith('/api/')) {
+  // Stale-While-Revalidate for application HTML / data queries (except POST/API/Internal)
+  const isNextInternal = url.pathname.startsWith('/_next/') || url.pathname.includes('hmr');
+  
+  if (event.request.method === 'GET' && !url.pathname.startsWith('/api/') && !isNextInternal) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         const fetchPromise = fetch(event.request).then((networkResponse) => {

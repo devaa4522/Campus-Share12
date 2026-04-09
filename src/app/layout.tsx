@@ -51,10 +51,12 @@
         lang="en"
         className={`${notoSerif.variable} ${publicSans.variable}`}
         suppressHydrationWarning
+        data-scroll-behavior="smooth"
       >
         <head>
           <meta name="mobile-web-app-capable" content="yes" />
           <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
           {/* Add this to help the browser find the manifest faster */}
         </head>
         {/* REMOVED overflow-hidden and ADDED overflow-x-hidden */}

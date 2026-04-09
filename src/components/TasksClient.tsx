@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import toast from "react-hot-toast";
+import Image from "next/image";
 import PostTaskModal from "./PostTaskModal";
 
 export default function TasksClient({ initialTasks, userId }: { initialTasks: any[]; userId: string }) {
@@ -147,9 +148,9 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: an
               
               <div className="flex items-center justify-between mt-auto pt-4 border-t border-outline-variant/10">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-surface-container-highest overflow-hidden">
+                  <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full bg-surface-container-highest overflow-hidden">
                     {task.profiles?.avatar_url ? (
-                      <img src={task.profiles.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                      <Image src={task.profiles.avatar_url} alt="Avatar" fill sizes="40px" className="object-cover" />
                     ) : (
                       <span className="flex items-center justify-center w-full h-full text-xs font-bold text-on-surface-variant">
                         {(task.profiles?.full_name || 'U').charAt(0).toUpperCase()}

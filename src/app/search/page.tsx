@@ -50,7 +50,7 @@ export default function SearchPage() {
     const { data } = await q;
     setItems((data ?? []) as ItemWithProfile[]);
     setLoading(false);
-  }, [query, activePriceType, activeCondition, authed]);
+  }, [query, activePriceType, activeCondition, authed, userId]);
 
   useEffect(() => {
     const timer = setTimeout(fetchItems, 300);

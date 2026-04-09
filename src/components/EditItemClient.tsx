@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { Item } from "@/lib/types";
+import Image from "next/image";
 import toast from "react-hot-toast";
 
 export default function EditItemClient({ item }: { item: Item }) {
@@ -100,7 +101,7 @@ export default function EditItemClient({ item }: { item: Item }) {
                     onClick={() => setThumbnailUrl(url)}
                     className={`relative aspect-square rounded-lg overflow-hidden group cursor-pointer transition-all border-2 ${isThumbnail ? 'border-secondary' : 'border-transparent hover:border-outline-variant'}`}
                   >
-                    <img src={url} alt={`Preview ${i}`} className={`w-full h-full object-cover transition-opacity ${isThumbnail ? 'opacity-100' : 'opacity-80 group-hover:opacity-100'}`} />
+                    <Image src={url} alt={`Preview ${i}`} fill sizes="(max-width: 768px) 50vw, 25vw" className={`object-cover transition-opacity ${isThumbnail ? 'opacity-100' : 'opacity-80 group-hover:opacity-100'}`} />
                     {isThumbnail && (
                       <div className="absolute top-2 left-2 bg-secondary text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">
                         Thumbnail
@@ -145,7 +146,7 @@ export default function EditItemClient({ item }: { item: Item }) {
             </div>
             
             <p className="mt-4 text-[11px] text-on-surface-variant leading-relaxed italic">
-              "Hidden" items are only visible in your private dashboard and cannot be requested by other members.
+              &quot;Hidden&quot; items are only visible in your private dashboard and cannot be requested by other members.
             </p>
           </section>
 
