@@ -598,7 +598,7 @@ export default function MessageCenterClient({
             <input className="w-full bg-surface border border-outline-variant/20 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-1 focus:ring-primary transition-all shadow-[0_2px_8px_rgba(0,10,30,0.02)]" placeholder="Search conversations..." type="text"/>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto w-full no-scrollbar">
+        <div className="flex-1 overflow-y-auto w-full no-scrollbar pb-24 md:pb-0">
           {conversations.length === 0 ? (
             <p className="text-center text-sm text-outline mt-10">No messages yet.</p>
           ) : (
@@ -660,7 +660,7 @@ export default function MessageCenterClient({
 
       {/* Main Chat Area */}
       {activeConversationId ? (
-        <section className={`absolute inset-0 z-20 md:relative md:inset-auto md:z-0 flex-1 h-full flex flex-col bg-surface overflow-hidden ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
+        <section className={`absolute inset-0 z-[60] md:relative md:inset-auto md:z-0 flex-1 h-full flex flex-col bg-surface overflow-hidden ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
           {/* Header */}
           <header className="flex-none bg-surface-container-lowest/85 backdrop-blur-md px-4 py-4 md:py-6 border-b border-outline-variant/10 shadow-sm flex justify-between items-center z-30">
             <div className="flex items-center gap-3">

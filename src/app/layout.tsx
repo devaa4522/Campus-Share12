@@ -72,7 +72,7 @@
             {children}
           </MainWrapper>
           
-          <MessageFAB />
+          {/* <MessageFAB /> */}
           <BottomNav />
         </body>
       </html>

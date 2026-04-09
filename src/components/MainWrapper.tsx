@@ -13,7 +13,7 @@ export default function MainWrapper({ children }: { children: React.ReactNode })
     // BottomNav is ~84px on mobile, hidden on desktop.
     return (
       <main
-        className="w-full overflow-hidden fixed left-0 right-0 bottom-16 md:bottom-0 top-16 md:top-20"
+        className="w-full overflow-hidden fixed left-0 right-0 bottom-0 md:bottom-0 top-16 md:top-20"
       >
         <div className="h-full w-full max-w-7xl mx-auto">
           {children}
