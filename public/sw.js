@@ -76,8 +76,8 @@ self.addEventListener('push', function(event) {
     const data = event.data.json();
     const options = {
       body: data.body,
-      icon: '/icons8-university-100.png',
-      badge: '/icons8-university-100.png',
+      icon: '/android-chrome-192x192.png', 
+      badge: '/favicon-32x32.png',
       data: data.url || '/'
     };
     event.waitUntil(
