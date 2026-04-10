@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { parseCollegeDomain, detectCollegeType } from "@/lib/college-utils";
 
@@ -14,7 +13,25 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+
+  async function handleLoginSuccess(destination: string, setOnboardingCookie: boolean = false) {
+    // 1. Sync onboarding short-circuit cookie if user has passed onboarding
+    if (setOnboardingCookie) {
+      document.cookie = "onboarding_passed=true; path=/; max-age=31536000; SameSite=Lax";
+    }
+
+    // 2. Signal the Service Worker to clear caches
+    // This prevents the SW from serving a cached "Guest" version of the destination
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+    }
+
+    // 3. Implement a micro-delay handshake (100ms)
+    // Ensures the cookie write and SW message are prioritized before the redirect
+    setTimeout(() => {
+      window.location.href = destination;
+    }, 100);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,8 +54,6 @@ export default function LoginPage() {
         return;
       }
 
-      // The DB trigger auto-creates the profile row.
-      // Now update it with college_domain detected from their email.
       if (signUpData.user) {
         const domain = parseCollegeDomain(email);
         const collegeType = detectCollegeType(domain);
@@ -49,9 +64,8 @@ export default function LoginPage() {
         }).eq("id", signUpData.user.id);
       }
 
-      // Go straight to onboarding
-      router.push("/onboarding");
-      router.refresh();
+      // Hard redirect to onboarding (don't set onboarding cookie yet)
+      await handleLoginSuccess('/onboarding', false);
       return;
     } else {
       const { error } = await supabase.auth.signInWithPassword({
@@ -73,15 +87,15 @@ export default function LoginPage() {
         .select("college_domain, department")
         .eq("id", currentUser.id)
         .single();
+      
       if (!profile?.department) {
-        router.push("/onboarding");
-        router.refresh();
+        await handleLoginSuccess('/onboarding', false);
         return;
       }
     }
 
-    router.push("/");
-    router.refresh();
+    // Successful login for authenticated user - set onboarding cookie
+    await handleLoginSuccess('/', true);
   }
 
   return (

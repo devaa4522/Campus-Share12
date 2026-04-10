@@ -25,14 +25,11 @@ export default function KarmaBadgeClient({ initialKarma, userId }: { initialKarm
         },
         (payload) => {
           if (payload.new && payload.new.karma_score !== undefined) {
-             console.log("Postgres update received for karma:", payload.new.karma_score);
              setKarma(payload.new.karma_score);
           }
         }
       )
-      .subscribe((status) => {
-        console.log(`Subscribed to profile changes: ${status}`);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);

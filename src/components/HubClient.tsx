@@ -258,7 +258,7 @@ export default function HubClient({ userId }: { userId: string }) {
                       <div className={`flex items-center justify-between border-outline-variant/10 ${isListView ? 'pt-3 mt-3 border-t' : 'pt-4 mt-auto border-t'}`}>
                         <div className="flex items-center gap-2">
                           {item.profiles?.avatar_url ? (
-                            <Image src={item.profiles.avatar_url} alt="Portrait" width={32} height={32} className="rounded-full object-cover ring-2 ring-surface-container-low" />
+                            <Image src={item.profiles.avatar_url} alt="Portrait" width={32} height={32} className="w-8 h-auto rounded-full object-cover ring-2 ring-surface-container-low" />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-surface-container-low">
                               <span className="material-symbols-outlined text-[16px]">person</span>

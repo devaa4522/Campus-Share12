@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
   parseCollegeDomain,
@@ -20,7 +19,6 @@ const DEPARTMENTS = [
 ];
 
 export default function OnboardingPage() {
-  const router = useRouter();
   const [department, setDepartment] = useState<Department | null>(null);
   const [degree, setDegree] = useState("");
   const [branch, setBranch] = useState("");
@@ -68,8 +66,17 @@ export default function OnboardingPage() {
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    // Onboarding complete - set short-circuit cookie and purge SW cache
+    document.cookie = "onboarding_passed=true; path=/; max-age=31536000; SameSite=Lax";
+    
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+    }
+
+    // Hard reload to reset Fiber tree and ensure the proxy sees the new cookie
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 100);
   }
 
   return (

@@ -13,6 +13,7 @@
     weight: ["400", "700"],
     variable: "--font-headline",
     display: "swap",
+    preload: false,
   });
 
   const publicSans = Public_Sans({
@@ -20,6 +21,7 @@
     weight: ["300", "400", "500", "600", "700"],
     variable: "--font-body",
     display: "swap",
+    preload: false,
   });
 
   export const metadata: Metadata = {

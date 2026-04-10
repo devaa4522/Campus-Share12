@@ -30,6 +30,8 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Time-based re-render for countdowns
   const [tick, setTick] = useState(0);
@@ -110,6 +112,26 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
     setProfilePublic(newValue);
     const supabase = createClient();
     await supabase.from("profiles").update({ profile_public: newValue }).eq("id", profile.id);
+  }
+
+  async function handleSignOut() {
+    setIsSigningOut(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    
+    // Clear the performance short-circuit cookie
+    document.cookie = "onboarding_passed=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    
+    // Signal the Service Worker to purge all CacheStorage
+    // This prevents stale Turbopack chunks from poisoning the next session
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+    }
+    
+    // Clear local storage and enforce a hard reload to the landing page
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = '/';
   }
 
   return (
@@ -372,15 +394,15 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
           </div>
         </div>
 
-        {/* Sign Out */}
+        {/* Sign Out Trigger */}
         <div className="md:col-span-12 flex justify-center pt-4">
-          <a
-            href="/auth/signout"
-            className="text-sm font-medium text-on-surface-variant hover:text-error transition-colors flex items-center gap-2"
+          <button
+            onClick={() => setIsSignOutModalOpen(true)}
+            className="text-sm font-medium text-on-surface-variant hover:text-[#ba1a1a] transition-colors flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-[#ba1a1a]/10"
           >
             <span className="material-symbols-outlined">logout</span>
             Sign out
-          </a>
+          </button>
         </div>
       </div>
 
@@ -510,6 +532,52 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
               </div>
             </div>
             
+          </div>
+        </div>
+      )}
+
+      {/* Sign Out Confirmation Modal */}
+      {isSignOutModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" style={{ margin: 0 }}>
+          {/* Backdrop */}
+          <div onClick={() => !isSigningOut && setIsSignOutModalOpen(false)} className="absolute inset-0 bg-[#000a1e]/60 backdrop-blur-sm animate-in fade-in duration-200"></div>
+          
+          {/* Modal Content */}
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col p-8 text-center animate-in fade-in zoom-in-95 duration-200 border border-outline-variant/20">
+            <div className="w-16 h-16 bg-[#ba1a1a]/10 text-[#ba1a1a] rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-[32px]">logout</span>
+            </div>
+            
+            <h2 className="text-xl font-headline font-bold text-[#000a1e] mb-2">Sign Out</h2>
+            <p className="text-sm text-on-surface-variant leading-relaxed mb-8">
+              Are you sure you want to sign out? You will need to log back in to access the Campus Share hub.
+            </p>
+            
+            <div className="flex items-center gap-3 w-full">
+              <button 
+                type="button" 
+                onClick={() => setIsSignOutModalOpen(false)} 
+                disabled={isSigningOut}
+                className="px-5 py-2.5 flex-1 rounded-xl font-bold bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={handleSignOut} 
+                disabled={isSigningOut}
+                className="px-5 py-2.5 flex-1 rounded-xl bg-[#ba1a1a] hover:bg-[#ba1a1a]/90 shadow-md text-white font-bold transition-all active:scale-95 text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isSigningOut ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                    Wait...
+                  </>
+                ) : (
+                  "Sign Out"
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

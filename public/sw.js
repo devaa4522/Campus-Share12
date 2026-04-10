@@ -94,3 +94,20 @@ self.addEventListener('notificationclick', function(event) {
     );
   }
 });
+
+// Auth Transition Cache Invalidation
+// When the client signals a logout, purge all app caches to prevent
+// stale Turbopack chunks from poisoning the next session's RSC stream.
+self.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    event.waitUntil(
+      caches.keys().then(function(cacheNames) {
+        return Promise.all(
+          cacheNames.map(function(name) {
+            return caches.delete(name);
+          })
+        );
+      })
+    );
+  }
+});

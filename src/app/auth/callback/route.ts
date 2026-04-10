@@ -10,5 +10,8 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  return NextResponse.redirect(new URL("/", url.origin));
+  const response = NextResponse.redirect(new URL("/", url.origin));
+  response.headers.set('Cache-Control', 'no-store, max-age=0');
+  response.headers.set('x-middleware-cache', 'no-cache');
+  return response;
 }
