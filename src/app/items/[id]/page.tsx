@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import type { ItemWithProfile } from "@/lib/types";
+import Image from "next/image";
 import ImageWithFallback from "@/components/ImageWithFallback";
 import RequestButton from "@/components/RequestButton";
 import ReportAction from "@/components/ReportAction";
@@ -95,9 +96,11 @@ export default async function ItemDetailPage({
                 <div className="flex gap-4">
                   <div className="relative">
                     {profile.avatar_url ? (
-                      <img
+                      <Image
                         src={profile.avatar_url}
                         alt={profile.full_name ?? ""}
+                        width={56}
+                        height={56}
                         className="w-14 h-14 rounded-full object-cover border-2 border-surface-container-highest"
                       />
                     ) : (

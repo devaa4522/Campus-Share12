@@ -41,7 +41,7 @@ export default function OnboardingPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user?.email) {
-      router.push("/login");
+      window.location.href = "/login";
       return;
     }
 

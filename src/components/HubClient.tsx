@@ -208,7 +208,7 @@ export default function HubClient({ userId }: { userId: string }) {
             </div>
           ) : visibleItems.length > 0 ? (
             <div className={isListView ? "flex flex-col gap-4" : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"}>
-              {visibleItems.map((item) => {
+              {visibleItems.map((item, index) => {
                 // Determine Department Badge
                 let matchedDept = "General";
                 const checkBlock = [item.category, item.title].join(' ').toLowerCase();
@@ -223,9 +223,17 @@ export default function HubClient({ userId }: { userId: string }) {
 
                 return (
                   <div key={item.id} onClick={() => router.push(`/items/${item.id}`)} className={`group bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/20 hover:border-[#006e0c]/50 transition-all duration-300 shadow-sm hover:shadow-xl cursor-pointer flex ${isListView ? 'flex-row items-stretch gap-6' : 'flex-col'}`}>
-                    <div className={`relative rounded-lg bg-surface-container-low overflow-hidden ${isListView ? 'w-32 md:w-48 h-auto shrink-0' : 'aspect-[4/3] w-full mb-4'}`}>
+                    <div className={`relative rounded-lg bg-surface-container-low overflow-hidden ${isListView ? 'w-32 md:w-48 h-32 md:h-48 shrink-0' : 'aspect-[4/3] w-full mb-4'}`}>
                       {item.images && item.images[0] ? (
-                        <Image src={item.images[0]} alt={item.title} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw" />
+                        <Image 
+                          src={item.images[0]} 
+                          alt={item.title} 
+                          fill 
+                          className="object-cover group-hover:scale-105 transition-transform duration-700" 
+                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                          priority={index < 4}
+                          loading={index < 4 ? "eager" : "lazy"}
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-surface-container min-h-[120px]">
                           <span className="material-symbols-outlined text-4xl text-outline-variant">image</span>
@@ -258,7 +266,13 @@ export default function HubClient({ userId }: { userId: string }) {
                       <div className={`flex items-center justify-between border-outline-variant/10 ${isListView ? 'pt-3 mt-3 border-t' : 'pt-4 mt-auto border-t'}`}>
                         <div className="flex items-center gap-2">
                           {item.profiles?.avatar_url ? (
-                            <Image src={item.profiles.avatar_url} alt="Portrait" width={32} height={32} className="w-8 h-auto rounded-full object-cover ring-2 ring-surface-container-low" />
+                            <Image 
+                              src={item.profiles.avatar_url} 
+                              alt="Portrait" 
+                              width={32} 
+                              height={32} 
+                              className="w-8 h-8 rounded-full object-cover ring-2 ring-surface-container-low" 
+                            />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-surface-container-low">
                               <span className="material-symbols-outlined text-[16px]">person</span>
