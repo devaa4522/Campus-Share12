@@ -1,0 +1,135 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const VAPID_PUBLIC_KEY  = Deno.env.get('VAPID_PUBLIC_KEY')!;
+const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')!;
+const VAPID_SUBJECT     = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@campusshare.app';
+
+interface PushPayload {
+  user_id:  string;
+  type:     string;
+  title:    string;
+  body:     string;
+  data?:    Record<string, unknown>;
+}
+
+async function generateVAPIDHeaders(endpoint: string): Promise<Record<string, string>> {
+  const audience = new URL(endpoint).origin;
+  const expiration = Math.floor(Date.now() / 1000) + 12 * 3600; // 12 hours
+
+  const header = btoa(JSON.stringify({ typ: 'JWT', alg: 'ES256' }))
+    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+
+  const payload = btoa(JSON.stringify({
+    aud: audience,
+    exp: expiration,
+    sub: VAPID_SUBJECT,
+  })).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+
+  const signingInput = `${header}.${payload}`;
+
+  // Import VAPID private key
+  const privateKeyBytes = Uint8Array.from(
+    atob(VAPID_PRIVATE_KEY.replace(/-/g, '+').replace(/_/g, '/')),
+    (c) => c.charCodeAt(0)
+  );
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    privateKeyBytes,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    cryptoKey,
+    new TextEncoder().encode(signingInput)
+  );
+
+  const sig = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+
+  const token = `${signingInput}.${sig}`;
+
+  return {
+    Authorization: `vapid t=${token},k=${VAPID_PUBLIC_KEY}`,
+    'Content-Type': 'application/octet-stream',
+    TTL: '86400',
+  };
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, content-type',
+      },
+    });
+  }
+
+  try {
+    const pushPayload: PushPayload = await req.json();
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    const { data: subscriptions, error } = await supabase
+      .from('push_subscriptions')
+      .select('endpoint, p256dh, auth')
+      .eq('user_id', pushPayload.user_id);
+
+    if (error || !subscriptions?.length) {
+      return new Response(
+        JSON.stringify({ sent: 0, reason: error?.message || 'no subscriptions' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const messageBody = JSON.stringify({
+      title: pushPayload.title,
+      body:  pushPayload.body,
+      type:  pushPayload.type,
+      data:  pushPayload.data || {},
+    });
+
+    const results = await Promise.allSettled(
+      subscriptions.map(async (sub) => {
+        const headers = await generateVAPIDHeaders(sub.endpoint);
+
+        const response = await fetch(sub.endpoint, {
+          method: 'POST',
+          headers,
+          body: new TextEncoder().encode(messageBody),
+        });
+
+        if (response.status === 410 || response.status === 404) {
+          await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('endpoint', sub.endpoint);
+        }
+
+        return response.status;
+      })
+    );
+
+    const sent = results.filter(
+      (r) => r.status === 'fulfilled' && (r.value === 201 || r.value === 200)
+    ).length;
+
+    return new Response(
+      JSON.stringify({ sent, total: subscriptions.length }),
+      { headers: { 'Content-Type': 'application/json' }, status: 200 }
+    );
+  } catch (err) {
+    console.error('[push-notification]', err);
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+});

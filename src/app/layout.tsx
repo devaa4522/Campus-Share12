@@ -51,6 +51,7 @@
   };
 
   import { Toaster } from 'react-hot-toast';
+  import { NotificationToastContainer } from '@/components/NotificationToast';
 
   export default function RootLayout({
     children,
@@ -75,6 +76,7 @@
           <ServiceWorkerRegister />
           <OfflineBanner />
           <Toaster position="top-center" />
+          <NotificationToastContainer />
           
           <TopNav />
           

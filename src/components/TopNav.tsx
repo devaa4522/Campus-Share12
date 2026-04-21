@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
 import TopNavLinks from "./TopNavLinks";
-import NotificationBell from "./NotificationBell";
+import { NotificationBell } from "./NotificationBell";
 import KarmaBadgeClient from "./KarmaBadgeClient";
 
 export default async function TopNav() {
@@ -12,18 +12,13 @@ export default async function TopNav() {
   } = await supabase.auth.getUser();
 
   let profile: { full_name: string | null; karma_score: number | null; avatar_url: string | null } | null = null;
-  let unreadCount = 0;
   if (user) {
-    const [profileRes, unreadRes] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("full_name, karma_score, avatar_url")
-        .eq("id", user.id)
-        .single(),
-      supabase.rpc("get_unread_notification_count")
-    ]);
-    profile = profileRes.data;
-    unreadCount = unreadRes.data || 0;
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, karma_score, avatar_url")
+      .eq("id", user.id)
+      .single();
+    profile = data;
   }
 
   return (
@@ -51,7 +46,7 @@ export default async function TopNav() {
                 <Link href="/messages" className="hover:bg-white/10 p-2 rounded-full transition-all duration-200 scale-95 active:scale-90 relative flex items-center justify-center">
                   <span className="material-symbols-outlined">mail</span>
                 </Link>
-                <NotificationBell initialCount={unreadCount} userId={user.id} />
+                <NotificationBell />
               </div>
               <div className="flex items-center gap-3">
                 {/* Karma Badge */}
