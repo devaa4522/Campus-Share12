@@ -197,8 +197,8 @@ BEGIN
   PERFORM public.create_notification(
     v_recipient,
     'new_message',
-    '💬 ' || (COALESCE(v_sender.full_name, 'A user')),
-    LEFT(NEW.content, 80) || CASE WHEN length(NEW.content) > 80 THEN '…' ELSE '' END,
+    v_sender.full_name, -- Sender name as title
+    CASE WHEN length(NEW.content) > 60 THEN LEFT(NEW.content, 60) || '...' ELSE NEW.content END, -- Actual message as body
     jsonb_build_object('conversation_id', NEW.conversation_id, 'sender_id', NEW.sender_id)
   );
   RETURN NEW;

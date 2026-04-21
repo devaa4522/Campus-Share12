@@ -5,20 +5,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/useNotifications';
 import type { AppNotification, NotificationType } from '@/hooks/useNotifications';
+import { Package, CheckCircle, XCircle, Handshake, CornerDownLeft, Trophy, MessageSquare, Zap, Target, Star, AlertTriangle, Bell } from 'lucide-react';
 
-const ICONS: Record<NotificationType, string> = {
-  new_request:      '📦',
-  request_accepted: '✅',
-  request_rejected: '❌',
-  qr_handshake:     '🤝',
-  item_returned:    '↩️',
-  deal_completed:   '🏆',
-  new_message:      '💬',
-  task_claimed:     '⚡',
-  task_completed:   '🎯',
-  karma_received:   '⭐',
-  karma_penalty:    '⚠️',
-  system:           '🔔',
+const ICONS: Record<NotificationType, React.ReactNode> = {
+  new_request:      <Package className="w-5 h-5 text-primary" />,
+  request_accepted: <CheckCircle className="w-5 h-5 text-[var(--color-success)]" />,
+  request_rejected: <XCircle className="w-5 h-5 text-error" />,
+  qr_handshake:     <Handshake className="w-5 h-5 text-primary" />,
+  item_returned:    <CornerDownLeft className="w-5 h-5 text-secondary" />,
+  deal_completed:   <Trophy className="w-5 h-5 text-[#F59E0B]" />,
+  new_message:      <MessageSquare className="w-5 h-5 text-primary" />,
+  task_claimed:     <Zap className="w-5 h-5 text-secondary" />,
+  task_completed:   <Target className="w-5 h-5 text-[var(--color-success)]" />,
+  karma_received:   <Star className="w-5 h-5 text-[#F59E0B]" />,
+  karma_penalty:    <AlertTriangle className="w-5 h-5 text-error" />,
+  system:           <Bell className="w-5 h-5 text-on-surface-variant" />,
 };
 
 function timeAgo(dateStr: string): string {
@@ -31,14 +32,15 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function getDeepLink(type: NotificationType, data: Record<string, string | number | boolean>): string {
+function getDeepLink(type: NotificationType, data: Record<string, string | number | boolean> | undefined): string {
+  const safeData = data || {};
   const routes: Partial<Record<NotificationType, string>> = {
-    new_request:      `/dashboard?deal=${data.deal_id}`,
-    request_accepted: `/dashboard?deal=${data.deal_id}&scan=true`,
-    qr_handshake:     `/dashboard?deal=${data.deal_id}`,
+    new_request:      `/dashboard?deal=${safeData.deal_id}`,
+    request_accepted: `/dashboard?deal=${safeData.deal_id}&scan=true`,
+    qr_handshake:     `/dashboard?deal=${safeData.deal_id}`,
     deal_completed:   `/profile`,
-    new_message:      `/messages?conv=${data.conversation_id}`,
-    task_claimed:     `/tasks?task=${data.task_id}`,
+    new_message:      `/messages?conv=${safeData.conversation_id}`,
+    task_claimed:     `/tasks?task=${safeData.task_id}`,
     karma_received:   `/profile`,
     system:           `/`,
   };
@@ -64,13 +66,13 @@ function NotificationRow({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 40, transition: { duration: 0.2 } }}
       className={`
-        group relative flex items-start gap-3 px-4 py-3.5 cursor-pointer
-        transition-colors hover:bg-surface-container-high
-        ${!notif.is_read ? 'bg-primary/5' : ''}
+        group relative flex items-start gap-4 px-6 py-4 cursor-pointer
+        transition-all duration-300 hover:bg-white/10
+        ${!notif.is_read ? 'bg-secondary/5' : ''}
       `}
       onClick={handleClick}
     >
@@ -78,29 +80,29 @@ function NotificationRow({
         <span className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-secondary" />
       )}
 
-      <span className="flex-shrink-0 text-xl leading-none mt-0.5 select-none">
-        {ICONS[notif.type] || '🔔'}
+      <span className="flex-shrink-0 mt-0.5 select-none">
+        {ICONS[notif.type] || <Bell className="w-5 h-5 text-on-surface-variant" />}
       </span>
 
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm leading-tight ${notif.is_read ? 'text-on-surface-variant' : 'text-on-surface font-medium'}`}>
+      <div className="flex-1 min-w-0 space-y-1">
+        <p className={`text-sm leading-snug ${notif.is_read ? 'text-on-surface-variant' : 'text-on-surface font-bold'}`}>
           {notif.title}
         </p>
-        <p className="text-xs text-on-surface-variant/80 mt-0.5 line-clamp-2 leading-relaxed">
+        <p className="text-xs text-on-surface-variant/70 line-clamp-2 leading-relaxed">
           {notif.body}
         </p>
-        <p className="text-[10px] text-on-surface-variant/60 mt-1">{timeAgo(notif.created_at)}</p>
+        <p className="text-[10px] text-on-surface-variant/50 font-medium uppercase tracking-wider">{timeAgo(notif.created_at)}</p>
       </div>
 
       <button
-        className="opacity-0 group-hover:opacity-100 flex-shrink-0 text-on-surface-variant hover:text-error transition-all p-1 -mr-1 -mt-1 rounded-md hover:bg-surface-container-highest"
+        className="opacity-0 group-hover:opacity-100 flex-shrink-0 bg-white/10 hover:bg-error/20 hover:text-error transition-all p-1.5 rounded-lg flex items-center justify-center transform active:scale-90"
         onClick={(e) => {
           e.stopPropagation();
           onDelete(notif.id);
         }}
         aria-label="Delete notification"
       >
-        <span className="material-symbols-outlined text-[16px]">close</span>
+        <span className="material-symbols-outlined text-[18px]">close</span>
       </button>
     </motion.div>
   );
@@ -111,9 +113,9 @@ function BellIcon({ hasUnread }: { hasUnread: boolean }) {
     <motion.div
       animate={hasUnread ? { rotate: [0, -12, 12, -8, 8, 0] } : {}}
       transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 4 }}
-      className="flex items-center justify-center p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface font-medium cursor-pointer"
+      className="flex items-center justify-center hover:bg-white/10 p-2 rounded-full transition-all duration-200 scale-95 active:scale-90 text-white cursor-pointer"
     >
-      <span className="material-symbols-outlined font-variation-settings-fill-1">notifications</span>
+      <span className="material-symbols-outlined">notifications</span>
     </motion.div>
   );
 }
@@ -175,6 +177,13 @@ export function NotificationBell() {
   const [showPushBanner, setShowPushBanner] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
+  const toggleOpen = () => {
+    if (!open && typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(10);
+    }
+    setOpen(!open);
+  };
+
   useEffect(() => {
     if (pushSupported && !pushEnabled) {
       const dismissed = localStorage.getItem('cs:push-banner-dismissed');
@@ -196,7 +205,7 @@ export function NotificationBell() {
     const success = await enablePushNotifications();
     if (success) {
       setShowPushBanner(false);
-      localStorage.removeItem('cs:push-banner-dismissed');
+      localStorage.setItem('cs:push-banner-dismissed', '1');
     }
   };
 
@@ -208,8 +217,8 @@ export function NotificationBell() {
   return (
     <div className="relative" ref={panelRef}>
       <button
-        className="relative"
-        onClick={() => setOpen((prev) => !prev)}
+        className="relative group flex items-center justify-center"
+        onClick={toggleOpen}
         aria-label={`Notifications (${unreadCount} unread)`}
       >
         <BellIcon hasUnread={unreadCount > 0} />
@@ -231,17 +240,17 @@ export function NotificationBell() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.97 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="absolute right-0 top-full mt-2 w-[340px] md:w-[380px] max-h-[80vh] md:max-h-[520px] bg-surface-container-lowest glass-effect border border-outline-variant/30 rounded-2xl shadow-xl overflow-hidden flex flex-col z-50 editorial-shadow"
+            initial={{ opacity: 0, y: 12, scale: 0.98, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: 12, scale: 0.98, filter: 'blur(10px)' }}
+            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+            className="fixed inset-x-4 top-20 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-4 w-auto sm:w-[420px] rounded-3xl bg-surface/80 backdrop-blur-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col z-[100] editorial-shadow ring-1 ring-black/5"
           >
-            <div className="flex items-center justify-between px-4 py-3.5 border-b border-outline-variant/30 flex-shrink-0 bg-surface-container-lowest">
-              <div className="flex items-center gap-2">
-                <h3 className="text-on-surface font-headline font-semibold text-sm">Notifications</h3>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0 bg-white/5">
+              <div className="flex items-center gap-3">
+                <h3 className="text-on-surface font-headline font-bold text-lg tracking-tight">Notifications</h3>
                 {unreadCount > 0 && (
-                  <span className="text-[10px] bg-primary text-on-primary px-2 py-0.5 rounded-full font-medium">
+                  <span className="text-[10px] bg-secondary text-on-secondary px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider shadow-sm shadow-secondary/20">
                     {unreadCount} new
                   </span>
                 )}
@@ -310,16 +319,16 @@ export function NotificationBell() {
             </div>
 
             {pushSupported && (
-              <div className="flex-shrink-0 border-t border-outline-variant/30 px-4 py-2.5 flex items-center justify-between bg-surface-container-lowest">
-                <span className="text-[11px] text-on-surface-variant">
-                  {pushEnabled ? '🟢 Push notifications on' : '⚪ Push notifications off'}
+              <div className="flex-shrink-0 border-t border-white/10 px-6 py-3.5 flex items-center justify-between bg-white/5">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant/70">
+                  {pushEnabled ? '🟢 Service Active' : '⚪ Service Offline'}
                 </span>
                 {!pushEnabled && (
                   <button
                     onClick={handleEnablePush}
-                    className="text-[11px] text-primary hover:text-primary-container transition-colors font-semibold"
+                    className="text-[11px] text-secondary hover:text-secondary-fixed-dim transition-colors font-black uppercase tracking-tighter"
                   >
-                    Enable
+                    Enable Push
                   </button>
                 )}
               </div>

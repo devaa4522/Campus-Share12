@@ -170,4 +170,7 @@
     background-color: var(--color-surface);
     color: var(--color-on-surface);
   }
-
+  /* Fluid typography scaling for extreme small screens (globally affects all rem units) */
+  html {
+    font-size: min(16px, max(13px, 3.5vw));
+  }

@@ -27,8 +27,8 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET and Supabase API calls
-  if (request.method !== 'GET' || url.hostname.includes('supabase')) return;
+  // Skip non-GET, non-HTTP schemas, and Supabase API calls
+  if (request.method !== 'GET' || !request.url.startsWith('http') || url.hostname.includes('supabase')) return;
 
   event.respondWith(
     fetch(request)
@@ -128,14 +128,15 @@ self.addEventListener('notificationclose', (event) => {
 
 // ── Helpers ──────────────────────────────────────────────────
 function getDeepLink(type, data) {
+  const safeData = data || {};
   const routes = {
-    new_request:      `/dashboard?deal=${data.deal_id}`,
-    request_accepted: `/dashboard?deal=${data.deal_id}&scan=true`,
+    new_request:      `/dashboard?deal=${safeData.deal_id}`,
+    request_accepted: `/dashboard?deal=${safeData.deal_id}&scan=true`,
     request_rejected: `/hub`,
-    qr_handshake:     `/dashboard?deal=${data.deal_id}`,
+    qr_handshake:     `/dashboard?deal=${safeData.deal_id}`,
     deal_completed:   `/profile`,
-    new_message:      `/messages?conv=${data.conversation_id}`,
-    task_claimed:     `/tasks?task=${data.task_id}`,
+    new_message:      `/messages?conv=${safeData.conversation_id}`,
+    task_claimed:     `/tasks?task=${safeData.task_id}`,
     task_completed:   `/profile`,
     karma_received:   `/profile`,
     karma_penalty:    `/profile`,

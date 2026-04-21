@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -53,7 +53,8 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 // ── Hook ─────────────────────────────────────────────────────
 
 export function useNotifications(): UseNotificationsReturn {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const [isMounted, setIsMounted] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -61,9 +62,14 @@ export function useNotifications(): UseNotificationsReturn {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const userIdRef = useRef<string | null>(null);
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const unreadCount = isMounted ? notifications.filter((n) => !n.is_read).length : 0;
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
     let mounted = true;
 
     async function init() {
@@ -72,14 +78,16 @@ export function useNotifications(): UseNotificationsReturn {
 
       userIdRef.current = user.id;
 
-      const supported = 'serviceWorker' in navigator && 'PushManager' in window;
-      setPushSupported(supported);
+      if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+        const supported = 'serviceWorker' in navigator && 'PushManager' in window;
+        setPushSupported(supported);
 
-      if (supported) {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) {
-          const sub = await reg.pushManager.getSubscription();
-          setPushEnabled(!!sub);
+        if (supported) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            const sub = await reg.pushManager.getSubscription();
+            setPushEnabled(!!sub);
+          }
         }
       }
 
@@ -109,11 +117,13 @@ export function useNotifications(): UseNotificationsReturn {
             const newNotif = payload.new as AppNotification;
             setNotifications((prev) => [newNotif, ...prev]);
 
-            window.dispatchEvent(
-              new CustomEvent('campusshare:notification', { detail: newNotif })
-            );
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('campusshare:notification', { detail: newNotif })
+              );
+            }
 
-            if (navigator.vibrate) {
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
               navigator.vibrate(getVibrationPattern(newNotif.type));
             }
           }
@@ -142,10 +152,11 @@ export function useNotifications(): UseNotificationsReturn {
       mounted = false;
       channelRef.current?.unsubscribe();
     };
-  }, []);
+  }, [isMounted, supabase]);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
+    if (!isMounted) return;
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/sw.js')
         .then((reg) => console.log('[SW] Registered:', reg.scope))
@@ -157,9 +168,10 @@ export function useNotifications(): UseNotificationsReturn {
         }
       });
     }
-  }, []);
+  }, [isMounted]);
 
   const enablePushNotifications = useCallback(async (): Promise<boolean> => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
     if (!pushSupported || !VAPID_PUBLIC_KEY) {
       console.warn('[Push] Not supported or VAPID key missing');
       return false;
@@ -206,6 +218,7 @@ export function useNotifications(): UseNotificationsReturn {
   }, [pushSupported, supabase]);
 
   const disablePushNotifications = useCallback(async () => {
+    if (typeof navigator === 'undefined') return;
     const reg = await navigator.serviceWorker.getRegistration();
     const sub = await reg?.pushManager.getSubscription();
 
@@ -259,9 +272,9 @@ export function useNotifications(): UseNotificationsReturn {
   }, [supabase]);
 
   return {
-    notifications,
+    notifications: isMounted ? notifications : [],
     unreadCount,
-    isLoading,
+    isLoading: isMounted ? isLoading : true,
     pushEnabled,
     pushSupported,
     enablePushNotifications,
