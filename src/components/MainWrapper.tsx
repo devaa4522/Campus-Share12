@@ -1,10 +1,21 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import React from "react";
+import React, { useEffect } from "react";
+import { useAppStore } from "@/lib/store";
 
 export default function MainWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const earnMode = useAppStore((state) => state.earnMode);
+
+  useEffect(() => {
+    if (earnMode) {
+      document.body.classList.add("theme-tactical");
+    } else {
+      document.body.classList.remove("theme-tactical");
+    }
+  }, [earnMode]);
+
   const isLockedRoute = pathname.startsWith("/messages") || pathname.startsWith("/dashboard");
 
   if (isLockedRoute) {

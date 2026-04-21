@@ -21,6 +21,7 @@ export interface Profile {
   profile_public?: boolean | null;
   flags_count?: number | null;
   banned_until?: string | null;
+  student_id_hash?: string | null;
 }
 
 export interface Item {
@@ -154,6 +155,7 @@ export const onboardingSchema = z.object({
   degree: z.string().min(1, "Please select a degree"),
   branch: z.string().min(1, "Please select a branch"),
   year_of_study: z.string().min(1, "Please select your year"),
+  studentId: z.string().min(3, "Student ID must be at least 3 characters").max(50, "Invalid Student ID"),
 });
 
 export type OnboardingFormData = z.infer<typeof onboardingSchema>;

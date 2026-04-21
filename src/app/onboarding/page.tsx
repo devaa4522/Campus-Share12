@@ -23,14 +23,22 @@ export default function OnboardingPage() {
   const [degree, setDegree] = useState("");
   const [branch, setBranch] = useState("");
   const [year, setYear] = useState("");
+  const [studentId, setStudentId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const degrees = department ? getDegreesForDepartment(department) : [];
   const branches = department ? getBranchesForDepartment(department) : [];
 
+  async function sha256(message: string) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
   async function handleSubmit() {
-    if (!department || !degree || !branch || !year) {
+    if (!department || !degree || !branch || !year || !studentId) {
       setError("Please complete all fields.");
       return;
     }
@@ -48,6 +56,9 @@ export default function OnboardingPage() {
     const collegeDomain = parseCollegeDomain(user.email);
     const collegeType = detectCollegeType(collegeDomain);
 
+    // Ghost-proofing: create a reproducible hash based on college and student ID
+    const studentIdHash = await sha256(`${collegeDomain}:${studentId.trim().toUpperCase()}`);
+
     const { error: updateError } = await supabase
       .from("profiles")
       .update({
@@ -57,6 +68,7 @@ export default function OnboardingPage() {
         degree,
         branch,
         year_of_study: year,
+        student_id_hash: studentIdHash,
       })
       .eq("id", user.id);
 
@@ -229,6 +241,25 @@ export default function OnboardingPage() {
             </div>
           </div>
 
+          {/* Step 5: Official Student ID */}
+          <div className="col-span-12 md:col-span-6 space-y-6">
+            <div className="flex items-center space-x-3">
+              <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${year ? "bg-primary text-white" : "bg-surface-container-highest text-on-surface"}`}>5</span>
+              <h2 className={`font-headline text-xl font-semibold ${year ? "text-primary" : "text-on-surface-variant"}`}>Official Student ID</h2>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="e.g. 21BCE1001"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                disabled={!year}
+                className="w-full bg-surface-container-lowest p-4 rounded-xl font-body text-on-surface border border-outline-variant/20 focus:border-primary focus:ring-0 disabled:opacity-50"
+              />
+              <p className="text-xs text-on-surface-variant mt-2">Used for ghost-proofing. We hash this locally before sending, so your actual ID is never stored.</p>
+            </div>
+          </div>
+
           {/* Submit */}
           <div className="col-span-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center space-x-2 text-on-surface-variant text-sm">
@@ -239,7 +270,7 @@ export default function OnboardingPage() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={submitting || !department || !degree || !branch || !year}
+              disabled={submitting || !department || !degree || !branch || !year || !studentId}
               className="w-full md:w-auto px-12 py-4 bg-primary text-white rounded-xl font-headline font-bold text-lg hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
             >
               <span>{submitting ? "Setting up..." : "Initialize Profile"}</span>

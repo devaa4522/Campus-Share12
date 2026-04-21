@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import QRCode from "react-qr-code";
 import { Html5Qrcode } from "html5-qrcode";
+import { useHaptics } from "@/hooks/useHaptics";
+
 
 type DealTab = "made" | "received" | "my_listings" | "task_requests" | "helping_with";
 
@@ -40,11 +42,13 @@ export default function DashboardClient({
   const [showQrModal, setShowQrModal] = useState<string | null>(null);
   const [showScannerModal, setShowScannerModal] = useState<string | null>(null);
   const router = useRouter();
+  const haptics = useHaptics();
 
   // Removed body scroll-lock — MainWrapper handles overflow via the sandwich layout
 
   async function handleQRConfirm(scannedPayload: string, expectedTaskId: string) {
     if (scannedPayload !== expectedTaskId) {
+      haptics.error();
       toast.error('Invalid QR Code for this specific arrangement!');
       return;
     }
@@ -57,22 +61,26 @@ export default function DashboardClient({
       if (isTask) {
         const { error } = await supabase.rpc('complete_task_handshake', { qr_payload: expectedTaskId });
         if (!error) {
+           haptics.success();
            toast.success("Task formally completed! Escrow released & Karma awarded.");
            setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? { ...t, status: "completed" } : t));
            setLocalHelpingWith(prev => prev.map(t => t.id === expectedTaskId ? { ...t, tasks: { ...t.tasks, status: "completed" } } : t));
         } else {
+           haptics.error();
            toast.error("Action could not be completed.");
         }
       } else if (itemReq) {
          if (itemReq.status === 'accepted') {
              await supabase.from("items").update({ status: 'rented' }).eq("id", itemReq.item_id);
              await supabase.from("item_requests").update({ status: 'rented' }).eq("id", itemReq.id);
+             haptics.success();
              toast.success("Item handed over!");
              setLocalReceived(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'rented' } : r));
              setLocalMade(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'rented' } : r));
          } else if (itemReq.status === 'returning') {
              await supabase.from("items").update({ status: 'available' }).eq("id", itemReq.item_id);
              await supabase.from("item_requests").update({ status: 'completed' }).eq("id", itemReq.id);
+             haptics.success();
              toast.success("Item returned safely!");
              setLocalReceived(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'completed' } : r));
              setLocalMade(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'completed' } : r));
