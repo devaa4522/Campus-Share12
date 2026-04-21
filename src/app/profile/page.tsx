@@ -28,7 +28,7 @@ export default async function ProfilePage() {
     .from("item_requests")
     .select("*, items(*)")
     .or(`requester_id.eq.${user.id},items.user_id.eq.${user.id}`)
-    .in("status", ["completed", "returned"])
+    .in("status", ["completed", "returning"])
     .order("created_at", { ascending: false })
     .limit(5);
 

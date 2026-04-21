@@ -32,20 +32,7 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function getDeepLink(type: NotificationType, data: Record<string, string | number | boolean> | undefined): string {
-  const safeData = data || {};
-  const routes: Partial<Record<NotificationType, string>> = {
-    new_request:      `/dashboard?deal=${safeData.deal_id}`,
-    request_accepted: `/dashboard?deal=${safeData.deal_id}&scan=true`,
-    qr_handshake:     `/dashboard?deal=${safeData.deal_id}`,
-    deal_completed:   `/profile`,
-    new_message:      `/messages?conv=${safeData.conversation_id}`,
-    task_claimed:     `/tasks?task=${safeData.task_id}`,
-    karma_received:   `/profile`,
-    system:           `/`,
-  };
-  return routes[type] || '/';
-}
+import { getDeepLink } from '@/lib/notification-utils';
 
 function NotificationRow({
   notif,
@@ -187,7 +174,10 @@ export function NotificationBell() {
   useEffect(() => {
     if (pushSupported && !pushEnabled) {
       const dismissed = localStorage.getItem('cs:push-banner-dismissed');
-      if (!dismissed) setShowPushBanner(true);
+      if (!dismissed) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setShowPushBanner(true);
+      }
     }
   }, [pushSupported, pushEnabled]);
 
@@ -208,7 +198,7 @@ export function NotificationBell() {
       // Push a dummy state to history so "back" can be intercepted
       window.history.pushState({ panel: 'notifications' }, '');
       
-      const handlePopState = (e: PopStateEvent) => {
+      const handlePopState = () => {
         // If we popped away from the notification state, close the panel
         setOpen(false);
       };
@@ -217,9 +207,8 @@ export function NotificationBell() {
       return () => {
         window.removeEventListener('popstate', handlePopState);
         // Clean up history state if closed via button click instead of back button
-        if (window.history.state?.panel === 'notifications') {
-          window.history.back();
-        }
+        // The popstate handler already closes the panel, so calling back() here
+        // would double-fire if we are closing because of a back button press.
       };
     }
   }, [open]);
@@ -324,7 +313,7 @@ export function NotificationBell() {
                   <span className="material-symbols-outlined text-4xl mb-4 text-on-surface-variant/40">notifications_off</span>
                   <p className="text-on-surface-variant text-sm font-medium">All caught up!</p>
                   <p className="text-on-surface-variant/60 text-xs mt-1">
-                    You'll see deals, messages & karma updates here
+                    You&apos;ll see deals, messages & karma updates here
                   </p>
                 </div>
               ) : (

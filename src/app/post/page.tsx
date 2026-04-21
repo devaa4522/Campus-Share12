@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
 import { postItemSchema, type PostItemFormData } from "@/lib/types";
@@ -401,11 +402,11 @@ export default function PostPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {imagePreviews.map((src, i) => (
                 <div key={i} className="relative aspect-square rounded-lg overflow-hidden group">
-                  <img src={src} alt={`Upload ${i + 1}`} className="w-full h-full object-cover" />
+                  <Image src={src} alt={`Upload ${i + 1}`} fill className="object-cover" />
                   <button
                     type="button"
                     onClick={() => removeImage(i)}
-                    className="absolute inset-0 bg-primary/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                    className="absolute inset-0 bg-primary/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10"
                   >
                     <span className="material-symbols-outlined text-white">delete</span>
                   </button>

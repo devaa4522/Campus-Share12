@@ -1,4 +1,4 @@
-'use client';
+// useNotifications.ts — no 'use client' needed on .ts hook files
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
@@ -156,18 +156,19 @@ export function useNotifications(): UseNotificationsReturn {
 
   useEffect(() => {
     if (!isMounted) return;
-    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((reg) => console.log('[SW] Registered:', reg.scope))
-        .catch((err) => console.error('[SW] Registration failed:', err));
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
 
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data?.type === 'NAVIGATE') {
-          window.location.href = event.data.url;
-        }
-      });
-    }
+    // Listen for NAVIGATE messages dispatched from the service worker.
+    // NOTE: We do NOT register the SW here — that is ServiceWorkerRegister's responsibility.
+    const handleSWMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'NAVIGATE') {
+        window.location.href = event.data.url;
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+    };
   }, [isMounted]);
 
   const enablePushNotifications = useCallback(async (): Promise<boolean> => {

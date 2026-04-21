@@ -1,4 +1,4 @@
-"use client";
+// useHaptics.ts — pure hook, no 'use client' directive needed on .ts files
 
 import { useCallback } from "react";
 
@@ -7,7 +7,7 @@ export function useHaptics() {
     if (typeof window !== "undefined" && "vibrate" in navigator) {
       try {
         navigator.vibrate(pattern);
-      } catch (e) {
+      } catch (_e) {
         // Ignore devices that don't support it or if blocked by browser policy
       }
     }

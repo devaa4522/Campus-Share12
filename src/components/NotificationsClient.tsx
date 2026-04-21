@@ -3,16 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-
-type Notification = {
-  id: string;
-  user_id: string;
-  title: string;
-  message: string;
-  type: string;
-  is_read: boolean;
-  created_at: string;
-};
+import type { Notification } from "@/lib/types";
 
 function timeAgo(dateString: string) {
   const date = new Date(dateString);
@@ -41,7 +32,7 @@ function timeAgo(dateString: string) {
   return "Just now";
 }
 
-export default function NotificationsClient({ initialNotifications }: { initialNotifications: Notification[] }) {
+export default function NotificationsClient({ initialNotifications, userId }: { initialNotifications: Notification[], userId: string }) {
   const [filter, setFilter] = useState("All Updates");
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
   
@@ -58,7 +49,7 @@ export default function NotificationsClient({ initialNotifications }: { initialN
     const { error } = await supabase
       .from('notifications')
       .delete()
-      .eq('user_id', notifications[0].user_id);
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Failed to clear notifications:', error);
@@ -170,7 +161,7 @@ export default function NotificationsClient({ initialNotifications }: { initialN
                       {notification.title}
                     </h3>
                     <p className="text-on-surface-variant text-sm leading-relaxed mb-4 whitespace-pre-wrap">
-                      {notification.message}
+                      {notification.body}
                     </p>
                     
                     {/* Action buttons based on type */}

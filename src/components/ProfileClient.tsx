@@ -1,28 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { Profile } from "@/lib/types";
-import { getBranchesForDepartment } from "@/lib/college-utils";
+import { getBranchesForDepartment, ACADEMIC_YEARS } from "@/lib/college-utils";
 import imageCompression from "browser-image-compression";
 import Image from "next/image";
+
+interface RecentExchange {
+  item_id: string;
+  created_at: string;
+  items: {
+    title: string;
+  } | null;
+}
 
 interface Props {
   profile: Profile;
   email: string;
   itemCount: number;
-  recentExchanges: any[];
+  recentExchanges: RecentExchange[];
   reliableCategories: { name: string; count: number }[];
 }
 
-const ACADEMIC_YEARS = [
-  "First Year (Freshman)",
-  "Second Year (Sophomore)",
-  "Third Year (Junior)",
-  "Fourth Year (Senior)",
-  "Graduate Student",
-];
 
 export default function ProfileClient({ profile: initialProfile, email, itemCount, recentExchanges, reliableCategories }: Props) {
   const router = useRouter();
@@ -52,12 +53,18 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
   const trustScore = Math.min(100, Math.round(((profile.karma_score ?? 0) / 2000) * 100));
 
   // Determine shadowban status safely (with tick dependency for live updates)
-  const isBanned = Boolean(profile?.banned_until && new Date(profile.banned_until).getTime() > new Date().getTime());
-  const distance = isBanned ? new Date(profile.banned_until!).getTime() - new Date().getTime() : 0;
-  const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-  const s = Math.floor((distance % (1000 * 60)) / 1000);
-  const timeLeftStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  const banStatus = useMemo(() => {
+    const isBanned = Boolean(profile?.banned_until && new Date(profile.banned_until).getTime() > new Date().getTime());
+    const distance = isBanned ? new Date(profile.banned_until!).getTime() - new Date().getTime() : 0;
+    const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const s = Math.floor((distance % (1000 * 60)) / 1000);
+    const timeLeftStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    return { isBanned, timeLeftStr };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.banned_until, tick]);
+
+  const { isBanned, timeLeftStr } = banStatus;
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -66,10 +73,10 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
     const compressed = await imageCompression(file, { maxSizeMB: 0.2, maxWidthOrHeight: 400 });
     const supabase = createClient();
     const filePath = `avatars/${profile.id}/${Date.now()}.webp`;
-    const { error } = await supabase.storage.from("item-images").upload(filePath, compressed);
+    const { error } = await supabase.storage.from("avatars").upload(filePath, compressed);
     if (error) return;
 
-    const { data: { publicUrl } } = supabase.storage.from("item-images").getPublicUrl(filePath);
+    const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
     await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", profile.id);
     setProfile((p) => ({ ...p, avatar_url: publicUrl }));
   }
@@ -487,7 +494,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
                       className="w-full pl-12 pr-10 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-[#006e0c] focus:ring-1 focus:ring-[#006e0c] focus:bg-white appearance-none outline-none text-[#000a1e] font-medium transition-all"
                     >
                       <option value="">Select year...</option>
-                      {ACADEMIC_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                      {ACADEMIC_YEARS.map((y) => <option key={y.value} value={y.value}>{y.label}</option>)}
                     </select>
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant pointer-events-none">expand_more</span>
                   </div>

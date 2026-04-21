@@ -1,4 +1,4 @@
-"use client";
+// store.ts — Zustand stores are plain modules; no 'use client' needed
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";

@@ -48,18 +48,18 @@ export default function HubClient({ userId }: { userId: string }) {
     setLoading(false);
   }, [query, minKarma, activeDepartment, userId]);
 
-  // Memoized shadowban filter to avoid re-computation on every render
   const visibleItems = useMemo(() => {
     if (!currentTime) return items;
-    const nowStamp = currentTime;
     return items.filter((item) => {
       if (item.profiles?.banned_until) {
         const banStamp = new Date(item.profiles.banned_until).getTime();
-        if (banStamp > nowStamp) return false;
+        if (banStamp > currentTime) return false;
       }
+      // Apply karma threshold client-side too, so slider feels instant
+      if ((item.profiles?.karma_score ?? 0) < minKarma) return false;
       return true;
     });
-  }, [items, currentTime]);
+  }, [items, currentTime, minKarma]);
 
   useEffect(() => {
     const timer = setTimeout(fetchItems, 400);
@@ -217,9 +217,9 @@ export default function HubClient({ userId }: { userId: string }) {
                 else if (checkBlock.includes('art') || checkBlock.includes('design') || checkBlock.includes('paint')) matchedDept = "Arts";
                 else if (checkBlock.includes('science') || checkBlock.includes('chemistry') || checkBlock.includes('physics')) matchedDept = "Science";
 
-                // We mock a highly functional trust score (would ideally come from RPC)
-                // 98% is the base line we set in the SQL schema
-                const trustScore = 98;
+                // Derive a real trust score from karma (0–2000 range → 0–100%)
+                const karmaScore = item.profiles?.karma_score ?? 0;
+                const trustScore = Math.min(100, Math.round((karmaScore / 2000) * 100));
 
                 return (
                   <div key={item.id} onClick={() => router.push(`/items/${item.id}`)} className={`group bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/20 hover:border-[#006e0c]/50 transition-all duration-300 shadow-sm hover:shadow-xl cursor-pointer flex ${isListView ? 'flex-row items-stretch gap-6' : 'flex-col'}`}>

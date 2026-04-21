@@ -9,8 +9,6 @@ export function Skeleton({ className = "", ...props }: SkeletonProps) {
     <div
       className={`animate-pulse bg-surface-container-high rounded-md ${className}`}
       {...props}
-    >
-      <div className="w-full h-full shimmer rounded-md" />
-    </div>
+    />
   );
 }

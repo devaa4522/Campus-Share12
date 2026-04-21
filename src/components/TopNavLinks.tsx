@@ -14,7 +14,7 @@ export default function TopNavLinks() {
   ];
 
   return (
-    <div className="hidden md:flex items-center space-x-8">
+    <div className="flex items-center space-x-8">
       {links.map(link => {
         const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
         return (

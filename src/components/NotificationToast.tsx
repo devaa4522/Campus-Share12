@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import type { AppNotification, NotificationType } from '@/hooks/useNotifications';
+import { getDeepLink } from '@/lib/notification-utils';
 
 // Map specific visual styles to notification types
 const ACCENT: Record<NotificationType, string> = {
@@ -35,19 +36,6 @@ const ICONS: Record<NotificationType, string> = {
   karma_penalty:    '⚠️',
   system:           '🔔',
 };
-
-function getDeepLink(type: NotificationType, data: Record<string, string | number | boolean>): string {
-  const routes: Partial<Record<NotificationType, string>> = {
-    new_request:      `/dashboard?deal=${data.deal_id}`,
-    request_accepted: `/dashboard?deal=${data.deal_id}&scan=true`,
-    qr_handshake:     `/dashboard?deal=${data.deal_id}`,
-    deal_completed:   `/profile`,
-    new_message:      `/messages?conv=${data.conversation_id}`,
-    task_claimed:     `/tasks?task=${data.task_id}`,
-    karma_received:   `/profile`,
-  };
-  return routes[type] || '';
-}
 
 export function NotificationToastContainer() {
   const [toasts, setToasts] = useState<AppNotification[]>([]);

@@ -29,8 +29,8 @@ export default async function ItemDetailPage({
   let trustScore = 98;
   if (profile) {
     tradeCount = Math.floor((profile.karma_score || 0) / 10);
-    const { data: trustData } = await supabase.rpc("get_trust_score", { user_id: profile.id });
-    if (trustData) trustScore = trustData;
+    // Derived from karma: Base 70% + up to 30% from karma (cap at 1000 karma)
+    trustScore = 70 + Math.min(30, Math.floor((profile.karma_score || 0) / 33.3));
   }
 
   const {

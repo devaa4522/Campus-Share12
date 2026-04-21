@@ -58,7 +58,8 @@ export interface Notification {
   id: string;
   user_id: string;
   title: string;
-  message: string;
+  body: string;
+  data: Record<string, unknown>;
   type: string;
   is_read: boolean;
   created_at: string;
@@ -72,7 +73,7 @@ export interface Task {
   category: string | null;
   reward_type: "karma" | "cash" | null;
   reward_amount: number | null;
-  status: "open" | "claimed" | "done" | null;
+  status: "open" | "claimed" | "completed" | "cancelled" | null;
   deadline: string | null;
   college_domain: string | null;
   created_at: string | null;
@@ -96,6 +97,29 @@ export interface Message {
   content: string;
   created_at: string;
   is_read: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  deal_id: string;
+  participant_1: string;
+  participant_2: string;
+  created_at: string;
+  p1: Profile;
+  p2: Profile;
+  messages: Message[];
+}
+
+export interface DealInfo {
+  type: 'item' | 'task';
+  id: string;
+  status: string;
+  title: string;
+  image_url: string;
+  reward_amount?: number;
+  owner_id: string;
+  requester_id: string;
+  item_id?: string;
 }
 
 /* ─── Category → Lucide Icon map for Low-Bandwidth mode ─── */

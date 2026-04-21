@@ -7,7 +7,9 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import PostTaskModal from "./PostTaskModal";
 
-export default function TasksClient({ initialTasks, userId }: { initialTasks: any[]; userId: string }) {
+import { TaskWithProfile } from "@/lib/types";
+
+export default function TasksClient({ initialTasks, userId }: { initialTasks: TaskWithProfile[]; userId: string }) {
   const router = useRouter();
   const [tasks, setTasks] = useState(initialTasks);
   const [activeCategory, setActiveCategory] = useState("All");
@@ -19,23 +21,27 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: an
   const categories = ["All", "Delivery", "Academic", "Labor/Help", "Tech Support", "General"];
 
   useEffect(() => {
+    // Name the channel per-user to avoid collisions on hot reload
     const channel = supabase
-      .channel('tasks-feed')
+      .channel(`tasks-feed-${userId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, (payload) => {
-        if (payload.new.status === 'open' && payload.new.user_id !== userId) {
-          setTasks(prev => [payload.new, ...prev]);
+        const newTask = payload.new as TaskWithProfile;
+        if (newTask.status === 'open' && newTask.user_id !== userId) {
+          setTasks(prev => [newTask, ...prev]);
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, (payload) => {
+        const updatedTask = payload.new as TaskWithProfile;
         setTasks(prev => {
-          if (payload.new.status !== 'open') {
-             return prev.filter(t => t.id !== payload.new.id);
+          if (updatedTask.status !== 'open') {
+            return prev.filter(t => t.id !== updatedTask.id);
           }
-          return prev.map(t => t.id === payload.new.id ? payload.new : t);
+          return prev.map(t => t.id === updatedTask.id ? updatedTask : t);
         });
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, (payload) => {
-        setTasks(prev => prev.filter(t => t.id !== payload.old.id));
+        const deletedId = (payload.old as { id: string }).id;
+        setTasks(prev => prev.filter(t => t.id !== deletedId));
       })
       .subscribe();
 
@@ -51,7 +57,7 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: an
     return pattern[index % pattern.length];
   };
 
-  const handleClaimTask = async (task: any) => {
+  const handleClaimTask = async (task: TaskWithProfile) => {
     try {
       setClaimingId(task.id);
       
@@ -79,13 +85,13 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: an
       toast.success("Task claimed! Opening message thread...");
       router.push(`/messages?id=${convId}`);
       
-    } catch (error: any) {
+    } catch (_error: unknown) {
       toast.error("Action could not be completed. We are working on a fix.");
       setClaimingId(null);
     }
   };
 
-  const handleTaskPosted = (newTask: any) => {
+  const handleTaskPosted = () => {
     // Optimistic insert to the feed so user sees it, though they can't claim it.
     // Actually, prompt says "exclude tasks created by current user", but it is their task.
     // Let's reload to just get fresh status, or not show it since it's theirs.

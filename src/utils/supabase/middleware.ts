@@ -40,6 +40,7 @@ export async function updateSession(request: NextRequest) {
                           url.pathname.startsWith("/notifications") ||
                           url.pathname.startsWith("/dashboard") ||
                           url.pathname.startsWith("/post") ||
+                          url.pathname.startsWith("/search") ||
                           url.pathname.startsWith("/profile");
 
   // 1. Unauthenticated users cannot access protected paths

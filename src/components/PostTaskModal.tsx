@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import toast from "react-hot-toast";
 
-export default function PostTaskModal({ onClose, onSuccess, userId }: { onClose: () => void, onSuccess: (task: any) => void, userId: string }) {
+export default function PostTaskModal({ onClose, onSuccess, userId }: { onClose: () => void, onSuccess: (task: unknown) => void, userId: string }) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("General");
   const [deadline, setDeadline] = useState("Today");
@@ -55,8 +55,8 @@ export default function PostTaskModal({ onClose, onSuccess, userId }: { onClose:
       onSuccess(data);
       onClose();
 
-    } catch (err: any) {
-      toast.error(err.message || "Failed to post task");
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "Failed to post task");
     } finally {
       setIsSubmitting(false);
     }

@@ -13,41 +13,23 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const [
+    { data: profile },
+    { data: myItems },
+    { data: madeRequests },
+    { data: receivedRequests },
+    { data: myTaskRequests },
+    { data: helpingWithTasks }
+  ] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    supabase.from("items").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+    supabase.from("item_requests").select("*, items(*, profiles(*))").eq("requester_id", user.id).order("created_at", { ascending: false }),
+    supabase.from("item_requests").select("*, items!inner(*), profiles(*)").order("created_at", { ascending: false }),
+    supabase.from("tasks").select("*, task_claims(*, profiles(*))").eq("user_id", user.id).order("created_at", { ascending: false }),
+    supabase.from("task_claims").select("*, tasks(*, profiles(*))").eq("claimed_by", user.id).order("created_at", { ascending: false })
+  ]);
 
-  const { data: myItems } = await supabase
-    .from("items")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  const { data: madeRequests } = await supabase
-    .from("item_requests")
-    .select("*, items(*, profiles(*))")
-    .eq("requester_id", user.id)
-    .order("created_at", { ascending: false });
-
-  const { data: receivedRequests } = await supabase
-    .from("item_requests")
-    .select("*, items!inner(*), profiles(*)")
-    .eq("items.user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  const { data: myTaskRequests } = await supabase
-    .from("tasks")
-    .select("*, task_claims(*, profiles(*))")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  const { data: helpingWithTasks } = await supabase
-    .from("task_claims")
-    .select("*, tasks(*, profiles(*))")
-    .eq("claimed_by", user.id)
-    .order("created_at", { ascending: false });
+  if (!profile) redirect("/onboarding");
 
   return (
     <DashboardClient

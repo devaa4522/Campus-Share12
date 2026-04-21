@@ -2,45 +2,14 @@
 
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { RealtimeChannel } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import QRCode from "react-qr-code";
 import { Html5Qrcode } from "html5-qrcode";
-
-type Profile = { id: string; full_name: string; avatar_url: string; karma_score?: number };
-
-type Message = {
-  id: string;
-  conversation_id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-  is_read: boolean;
-};
-
-type Conversation = {
-  id: string;
-  deal_id: string;
-  participant_1: string;
-  participant_2: string;
-  created_at: string;
-  p1: Profile;
-  p2: Profile;
-  messages: Message[];
-};
-
-type DealInfo = {
-  type: 'item' | 'task';
-  id: string;
-  status: string;
-  title: string;
-  image_url: string;
-  reward_amount?: number;
-  owner_id: string;
-  requester_id: string;
-  item_id?: string;
-};
+import { deduplicateConversations } from "@/lib/conversation-utils";
+import type { Message, Conversation, DealInfo } from "@/lib/types";
 
 export default function MessageCenterClient({
   initialConversations,
@@ -54,52 +23,20 @@ export default function MessageCenterClient({
   const router = useRouter();
   const supabase = createClient();
   
-  const [conversations, setConversations] = useState<Conversation[]>(
-    Object.values(
-      initialConversations.reduce((acc, conv) => {
-        const peerId = conv.p1.id === userId ? conv.p2.id : conv.p1.id;
-        const currentLastTime = conv.messages?.length > 0 
-          ? new Date(conv.messages[conv.messages.length - 1].created_at).getTime() 
-          : new Date(conv.created_at).getTime();
-
-        if (!acc[peerId]) {
-          acc[peerId] = conv;
-        } else {
-          const existingConv = acc[peerId];
-          const existingLastTime = existingConv.messages?.length > 0 
-            ? new Date(existingConv.messages[existingConv.messages.length - 1].created_at).getTime() 
-            : new Date(existingConv.created_at).getTime();
-            
-          if (currentLastTime > existingLastTime) {
-            acc[peerId] = conv;
-          }
-        }
-        return acc;
-      }, {} as Record<string, Conversation>)
-    )
-    .sort((a, b) => {
-      const aTime = a.messages?.length > 0 ? new Date(a.messages[a.messages.length - 1].created_at).getTime() : new Date(a.created_at).getTime();
-      const bTime = b.messages?.length > 0 ? new Date(b.messages[b.messages.length - 1].created_at).getTime() : new Date(b.created_at).getTime();
-      return bTime - aTime;
-    })
-    .map(c => ({
-      ...c,
-      messages: c.messages ? [...c.messages].sort((x, y) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime()) : []
-    }))
+  const [conversations, setConversations] = useState<Conversation[]>(() => 
+    deduplicateConversations(initialConversations, userId)
   );
   
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   const [onlinePeers, setOnlinePeers] = useState<string[]>([]);
   const [peerTypingMap, setPeerTypingMap] = useState<Record<string, boolean>>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [editingMsg, setEditingMsg] = useState<Message | null>(null);
-  const [contextMenuMsgId, setContextMenuMsgId] = useState<string | null>(null);
-  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
-  
   const [dealInfo, setDealInfo] = useState<DealInfo | null>(null);
   const [showQrModal, setShowQrModal] = useState<string | null>(null);
   const [showScannerModal, setShowScannerModal] = useState<string | null>(null);
@@ -137,7 +74,7 @@ export default function MessageCenterClient({
       }
     }
 
-    const handlePopState = (e: PopStateEvent) => {
+    const handlePopState = (_e: PopStateEvent) => {
       if (activeConversationId) {
         router.replace('/messages');
       }
@@ -214,7 +151,7 @@ export default function MessageCenterClient({
       }
     };
     fetchDeal();
-  }, [activeConversationId, activeConversation?.deal_id]);
+  }, [activeConversationId, activeConversation?.deal_id, supabase, activeConversation?.participant_1, activeConversation]);
 
   const handleQRConfirm = async (scannedPayload: string, expectedId: string) => {
     if (scannedPayload !== expectedId) {
@@ -248,7 +185,7 @@ export default function MessageCenterClient({
            setDealInfo(prev => prev ? { ...prev, status: 'completed' } : prev);
         }
       }
-    } catch (e) {
+    } catch {
       toast.error("Action could not be completed.");
     }
   };
@@ -264,7 +201,7 @@ export default function MessageCenterClient({
         setShowScannerModal(null);
         handleQRConfirm(decodedText, showScannerModal);
       },
-      (error) => { /* ignore normal scanning errors */ }
+      () => { /* ignore normal scanning errors */ }
     ).catch(err => {
       console.error(err);
       toast.error("Camera access failed. Please check permissions.");
@@ -272,11 +209,12 @@ export default function MessageCenterClient({
 
     return () => {
       if (html5QrCode.isScanning) {
-        html5QrCode.stop().catch(e => console.error(e));
+        html5QrCode.stop().catch(_e => console.error(_e));
       } else {
         html5QrCode.clear();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showScannerModal]);
 
 
@@ -295,7 +233,7 @@ export default function MessageCenterClient({
         setDealInfo(prev => prev ? { ...prev, status: newStatus } : prev);
         toast.success(`Task status updated.`);
       }
-    } catch (e) {
+    } catch {
       toast.error(`Failed to apply action.`);
     }
   };
@@ -306,7 +244,7 @@ export default function MessageCenterClient({
       await supabase.from("item_requests").update({ status: 'returning' }).eq("id", dealInfo.id);
       setDealInfo(prev => prev ? { ...prev, status: 'returning' } : prev);
       toast.success("Return initiated! Show your QR code to the lender.");
-    } catch(e) {
+    } catch {
       toast.error("Error initiating return.");
     }
   };
@@ -325,7 +263,7 @@ export default function MessageCenterClient({
       toast.error("Deal Cancelled. Karma penalty applied.");
       setDealInfo(prev => prev ? { ...prev, status: 'declined' } : prev);
       setShowCancelModal(false);
-    } catch(e) {
+    } catch {
       toast.error("Failed to cancel deal.");
     }
   };
@@ -335,6 +273,7 @@ export default function MessageCenterClient({
     const channel = supabase.channel("public:messages", {
       config: { presence: { key: userId } }
     });
+    channelRef.current = channel;
 
     channel
       .on(
@@ -386,6 +325,7 @@ export default function MessageCenterClient({
 
     return () => {
       supabase.removeChannel(channel);
+      channelRef.current = null;
     };
   }, [supabase, userId]);
 
@@ -460,12 +400,14 @@ export default function MessageCenterClient({
 
   const handleKeyboardInput = (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement>) => {
      setNewMessage(e.target.value);
-     const channel = supabase.channel("public:messages");
-     channel.send({ type: 'broadcast', event: 'typing', payload: { userId, isTyping: true } });
-     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-     typingTimeoutRef.current = setTimeout(() => {
-        channel.send({ type: 'broadcast', event: 'typing', payload: { userId, isTyping: false } });
-     }, 2000);
+     const channel = channelRef.current;
+     if (channel) {
+       channel.send({ type: 'broadcast', event: 'typing', payload: { userId, isTyping: true } });
+       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+       typingTimeoutRef.current = setTimeout(() => {
+          channel.send({ type: 'broadcast', event: 'typing', payload: { userId, isTyping: false } });
+       }, 2000);
+     }
   };
 
   const formatTimeSnippet = (dateStr: string) => {
@@ -482,7 +424,7 @@ export default function MessageCenterClient({
 
     let bgClass = "bg-primary text-white";
     let title = "Pending Request";
-    let icon = "handshake";
+    const icon = "handshake";
     
     if (dealInfo.status === 'accepted' || dealInfo.status === 'claimed') {
         bgClass = "bg-secondary text-white";
@@ -544,7 +486,7 @@ export default function MessageCenterClient({
 
             {(dealInfo.status === 'accepted' || dealInfo.status === 'claimed') && isLender && (
                 <button onClick={() => setShowScannerModal(dealInfo.id)} className="w-full bg-[#006e0c] text-white py-2 rounded-lg flex items-center justify-center gap-2 active:scale-95 shadow-md">
-                   <span className="material-symbols-outlined text-sm">qr_code_scanner</span> Scan Borrower's QR
+                   <span className="material-symbols-outlined text-sm">qr_code_scanner</span> Scan Borrower&apos;s QR
                 </button>
             )}
 
@@ -574,7 +516,7 @@ export default function MessageCenterClient({
 
             {dealInfo.status === 'returning' && isBorrower && (
                 <button onClick={() => setShowScannerModal(dealInfo.id)} className="w-full bg-[#006e0c] text-white py-2 rounded-lg flex items-center justify-center gap-2 active:scale-95">
-                   <span className="material-symbols-outlined text-sm">qr_code_scanner</span> Scan Lender's QR
+                   <span className="material-symbols-outlined text-sm">qr_code_scanner</span> Scan Lender&apos;s QR
                 </button>
             )}
             
@@ -620,11 +562,11 @@ export default function MessageCenterClient({
                   <div className="relative shrink-0 w-12 h-12">
                     {cp.avatar_url ? (
                       <div className={`w-full h-full rounded-full overflow-hidden shadow-sm relative ${onlinePeers.includes(cp.id) ? 'ring-2 ring-secondary ring-offset-1' : ''}`}>
-                        <Image src={cp.avatar_url} alt={cp.full_name} fill sizes="48px" className="object-cover" />
+                        <Image src={cp.avatar_url} alt={cp.full_name || "Anonymous"} fill sizes="48px" className="object-cover" />
                       </div>
                     ) : (
                       <div className={`w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-bold font-serif shadow-sm ${onlinePeers.includes(cp.id) ? 'ring-2 ring-secondary ring-offset-1' : ''}`}>
-                        {cp.full_name.charAt(0).toUpperCase()}
+                        {(cp.full_name || "A").charAt(0).toUpperCase()}
                       </div>
                     )}
                     {onlinePeers.includes(cp.id) && (
@@ -668,10 +610,10 @@ export default function MessageCenterClient({
               <div className="relative w-10 h-10">
                 {peer?.avatar_url ? (
                   <div className="w-full h-full rounded-full overflow-hidden shadow-sm relative">
-                    <Image src={peer.avatar_url} alt={peer.full_name} fill sizes="40px" className="object-cover" />
+                    <Image src={peer.avatar_url} alt={peer.full_name || "Anonymous"} fill sizes="40px" className="object-cover" />
                   </div>
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold shadow-sm">{peer?.full_name?.charAt(0)}</div>
+                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold shadow-sm">{(peer?.full_name || "A").charAt(0).toUpperCase()}</div>
                 )}
                 {onlinePeers.includes(peer?.id || '') && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>}
               </div>
@@ -686,7 +628,7 @@ export default function MessageCenterClient({
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 no-scrollbar flex flex-col items-center">
             {renderTransactionCard()}
             
-            {activeConversation?.messages.map((msg, index) => {
+            {activeConversation?.messages.map((msg) => {
                const isMe = msg.sender_id === userId;
                // Read Receipts
                const isRead = msg.is_read;
@@ -779,7 +721,7 @@ export default function MessageCenterClient({
                     onKeyDown={(e) => {
                        if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
-                          handleSendMessage(e as any);
+                          handleSendMessage(e as unknown as React.FormEvent);
                        }
                     }}
                     disabled={isInputLocked}
@@ -837,7 +779,7 @@ export default function MessageCenterClient({
                 </div>
                 <h2 className="font-serif font-bold text-xl text-[#000a1e] mb-2 tracking-tight">Cancel Transaction?</h2>
                 <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-                    Cancelling this active request will result in a <span className="text-error font-bold">-5 Karma Score penalty</span> to ensure community reliability. Proced?
+                    Cancelling this active request will result in a <span className="text-error font-bold">-5 Karma Score penalty</span> to ensure community reliability. Proceed?
                 </p>
                 <div className="flex flex-col gap-3">
                     <button onClick={cancelDeal} className="w-full py-3 bg-error text-white font-bold rounded-xl active:scale-95 transition-all shadow-md hover:bg-error/90">Yes, Accept Penalty</button>

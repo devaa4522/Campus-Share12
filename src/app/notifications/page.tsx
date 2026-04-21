@@ -26,7 +26,7 @@ export default async function NotificationsPage() {
 
   return (
     <div className="min-h-full bg-background border-none w-full flex">
-      <NotificationsClient initialNotifications={notifications || []} />
+      <NotificationsClient initialNotifications={notifications || []} userId={user.id} />
     </div>
   );
 }

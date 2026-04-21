@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import type { Item, Profile, ItemRequest } from "@/lib/types";
+import { useState, useEffect, useCallback } from "react";
+import type { Item, Profile, ItemRequest, Task, TaskClaim } from "@/lib/types";
 import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
 import Link from "next/link";
@@ -29,16 +29,16 @@ export default function DashboardClient({
 }: {
   profile: Profile;
   items: Item[];
-  madeRequests: any[];
-  receivedRequests: any[];
-  myTaskRequests?: any[];
-  helpingWithTasks?: any[];
+  madeRequests: RequestWithRelations[];
+  receivedRequests: RequestWithRelations[];
+  myTaskRequests?: (Task & { task_claims?: (TaskClaim & { profiles: Profile | null })[] })[];
+  helpingWithTasks?: (TaskClaim & { tasks?: (Task & { profiles: Profile | null }) | null })[]; 
 }) {
   const [activeTab, setActiveTab] = useState<DealTab>("received");
   const [localMade, setLocalMade] = useState<RequestWithRelations[]>(madeRequests);
   const [localReceived, setLocalReceived] = useState<RequestWithRelations[]>(receivedRequests);
-  const [localTaskRequests, setLocalTaskRequests] = useState<any[]>(myTaskRequests);
-  const [localHelpingWith, setLocalHelpingWith] = useState<any[]>(helpingWithTasks);
+  const [localTaskRequests, setLocalTaskRequests] = useState(myTaskRequests);
+  const [localHelpingWith, setLocalHelpingWith] = useState(helpingWithTasks);
   const [showQrModal, setShowQrModal] = useState<string | null>(null);
   const [showScannerModal, setShowScannerModal] = useState<string | null>(null);
   const router = useRouter();
@@ -46,7 +46,7 @@ export default function DashboardClient({
 
   // Removed body scroll-lock — MainWrapper handles overflow via the sandwich layout
 
-  async function handleQRConfirm(scannedPayload: string, expectedTaskId: string) {
+  const handleQRConfirm = useCallback(async (scannedPayload: string, expectedTaskId: string) => {
     if (scannedPayload !== expectedTaskId) {
       haptics.error();
       toast.error('Invalid QR Code for this specific arrangement!');
@@ -63,8 +63,8 @@ export default function DashboardClient({
         if (!error) {
            haptics.success();
            toast.success("Task formally completed! Escrow released & Karma awarded.");
-           setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? { ...t, status: "completed" } : t));
-           setLocalHelpingWith(prev => prev.map(t => t.id === expectedTaskId ? { ...t, tasks: { ...t.tasks, status: "completed" } } : t));
+           setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? ({ ...t, status: "completed" as const }) : t));
+           setLocalHelpingWith(prev => prev.map(t => t.id === expectedTaskId ? ({ ...t, tasks: t.tasks ? ({ ...t.tasks, status: "completed" as const }) : t.tasks }) : t));
         } else {
            haptics.error();
            toast.error("Action could not be completed.");
@@ -89,7 +89,7 @@ export default function DashboardClient({
     } catch (e) {
       toast.error("Action could not be completed.");
     }
-  }
+  }, [localTaskRequests, localHelpingWith, localReceived, localMade, haptics]);
 
   useEffect(() => {
     if (!showScannerModal) return;
@@ -116,7 +116,7 @@ export default function DashboardClient({
         html5QrCode.clear();
       }
     };
-  }, [showScannerModal]);
+  }, [showScannerModal, handleQRConfirm]);
 
   const activeEarnings = items
     .filter((i) => i.status === "rented")
@@ -137,8 +137,13 @@ export default function DashboardClient({
     }
 
     if (newStatus === "accepted" && itemId) {
-      // Update item status to rented
+      // Mark item as rented so other borrowers can't request it
       await supabase.from("items").update({ status: "rented" }).eq("id", itemId);
+    }
+
+    if (newStatus === "declined" && itemId) {
+      // Reset item to available in case it was previously accepted/rented
+      await supabase.from("items").update({ status: "available" }).eq("id", itemId);
     }
     
     toast.success(`Deal ${newStatus}!`);
@@ -196,6 +201,17 @@ export default function DashboardClient({
       } else {
          toast.error("Action could not be completed. We are working on a fix.");
       }
+    } catch (e) {
+      toast.error("Action could not be completed. We are working on a fix.");
+    }
+  };
+
+  const handleInitiateReturn = async (requestId: string) => {
+    try {
+      const supabase = createClient();
+      await supabase.from("item_requests").update({ status: 'returning' }).eq("id", requestId);
+      toast.success("Return initiated!");
+      setLocalMade(prev => prev.map(r => r.id === requestId ? { ...r, status: 'returning' } : r));
     } catch (e) {
       toast.error("Action could not be completed. We are working on a fix.");
     }
@@ -300,31 +316,26 @@ export default function DashboardClient({
               {req.status === "pending" && isLenderView && (
                 <>
                   <button onClick={() => handleUpdateStatus(req.id, "accepted", item.id)} className="bg-primary text-on-primary px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:bg-slate-900 transition-colors">Accept Deal</button>
-                  <button onClick={() => handleUpdateStatus(req.id, "declined")} className="border border-outline-variant/30 text-on-surface-variant px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:border-primary hover:text-primary transition-colors">Decline</button>
+                  <button onClick={() => handleUpdateStatus(req.id, "declined", item.id)} className="border border-outline-variant/30 text-on-surface-variant px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:border-primary hover:text-primary transition-colors">Decline</button>
                 </>
               )}
               
               {req.status === "accepted" && isLenderView && (
-                 <button onClick={() => setShowScannerModal(req.id)} className="bg-[#006e0c] text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan Borrower's QR</button>
+                 <button onClick={() => setShowScannerModal(req.id)} className="bg-[#006e0c] text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan Borrower&apos;s QR</button>
               )}
               {req.status === "accepted" && !isLenderView && (
                  <button onClick={() => setShowQrModal(req.id)} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_2</span> Show Receive QR</button>
               )}
 
               {req.status === "rented" && !isLenderView && (
-                 <button onClick={async () => {
-                    const supabase = createClient();
-                    await supabase.from("item_requests").update({ status: 'returning' }).eq("id", req.id);
-                    toast.success("Return initiated!");
-                    setLocalMade(prev => prev.map(r => r.id === req.id ? { ...r, status: 'returning' } : r));
-                 }} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2"><span className="material-symbols-outlined text-[16px]">assignment_return</span> Initiate Return</button>
+                 <button onClick={() => handleInitiateReturn(req.id)} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2"><span className="material-symbols-outlined text-[16px]">assignment_return</span> Initiate Return</button>
               )}
 
               {req.status === "returning" && isLenderView && (
                  <button onClick={() => setShowQrModal(req.id)} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_2</span> Show Return QR</button>
               )}
               {req.status === "returning" && !isLenderView && (
-                 <button onClick={() => setShowScannerModal(req.id)} className="bg-[#006e0c] text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan Lender's QR</button>
+                 <button onClick={() => setShowScannerModal(req.id)} className="bg-[#006e0c] text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan Lender&apos;s QR</button>
               )}
 
               <button onClick={() => handleMessageUser(req)} className="border border-outline-variant/30 text-secondary px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:border-secondary transition-colors flex items-center gap-1">
@@ -337,7 +348,7 @@ export default function DashboardClient({
     );
   };
 
-  const renderTaskRequestCard = (task: any) => {
+   const renderTaskRequestCard = (task: Task & { task_claims?: (TaskClaim & { profiles: Profile | null })[] }) => {
     const helperProfile = task.task_claims?.[0]?.profiles;
     const deadlineText = task.deadline 
       ? new Date(task.deadline).getTime() > new Date().getTime() 
@@ -397,7 +408,7 @@ export default function DashboardClient({
     );
   };
 
-  const renderHelpingCard = (claim: any) => {
+   const renderHelpingCard = (claim: TaskClaim & { tasks?: (Task & { profiles: Profile | null }) | null }) => {
     const task = claim.tasks;
     if (!task) return null;
     const creator = task.profiles;
@@ -516,7 +527,7 @@ export default function DashboardClient({
             onClick={() => setActiveTab("made")}
             className={`pb-4 tracking-tight transition-colors relative ${activeTab === "made" ? "text-primary font-bold border-b-2 border-primary" : "text-on-surface-variant font-medium hover:text-primary"}`}
           >
-            Requests I've Made
+            Requests I&apos;ve Made
           </button>
           <button 
             onClick={() => setActiveTab("received")}
@@ -590,7 +601,7 @@ export default function DashboardClient({
                 ))
               ) : (
                 <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
-                  You don't have any listings yet.
+                  You don&apos;t have any listings yet.
                 </div>
               )
             ) : activeTab === "task_requests" ? (
@@ -598,7 +609,7 @@ export default function DashboardClient({
                 localTaskRequests.map(task => renderTaskRequestCard(task))
               ) : (
                 <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
-                  You haven't posted any tasks yet.
+                  You haven&apos;t posted any tasks yet.
                 </div>
               )
             ) : activeTab === "helping_with" ? (
@@ -606,7 +617,7 @@ export default function DashboardClient({
                 localHelpingWith.map(claim => renderHelpingCard(claim))
               ) : (
                 <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
-                  You aren't helping with any tasks right now.
+                  You aren&apos;t helping with any tasks right now.
                 </div>
               )
             ) : activeTab === "received" ? (
@@ -622,7 +633,7 @@ export default function DashboardClient({
                 localMade.map(req => renderRequestCard(req, false))
               ) : (
                 <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
-                  You haven't made any requests yet.
+                  You haven&apos;t made any requests yet.
                 </div>
               )
             )}
