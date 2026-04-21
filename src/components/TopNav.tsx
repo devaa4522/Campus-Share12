@@ -45,7 +45,7 @@ export default async function TopNav() {
               <div className="flex items-center gap-2">
                 <Link 
                   href="/messages" 
-                  className="w-10 h-10 flex items-center justify-center rounded-full text-white hover:text-white hover:bg-white/10 transition-all duration-300 active:scale-95"
+                  className="w-10 h-10 flex items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 active:scale-95"
                 >
                   <span className="material-symbols-outlined text-2xl">mail</span>
                 </Link>
@@ -57,7 +57,7 @@ export default async function TopNav() {
                 {/* Avatar */}
               <Link
                 href="/profile"
-                className="relative w-10 h-10 rounded-full bg-white/5 overflow-hidden border border-white/10 hover:border-secondary/50 transition-all duration-300 flex items-center justify-center group shadow-inner"
+                className="w-10 h-10 flex items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 active:scale-95 relative overflow-hidden border border-white/10 group shadow-inner"
               >
                 {profile.avatar_url ? (
                   <Image

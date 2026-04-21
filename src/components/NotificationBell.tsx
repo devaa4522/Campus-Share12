@@ -113,9 +113,9 @@ function BellIcon({ hasUnread }: { hasUnread: boolean }) {
     <motion.div
       animate={hasUnread ? { rotate: [0, -12, 12, -8, 8, 0] } : {}}
       transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 4 }}
-      className="flex items-center justify-center hover:bg-white/10 p-2 rounded-full transition-all duration-200 scale-95 active:scale-90 text-white cursor-pointer"
+      className="flex items-center justify-center"
     >
-      <span className="material-symbols-outlined">notifications</span>
+      <span className="material-symbols-outlined text-2xl">notifications</span>
     </motion.div>
   );
 }
@@ -191,6 +191,7 @@ export function NotificationBell() {
     }
   }, [pushSupported, pushEnabled]);
 
+  // Handle closing on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
@@ -199,6 +200,28 @@ export function NotificationBell() {
     };
     if (open) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Handle "Back" to close on mobile/PWA
+  useEffect(() => {
+    if (open) {
+      // Push a dummy state to history so "back" can be intercepted
+      window.history.pushState({ panel: 'notifications' }, '');
+      
+      const handlePopState = (e: PopStateEvent) => {
+        // If we popped away from the notification state, close the panel
+        setOpen(false);
+      };
+
+      window.addEventListener('popstate', handlePopState);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+        // Clean up history state if closed via button click instead of back button
+        if (window.history.state?.panel === 'notifications') {
+          window.history.back();
+        }
+      };
+    }
   }, [open]);
 
   const handleEnablePush = async () => {
@@ -217,7 +240,7 @@ export function NotificationBell() {
   return (
     <div className="relative" ref={panelRef}>
       <button
-        className="relative group flex items-center justify-center"
+        className="w-10 h-10 flex items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 active:scale-95 group relative"
         onClick={toggleOpen}
         aria-label={`Notifications (${unreadCount} unread)`}
       >
