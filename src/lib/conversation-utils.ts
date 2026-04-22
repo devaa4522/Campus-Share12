@@ -5,10 +5,13 @@ export type ConvRecord = Conversation & {
   [key: string]: unknown;
 };
 
+// src/lib/conversation-utils.ts
 function getLastTime(conv: Conversation): number {
-  return conv.messages?.length > 0
-    ? new Date(conv.messages[conv.messages.length - 1].created_at).getTime()
-    : new Date(conv.created_at).getTime();
+  const msgDate = conv.messages && conv.messages.length > 0
+    ? conv.messages[conv.messages.length - 1].created_at
+    : conv.created_at;
+    
+  return msgDate ? new Date(msgDate).getTime() : Date.now();
 }
 
 export function deduplicateConversations(initialConversations: Conversation[], userId: string): Conversation[] {
