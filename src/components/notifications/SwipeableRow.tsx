@@ -12,55 +12,60 @@ interface SwipeableRowProps {
 
 export function SwipeableRow({ children, onDelete, onRead, isRead }: SwipeableRowProps) {
   const x = useMotionValue(0);
-  const dragRef = useRef(false);
-  
-  // Transform values for reveal layers
-  const deleteOpacity = useTransform(x, [0, 80], [0, 1]);
-  const readOpacity = useTransform(x, [-80, 0], [1, 0]);
-  const deleteScale = useTransform(x, [0, 80], [0.7, 1]);
-  const readScale = useTransform(x, [-80, 0], [1, 0.7]);
+  const isDragging = useRef(false);
+
+  // Right swipe → delete reveal (red)
+  const deleteOpacity = useTransform(x, [0, 72], [0, 1]);
+  const deleteScale   = useTransform(x, [0, 72], [0.7, 1]);
+
+  // Left swipe → read reveal (green), only when unread
+  const readOpacity = useTransform(x, [-72, 0], [1, 0]);
+  const readScale   = useTransform(x, [-72, 0], [1, 0.7]);
 
   return (
-    <div className="relative overflow-hidden group">
-      {/* Delete Reveal Layer (Swipe Right) */}
-      <motion.div 
+    <div className="relative overflow-hidden">
+      {/* Delete layer — right */}
+      <motion.div
         style={{ opacity: deleteOpacity }}
-        className="absolute inset-0 bg-error/10 flex items-center px-6 pointer-events-none"
+        className="absolute inset-0 bg-error/8 flex items-center px-5 pointer-events-none"
+        aria-hidden
       >
-        <motion.div style={{ scale: deleteScale }} className="flex items-center gap-2 text-error font-bold">
-          <span className="material-symbols-outlined">delete</span>
-          <span className="text-xs uppercase tracking-wider">Delete</span>
+        <motion.div style={{ scale: deleteScale }} className="flex items-center gap-2 text-error">
+          <span className="material-symbols-outlined text-xl">delete</span>
+          <span className="text-[11px] font-black uppercase tracking-wider">Delete</span>
         </motion.div>
       </motion.div>
 
-      {/* Read Reveal Layer (Swipe Left) */}
+      {/* Read layer — left */}
       {!isRead && (
-        <motion.div 
+        <motion.div
           style={{ opacity: readOpacity }}
-          className="absolute inset-0 bg-success-container/30 flex items-center justify-end px-6 pointer-events-none"
+          className="absolute inset-0 bg-[#006e0c]/8 flex items-center justify-end px-5 pointer-events-none"
+          aria-hidden
         >
-          <motion.div style={{ scale: readScale }} className="flex items-center gap-2 text-success font-bold">
-            <span className="text-xs uppercase tracking-wider">Mark Read</span>
-            <span className="material-symbols-outlined">done_all</span>
+          <motion.div style={{ scale: readScale }} className="flex items-center gap-2 text-[#006e0c]">
+            <span className="text-[11px] font-black uppercase tracking-wider">Mark read</span>
+            <span className="material-symbols-outlined text-xl">done_all</span>
           </motion.div>
         </motion.div>
       )}
 
+      {/* Draggable content */}
       <motion.div
         drag="x"
         style={{ x }}
-        dragConstraints={{ left: isRead ? 0 : -100, right: 100 }}
-        dragElastic={{ left: 0.1, right: 0.1 }}
-        onDragStart={() => { dragRef.current = true; }}
+        dragConstraints={{ left: isRead ? 0 : -90, right: 90 }}
+        dragElastic={{ left: 0.08, right: 0.08 }}
+        onDragStart={() => { isDragging.current = true; }}
         onDragEnd={(_, info) => {
-          setTimeout(() => { dragRef.current = false; }, 100);
-          if (info.offset.x > 70) {
-             onDelete();
-          } else if (info.offset.x < -70 && !isRead) {
-             onRead();
-          }
+          setTimeout(() => { isDragging.current = false; }, 80);
+          if (info.offset.x > 68)        onDelete();
+          else if (info.offset.x < -68 && !isRead) onRead();
         }}
-        className="relative z-10 bg-surface cursor-grab active:cursor-grabbing transition-colors group-hover:bg-surface-container-low/50"
+        className="relative z-10 cursor-grab active:cursor-grabbing"
+        // Snap back
+        whileTap={{ cursor: 'grabbing' }}
+        transition={{ type: 'spring', stiffness: 400, damping: 40 }}
       >
         {children}
       </motion.div>

@@ -1,17 +1,26 @@
-import { NotificationType } from "@/types/notifications";
+// lib/notification-utils.ts
+// Shared deep-link resolver. Import this in NotificationBell, NotificationToast,
+// SingleNotifRow, and anywhere a notification needs to navigate.
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getDeepLink(type: NotificationType, data: Record<string, any> | undefined): string {
-  const safeData = data || {};
+import { NotificationType } from '@/types/notifications';
+
+export function getDeepLink(
+  type: NotificationType,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: Record<string, any> | undefined
+): string {
+  const d = data ?? {};
   const routes: Partial<Record<NotificationType, string>> = {
-    new_request:      `/dashboard?deal=${safeData.deal_id}`,
-    request_accepted: `/dashboard?deal=${safeData.deal_id}&scan=true`,
-    qr_handshake:     `/dashboard?deal=${safeData.deal_id}`,
+    new_request:      `/dashboard?deal=${d.deal_id}`,
+    request_accepted: `/dashboard?deal=${d.deal_id}&scan=true`,
+    qr_handshake:     `/dashboard?deal=${d.deal_id}`,
     deal_completed:   `/profile`,
-    new_message:      `/messages?id=${safeData.conversation_id}`,
-    task_claimed:     `/tasks?task=${safeData.task_id}`,
+    new_message:      `/messages?id=${d.conversation_id}`,
+    task_claimed:     `/tasks?task=${d.task_id}`,
+    task_completed:   `/tasks?task=${d.task_id}`,
     karma_received:   `/profile`,
+    karma_penalty:    `/profile`,
     system:           `/`,
   };
-  return routes[type] || '/';
+  return routes[type] ?? '/';
 }
