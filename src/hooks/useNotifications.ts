@@ -3,25 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-
-// ── Types ────────────────────────────────────────────────────
-
-export type NotificationType =
-  | 'new_request' | 'request_accepted' | 'request_rejected'
-  | 'qr_handshake' | 'item_returned' | 'deal_completed'
-  | 'new_message' | 'task_claimed' | 'task_completed'
-  | 'karma_received' | 'karma_penalty' | 'system';
-
-export interface AppNotification {
-  id: string;
-  user_id: string;
-  type: NotificationType;
-  title: string;
-  body: string;
-  data: Record<string, string | number | boolean>;
-  is_read: boolean;
-  created_at: string;
-}
+import { AppNotification, NotificationType } from '@/types/notifications';
 
 interface UseNotificationsReturn {
   notifications: AppNotification[];
@@ -35,6 +17,7 @@ interface UseNotificationsReturn {
   markAllAsRead: () => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
   clearAll: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
@@ -50,7 +33,10 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
-// ── Hook ─────────────────────────────────────────────────────
+interface NavigatorWithBadge extends Navigator {
+  setAppBadge: (count?: number) => Promise<void>;
+  clearAppBadge: () => Promise<void>;
+}
 
 export function useNotifications(): UseNotificationsReturn {
   const supabase = useMemo(() => createClient(), []);
@@ -62,11 +48,38 @@ export function useNotifications(): UseNotificationsReturn {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const userIdRef = useRef<string | null>(null);
 
-  const unreadCount = isMounted ? notifications.filter((n) => !n.is_read).length : 0;
+  const unreadCount = useMemo(() => 
+    notifications.filter((n) => !n.is_read).length
+  , [notifications]);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Update App Badge
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'setAppBadge' in navigator) {
+      if (unreadCount > 0) {
+        (navigator as NavigatorWithBadge).setAppBadge?.(unreadCount).catch(console.error);
+      } else {
+        (navigator as NavigatorWithBadge).clearAppBadge?.().catch(console.error);
+      }
+    }
+  }, [unreadCount]);
+
+  const fetchNotifications = useCallback(async (userId: string) => {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (!error && data) {
+      setNotifications(data);
+    }
+    setIsLoading(false);
+  }, [supabase]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -74,7 +87,10 @@ export function useNotifications(): UseNotificationsReturn {
 
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !mounted) return;
+      if (!user || !mounted) {
+        setIsLoading(false);
+        return;
+      }
 
       userIdRef.current = user.id;
 
@@ -91,18 +107,9 @@ export function useNotifications(): UseNotificationsReturn {
         }
       }
 
-      const { data } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
+      await fetchNotifications(user.id);
 
-      if (mounted) {
-        setNotifications(data || []);
-        setIsLoading(false);
-      }
-
+      // Setup Realtime
       channelRef.current = supabase
         .channel(`notifications:${user.id}`)
         .on(
@@ -115,7 +122,11 @@ export function useNotifications(): UseNotificationsReturn {
           },
           (payload) => {
             const newNotif = payload.new as AppNotification;
-            setNotifications((prev) => [newNotif, ...prev]);
+            setNotifications((prev) => {
+              // Avoid duplicates
+              if (prev.some(n => n.id === newNotif.id)) return prev;
+              return [newNotif, ...prev];
+            });
 
             if (typeof window !== 'undefined') {
               window.dispatchEvent(
@@ -143,6 +154,19 @@ export function useNotifications(): UseNotificationsReturn {
             );
           }
         )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const deletedId = payload.old.id;
+            setNotifications((prev) => prev.filter((n) => n.id !== deletedId));
+          }
+        )
         .subscribe();
     }
 
@@ -150,26 +174,11 @@ export function useNotifications(): UseNotificationsReturn {
 
     return () => {
       mounted = false;
-      channelRef.current?.unsubscribe();
-    };
-  }, [isMounted, supabase]);
-
-  useEffect(() => {
-    if (!isMounted) return;
-    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
-
-    // Listen for NAVIGATE messages dispatched from the service worker.
-    // NOTE: We do NOT register the SW here — that is ServiceWorkerRegister's responsibility.
-    const handleSWMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'NAVIGATE') {
-        window.location.href = event.data.url;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
       }
     };
-    navigator.serviceWorker.addEventListener('message', handleSWMessage);
-    return () => {
-      navigator.serviceWorker.removeEventListener('message', handleSWMessage);
-    };
-  }, [isMounted]);
+  }, [isMounted, supabase, fetchNotifications]);
 
   const enablePushNotifications = useCallback(async (): Promise<boolean> => {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
@@ -185,7 +194,7 @@ export function useNotifications(): UseNotificationsReturn {
       const reg = await navigator.serviceWorker.ready;
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as any,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
       });
 
       const { endpoint, keys } = subscription.toJSON() as {
@@ -236,13 +245,19 @@ export function useNotifications(): UseNotificationsReturn {
 
   const markAsRead = useCallback(
     async (id: string) => {
+      // Optimistic update
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
       );
-      await supabase
+      const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
         .eq('id', id);
+      
+      if (error) {
+        // Rollback or refetch if needed
+        console.error('Mark as read failed:', error);
+      }
     },
     [supabase]
   );
@@ -250,15 +265,17 @@ export function useNotifications(): UseNotificationsReturn {
   const markAllAsRead = useCallback(async () => {
     if (!userIdRef.current) return;
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    await supabase.rpc('mark_all_notifications_read', {
+    const { error } = await supabase.rpc('mark_all_notifications_read', {
       p_user_id: userIdRef.current,
     });
+    if (error) console.error('Mark all read failed:', error);
   }, [supabase]);
 
   const deleteNotification = useCallback(
     async (id: string) => {
       setNotifications((prev) => prev.filter((n) => n.id !== id));
-      await supabase.from('notifications').delete().eq('id', id);
+      const { error } = await supabase.from('notifications').delete().eq('id', id);
+      if (error) console.error('Delete notification failed:', error);
     },
     [supabase]
   );
@@ -266,16 +283,36 @@ export function useNotifications(): UseNotificationsReturn {
   const clearAll = useCallback(async () => {
     if (!userIdRef.current) return;
     setNotifications([]);
-    await supabase
+    const { error } = await supabase
       .from('notifications')
       .delete()
       .eq('user_id', userIdRef.current);
+    if (error) console.error('Clear all failed:', error);
   }, [supabase]);
 
+  const refresh = useCallback(async () => {
+    if (userIdRef.current) {
+      setIsLoading(true);
+      await fetchNotifications(userIdRef.current);
+    }
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'setAppBadge' in navigator) {
+      if (unreadCount > 0) {
+        // @ts-ignore - setAppBadge is supported in modern PWA browsers but sometimes lacks TS definitions
+        (navigator as any).setAppBadge(unreadCount).catch(console.error);
+      } else {
+        // @ts-ignore
+        (navigator as any).clearAppBadge().catch(console.error);
+      }
+    }
+  }, [unreadCount]);
+
   return {
-    notifications: isMounted ? notifications : [],
+    notifications,
     unreadCount,
-    isLoading: isMounted ? isLoading : true,
+    isLoading,
     pushEnabled,
     pushSupported,
     enablePushNotifications,
@@ -284,6 +321,7 @@ export function useNotifications(): UseNotificationsReturn {
     markAllAsRead,
     deleteNotification,
     clearAll,
+    refresh
   };
 }
 
@@ -300,3 +338,4 @@ function getVibrationPattern(type: NotificationType): number[] {
   };
   return patterns[type] || [100];
 }
+

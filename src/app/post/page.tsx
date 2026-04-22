@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -37,8 +37,7 @@ export default function PostPage() {
     setValue,
     formState: { errors },
   } = useForm<PostItemFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(postItemSchema) as any,
+    resolver: zodResolver(postItemSchema) as Resolver<PostItemFormData>,
     defaultValues: {
       price_type: "Free",
       price_amount: 0,

@@ -7,6 +7,8 @@ import type { Profile } from "@/lib/types";
 import { getBranchesForDepartment, ACADEMIC_YEARS } from "@/lib/college-utils";
 import imageCompression from "browser-image-compression";
 import Image from "next/image";
+import NotificationPreferences from "./NotificationPreferences";
+
 
 interface RecentExchange {
   item_id: string;
@@ -360,29 +362,12 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
           </div>
         </div>
 
-        {/* Preference Toggles */}
+        {/* Preference Settings */}
         <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${notificationsEnabled ? "bg-primary-container text-secondary-fixed" : "bg-surface-container text-outline"}`}>
-                <span className="material-symbols-outlined">notifications_active</span>
-              </div>
-              <div>
-                <h4 className="font-headline font-semibold">Activity Alerts</h4>
-                <p className="text-xs text-on-surface-variant">Push notifications for tasks</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={toggleNotifications}
-              className={`w-12 h-6 rounded-full relative transition-colors ${notificationsEnabled ? "bg-secondary" : "bg-surface-dim"}`}
-            >
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${notificationsEnabled ? "right-1" : "left-1"}`} />
-            </button>
-          </div>
+          <NotificationPreferences />
 
-          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex flex-col justify-between border border-outline-variant/10">
+            <div className="flex items-center gap-4 mb-6">
               <div className={`w-12 h-12 rounded-full flex items-center justify-center ${profilePublic ? "bg-primary-container text-secondary-fixed" : "bg-surface-container text-outline"}`}>
                 <span className="material-symbols-outlined">visibility</span>
               </div>
@@ -391,13 +376,16 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
                 <p className="text-xs text-on-surface-variant">Visible to campus peers</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={togglePublicProfile}
-              className={`w-12 h-6 rounded-full relative transition-colors ${profilePublic ? "bg-secondary" : "bg-surface-dim"}`}
-            >
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${profilePublic ? "right-1" : "left-1"}`} />
-            </button>
+            <div className="flex justify-between items-center bg-surface-container-low p-3 rounded-lg">
+              <span className="text-xs font-bold text-[#000a1e]/60 uppercase tracking-wider">{profilePublic ? "Public" : "Private"}</span>
+              <button
+                type="button"
+                onClick={togglePublicProfile}
+                className={`w-12 h-6 rounded-full relative transition-colors ${profilePublic ? "bg-secondary" : "bg-surface-dim"}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${profilePublic ? "right-1" : "left-1"}`} />
+              </button>
+            </div>
           </div>
         </div>
 

@@ -32,10 +32,19 @@ export default async function ProfilePage() {
     .order("created_at", { ascending: false })
     .limit(5);
 
+  interface ItemRequest {
+    id: string;
+    status: string;
+    created_at: string;
+    items: {
+      category: string | null;
+    } | null;
+  }
+
   // Construct category reliability based on successful trades
   const categoryReliability: Record<string, number> = {};
   if (recentRequests) {
-    recentRequests.forEach((req: any) => {
+    (recentRequests as unknown as ItemRequest[]).forEach((req) => {
       const cat = req.items?.category || "General";
       categoryReliability[cat] = (categoryReliability[cat] || 0) + 1;
     });

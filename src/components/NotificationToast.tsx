@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import type { AppNotification, NotificationType } from '@/hooks/useNotifications';
+import { AppNotification, NotificationType } from '@/types/notifications';
 import { getDeepLink } from '@/lib/notification-utils';
 
 // Map specific visual styles to notification types

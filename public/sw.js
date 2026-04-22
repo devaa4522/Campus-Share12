@@ -1,7 +1,7 @@
 // public/sw.js
 // CampusShare Service Worker — Push Notifications + Offline Cache
 
-const CACHE_NAME = 'campusshare-v1';
+const CACHE_NAME = 'campusshare-v2';
 const OFFLINE_URLS = ['/', '/hub', '/tasks', '/messages', '/dashboard'];
 
 // ── Install: cache shell pages ──────────────────────────────
@@ -16,7 +16,11 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter((k) => k !== CACHE_NAME)
+          .map((k) => caches.delete(k))
+      )
     )
   );
   self.clients.claim();
@@ -28,7 +32,11 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   // Skip non-GET, non-HTTP schemas, and Supabase API calls
-  if (request.method !== 'GET' || !request.url.startsWith('http') || url.hostname.includes('supabase')) return;
+  if (
+    request.method !== 'GET' || 
+    !request.url.startsWith('http') || 
+    url.hostname.includes('supabase')
+  ) return;
 
   event.respondWith(
     fetch(request)
@@ -44,81 +52,66 @@ self.addEventListener('fetch', (event) => {
 });
 
 // ── Push: show notification ──────────────────────────────────
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
+self.addEventListener('push', function (event) {
+  if (event.data) {
+    let data;
+    try {
+      data = event.data.json();
+    } catch {
+      data = { title: 'CampusShare', body: event.data.text(), type: 'system' };
+    }
 
-  let payload;
-  try {
-    payload = event.data.json();
-  } catch {
-    payload = { title: 'CampusShare', body: event.data.text(), type: 'system' };
+    const options = {
+      body: data.body,
+      icon: '/android-chrome-192x192.png',
+      badge: '/favicon-32x32.png', // This creates the monochrome icon in the Android status bar
+      vibrate: [200, 100, 200],
+      data: { 
+        ...data.data, 
+        url: data.data?.url || getDeepLink(data.type, data.data) 
+      },
+      actions: data.actions || [] // Renders the quick-action buttons
+    };
+    
+    event.waitUntil(self.registration.showNotification(data.title, options));
   }
-
-  const { title, body, type, data = {} } = payload;
-
-  const iconMap = {
-    new_request:      '/favicon-192x192.png',
-    request_accepted: '/favicon-192x192.png',
-    request_rejected: '/favicon-192x192.png',
-    qr_handshake:     '/favicon-192x192.png',
-    deal_completed:   '/favicon-192x192.png',
-    new_message:      '/favicon-192x192.png',
-    task_claimed:     '/favicon-192x192.png',
-    karma_received:   '/favicon-192x192.png',
-    karma_penalty:    '/favicon-192x192.png',
-    system:           '/android-chrome-192x192.png',
-  };
-
-  const actionMap = {
-    new_request:      [{ action: 'view_deal', title: '📦 View Request' }],
-    request_accepted: [{ action: 'scan_qr',   title: '🤝 Scan QR' }],
-    new_message:      [{ action: 'open_chat', title: '💬 Reply' }],
-    task_claimed:     [{ action: 'view_task', title: '⚡ View Task' }],
-    deal_completed:   [{ action: 'view_karma', title: '🏆 See Karma' }],
-  };
-
-  const options = {
-    body,
-    icon: iconMap[type] || '/android-chrome-192x192.png',
-    tag: `${type}-${data.deal_id || data.conversation_id || data.task_id || Date.now()}`,
-    renotify: true,
-    data: { url: getDeepLink(type, data), type, ...data },
-    actions: actionMap[type] || [],
-    vibrate: getVibrationPattern(type),
-    timestamp: Date.now(),
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// ── Notification click: deep-link routing ───────────────────
-self.addEventListener('notificationclick', (event) => {
+self.addEventListener('notificationclick', function (event) {
   event.notification.close();
 
-  const { action } = event;
-  const notifData = event.notification.data || {};
-  let targetUrl = notifData.url || '/';
+  // Handle the quick-action button clicks (e.g., "Accept Deal")
+  if (event.action === 'accept') {
+    // Silently call your API without opening the app window
+    event.waitUntil(
+      fetch('/api/accept-deal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deal_id: event.notification.data.deal_id })
+      })
+    );
+    return;
+  }
 
-  if (action === 'scan_qr')    targetUrl = `/dashboard?scan=true&deal=${notifData.deal_id}`;
-  if (action === 'open_chat')  targetUrl = `/messages?conv=${notifData.conversation_id}`;
-  if (action === 'view_deal')  targetUrl = `/dashboard?deal=${notifData.deal_id}`;
-  if (action === 'view_task')  targetUrl = `/tasks?task=${notifData.task_id}`;
-  if (action === 'view_karma') targetUrl = `/profile`;
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Focus existing tab if already open
-      for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          client.focus();
-          client.postMessage({ type: 'NAVIGATE', url: targetUrl });
-          return;
+  // Default tap behavior: Open the app to the specific route
+  if (event.notification.data && event.notification.data.url) {
+    event.waitUntil(
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+        // If app is already open, focus it and navigate
+        for (let i = 0; i < windowClients.length; i++) {
+          const client = windowClients[i];
+          if (client.url.indexOf(self.registration.scope) !== -1 && 'focus' in client) {
+            client.navigate(event.notification.data.url);
+            return client.focus();
+          }
         }
-      }
-      // Open new tab
-      if (clients.openWindow) return clients.openWindow(targetUrl);
-    })
-  );
+        // If app is closed, open a new window
+        if (clients.openWindow) {
+          return clients.openWindow(event.notification.data.url);
+        }
+      })
+    );
+  }
 });
 
 // ── Notification close tracking ─────────────────────────────

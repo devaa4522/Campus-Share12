@@ -1,4 +1,4 @@
-import { NotificationType } from "@/hooks/useNotifications";
+import { NotificationType } from "@/types/notifications";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getDeepLink(type: NotificationType, data: Record<string, any> | undefined): string {

@@ -85,7 +85,7 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: Ta
       toast.success("Task claimed! Opening message thread...");
       router.push(`/messages?id=${convId}`);
       
-    } catch (_error: unknown) {
+    } catch {
       toast.error("Action could not be completed. We are working on a fix.");
       setClaimingId(null);
     }

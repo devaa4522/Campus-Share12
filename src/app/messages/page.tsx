@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import MessageCenterClient from "@/components/MessageCenterClient";
+import type { Conversation } from "@/lib/types";
 
 export default async function MessagesPage(props: {
   searchParams?: Promise<{ id?: string }>;
@@ -37,7 +38,7 @@ export default async function MessagesPage(props: {
   return (
     <div className="bg-[#f7f9fb] font-body text-[#000a1e] flex flex-col h-full w-full">
       <MessageCenterClient
-        initialConversations={conversations as any}
+        initialConversations={conversations as unknown as Conversation[]}
         activeConversationId={activeId}
         userId={user.id}
       />

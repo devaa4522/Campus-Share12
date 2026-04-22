@@ -1,4 +1,13 @@
+// @ts-expect-error // Supabase client import from CDN
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// Declare Deno globals for TypeScript
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+  serve(handler: (req: Request) => Promise<Response> | Response): void;
+};
 
 const VAPID_PUBLIC_KEY  = Deno.env.get('VAPID_PUBLIC_KEY')!;
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')!;
@@ -35,7 +44,7 @@ async function generateVAPIDHeaders(endpoint: string): Promise<Record<string, st
 
   const cryptoKey = await crypto.subtle.importKey(
     'pkcs8',
-    privateKeyBytes,
+    privateKeyBytes as unknown as BufferSource,
     { name: 'ECDSA', namedCurve: 'P-256' },
     false,
     ['sign']
@@ -96,8 +105,10 @@ Deno.serve(async (req: Request) => {
       data:  pushPayload.data || {},
     });
 
+    type PushSubscription = { endpoint: string; p256dh: string; auth: string };
+
     const results = await Promise.allSettled(
-      subscriptions.map(async (sub) => {
+      (subscriptions as PushSubscription[]).map(async (sub) => {
         const headers = await generateVAPIDHeaders(sub.endpoint);
 
         const response = await fetch(sub.endpoint, {
@@ -118,7 +129,8 @@ Deno.serve(async (req: Request) => {
     );
 
     const sent = results.filter(
-      (r) => r.status === 'fulfilled' && (r.value === 201 || r.value === 200)
+      (r): r is PromiseFulfilledResult<number> =>
+        r.status === 'fulfilled' && (r.value === 201 || r.value === 200)
     ).length;
 
     return new Response(
