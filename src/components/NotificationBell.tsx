@@ -167,186 +167,190 @@ export function NotificationBell() {
   };
 
   const grouped = groupByTime(notifications);
-
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   return (
-    <div className="relative" ref={panelRef}>
-      {/* Bell button */}
-      <button
-        onClick={() => {
-          if (!open && navigator.vibrate) navigator.vibrate(10);
-          setOpen((v) => !v);
-        }}
-        className="w-10 h-10 flex items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200 active:scale-95 relative"
-        aria-label={`Notifications — ${unreadCount} unread`}
+  <div className="relative" ref={panelRef}>
+    {/* Bell button */}
+    <button
+      onClick={() => {
+        if (!open && navigator.vibrate) navigator.vibrate(10);
+        setOpen((v) => !v);
+      }}
+      className="w-10 h-10 flex items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-all duration-200 active:scale-95 relative"
+      aria-label={mounted ? `Notifications — ${unreadCount} unread` : "Notifications"}
+    >
+      <motion.span
+        animate={mounted && unreadCount > 0 ? { rotate: [0, -12, 12, -8, 8, 0] } : {}}
+        transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 4 }}
+        className="material-symbols-outlined text-2xl"
       >
-        <motion.span
-          animate={unreadCount > 0 ? { rotate: [0, -12, 12, -8, 8, 0] } : {}}
-          transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 4 }}
-          className="material-symbols-outlined text-2xl"
-        >
-          notifications
-        </motion.span>
+        notifications
+      </motion.span>
 
-        <AnimatePresence>
-          {unreadCount > 0 && (
-            <motion.span
-              key="badge"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-error text-white text-[10px] font-black rounded-full border-2 border-[#000a1e]"
-            >
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </button>
-
-      {/* Dropdown panel */}
       <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.97, y: 10, filter: 'blur(8px)' }}
-            animate={{ opacity: 1, scale: 1,    y: 0,  filter: 'blur(0px)' }}
-            exit={{   opacity: 0, scale: 0.97, y: 8,  filter: 'blur(8px)'  }}
-            transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-            className={`
-              fixed inset-x-4 top-20
-              sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-3
-              sm:w-[400px]
-              flex flex-col max-h-[72vh] rounded-2xl
-              bg-[#000a1e]/96 backdrop-blur-3xl
-              border border-white/8
-              shadow-[0_28px_72px_rgba(0,0,0,0.65)]
-              overflow-hidden z-[100]
-            `}
+        {/* Only render the badge if mounted to avoid Hydration Error #418 */}
+        {mounted && unreadCount > 0 && (
+          <motion.span
+            key="badge"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-error text-white text-[10px] font-black rounded-full border-2 border-[#000a1e]"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/6 flex-shrink-0 bg-white/2">
-              <div className="flex items-center gap-2.5">
-                <h3 className="text-[15px] font-bold text-white/90 tracking-tight">Notifications</h3>
-                {unreadCount > 0 && (
-                  <span className="text-[10px] font-black bg-[#006e0c]/18 text-[#006e0c] border border-[#006e0c]/35 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    {unreadCount} new
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                {unreadCount > 0 && (
-                  <button
-                    onClick={markAllAsRead}
-                    className="text-[11px] font-bold text-[#006e0c] hover:text-[#006e0c]/80 transition-colors"
-                  >
-                    Mark all read
-                  </button>
-                )}
-                {notifications.length > 0 && (
-                  <button
-                    onClick={clearAll}
-                    className="text-[11px] text-white/25 hover:text-white/50 transition-colors"
-                  >
-                    Clear all
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Push banner */}
-            <AnimatePresence>
-              {showPushBanner && (
-                <PushBanner
-                  onEnable={handleEnablePush}
-                  onDismiss={() => {
-                    setShowPushBanner(false);
-                    localStorage.setItem('cs:push-banner-dismissed', '1');
-                  }}
-                />
-              )}
-            </AnimatePresence>
-
-            {/* List */}
-            <div className="overflow-y-auto flex-1 scrollbar-none">
-              {isLoading ? (
-                <div className="p-5 space-y-4">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="flex gap-3 animate-pulse">
-                      <div className="w-9 h-9 rounded-xl bg-white/6 flex-shrink-0" />
-                      <div className="flex-1 space-y-2 py-0.5">
-                        <div className="h-2.5 bg-white/8 rounded w-3/4" />
-                        <div className="h-3.5 bg-white/6 rounded w-full" />
-                        <div className="h-2 bg-white/4 rounded w-1/2" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
-                  <span className="text-3xl mb-3 opacity-20">🔔</span>
-                  <p className="text-white/50 text-sm font-semibold">All caught up</p>
-                  <p className="text-white/25 text-xs mt-1">Deals, messages & karma appear here</p>
-                </div>
-              ) : (
-                <div className="pb-2">
-                  {grouped.map(([label, items]) => (
-                    <div key={label}>
-                      {/* Section label */}
-                      <div className="px-5 py-1.5 bg-white/2 border-b border-white/4">
-                        <span className="text-[9px] font-black uppercase tracking-[0.14em] text-white/25">
-                          {label}
-                        </span>
-                      </div>
-                      <AnimatePresence mode="popLayout">
-                        {items.map((n) => (
-                          <BellRow
-                            key={n.id}
-                            notif={n}
-                            onRead={markAsRead}
-                            onDelete={deleteNotification}
-                          />
-                        ))}
-                      </AnimatePresence>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="flex-shrink-0 border-t border-white/5 bg-white/2">
-              <button
-                onClick={() => { setOpen(false); router.push('/notifications'); }}
-                className="w-full py-3 text-[12px] font-bold text-[#006e0c] hover:bg-white/4 transition-colors border-b border-white/4"
-              >
-                View full inbox
-              </button>
-              {pushSupported && (
-                <div className="px-5 py-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{
-                        background: pushEnabled ? '#006e0c' : 'rgba(255,255,255,0.2)',
-                        boxShadow: pushEnabled ? '0 0 5px #006e0c' : 'none',
-                      }}
-                    />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">
-                      {pushEnabled ? 'Push active' : 'Push offline'}
-                    </span>
-                  </div>
-                  {!pushEnabled && (
-                    <button
-                      onClick={handleEnablePush}
-                      className="text-[10px] font-bold text-[#006e0c] border border-[#006e0c]/25 px-2.5 py-1 rounded-lg bg-[#006e0c]/8 hover:bg-[#006e0c]/15 transition-colors"
-                    >
-                      Enable push
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </motion.div>
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </motion.span>
         )}
       </AnimatePresence>
-    </div>
-  );
+    </button>
+
+    {/* Dropdown panel */}
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97, y: 10, filter: 'blur(8px)' }}
+          animate={{ opacity: 1, scale: 1,    y: 0,  filter: 'blur(0px)' }}
+          exit={{   opacity: 0, scale: 0.97, y: 8,  filter: 'blur(8px)'  }}
+          transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+          className={`
+            fixed inset-x-4 top-20
+            sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-3
+            sm:w-[400px]
+            flex flex-col max-h-[72vh] rounded-2xl
+            bg-[#000a1e]/96 backdrop-blur-3xl
+            border border-white/8
+            shadow-[0_28px_72px_rgba(0,0,0,0.65)]
+            overflow-hidden z-[100]
+          `}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/6 flex-shrink-0 bg-white/2">
+            <div className="flex items-center gap-2.5">
+              <h3 className="text-[15px] font-bold text-white/90 tracking-tight">Notifications</h3>
+              {mounted && unreadCount > 0 && (
+                <span className="text-[10px] font-black bg-[#006e0c]/18 text-[#006e0c] border border-[#006e0c]/35 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  {unreadCount} new
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {mounted && unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="text-[11px] font-bold text-[#006e0c] hover:text-[#006e0c]/80 transition-colors"
+                >
+                  Mark all read
+                </button>
+              )}
+              {mounted && notifications.length > 0 && (
+                <button
+                  onClick={clearAll}
+                  className="text-[11px] text-white/25 hover:text-white/50 transition-colors"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Push banner */}
+          <AnimatePresence>
+            {showPushBanner && (
+              <PushBanner
+                onEnable={handleEnablePush}
+                onDismiss={() => {
+                  setShowPushBanner(false);
+                  localStorage.setItem('cs:push-banner-dismissed', '1');
+                }}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* List */}
+          <div className="overflow-y-auto flex-1 scrollbar-none">
+            {!mounted || isLoading ? (
+              <div className="p-5 space-y-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex gap-3 animate-pulse">
+                    <div className="w-9 h-9 rounded-xl bg-white/6 flex-shrink-0" />
+                    <div className="flex-1 space-y-2 py-0.5">
+                      <div className="h-2.5 bg-white/8 rounded w-3/4" />
+                      <div className="h-3.5 bg-white/6 rounded w-full" />
+                      <div className="h-2 bg-white/4 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+                <span className="text-3xl mb-3 opacity-20">🔔</span>
+                <p className="text-white/50 text-sm font-semibold">All caught up</p>
+                <p className="text-white/25 text-xs mt-1">Deals, messages & karma appear here</p>
+              </div>
+            ) : (
+              <div className="pb-2">
+                {grouped.map(([label, items]) => (
+                  <div key={label}>
+                    {/* Section label */}
+                    <div className="px-5 py-1.5 bg-white/2 border-b border-white/4">
+                      <span className="text-[9px] font-black uppercase tracking-[0.14em] text-white/25">
+                        {label}
+                      </span>
+                    </div>
+                    <AnimatePresence mode="popLayout">
+                      {items.map((n) => (
+                        <BellRow
+                          key={n.id}
+                          notif={n}
+                          onRead={markAsRead}
+                          onDelete={deleteNotification}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex-shrink-0 border-t border-white/5 bg-white/2">
+            <button
+              onClick={() => { setOpen(false); router.push('/notifications'); }}
+              className="w-full py-3 text-[12px] font-bold text-[#006e0c] hover:bg-white/4 transition-colors border-b border-white/4"
+            >
+              View full inbox
+            </button>
+            {pushSupported && (
+              <div className="px-5 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{
+                      background: mounted && pushEnabled ? '#006e0c' : 'rgba(255,255,255,0.2)',
+                      boxShadow: mounted && pushEnabled ? '0 0 5px #006e0c' : 'none',
+                    }}
+                  />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">
+                    {mounted && pushEnabled ? 'Push active' : 'Push offline'}
+                  </span>
+                </div>
+                {mounted && !pushEnabled && (
+                  <button
+                    onClick={handleEnablePush}
+                    className="text-[10px] font-bold text-[#006e0c] border border-[#006e0c]/25 px-2.5 py-1 rounded-lg bg-[#006e0c]/8 hover:bg-[#006e0c]/15 transition-colors"
+                  >
+                    Enable push
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+);
 }
