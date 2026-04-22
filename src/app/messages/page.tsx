@@ -1,14 +1,7 @@
-// src/app/messages/page.tsx
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import dynamic from "next/dynamic"; // 1. Add this import
+import MessageCenterLoader from "@/components/MessageCenterLoader"; // Import the bridge
 import type { Conversation } from "@/lib/types";
-
-// 2. Load MessageCenterClient ONLY on the client side
-const MessageCenterClient = dynamic(
-  () => import("@/components/MessageCenterClient"),
-  { ssr: false } 
-);
 
 export default async function MessagesPage(props: {
   searchParams?: Promise<{ id?: string }>;
@@ -22,7 +15,7 @@ export default async function MessagesPage(props: {
     redirect("/login");
   }
 
-  // 3. Update the select query to include the new columns you just added
+  // Ensure we fetch the new columns we need
   const { data: conversations, error } = await supabase
     .from("conversations")
     .select(`
@@ -45,7 +38,7 @@ export default async function MessagesPage(props: {
 
   return (
     <div className="bg-[#f7f9fb] font-body text-[#000a1e] flex flex-col h-full w-full">
-      <MessageCenterClient
+      <MessageCenterLoader
         initialConversations={conversations as unknown as Conversation[]}
         activeConversationId={activeId}
         userId={user.id}
