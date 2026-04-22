@@ -565,6 +565,7 @@ function MessageBubble({
   const bubbleRadius = isMe ? "rounded-2xl rounded-tr-sm" : "rounded-2xl rounded-tl-sm";
   const bubbleBg     = isMe ? "bg-primary-container" : "bg-white";
   const bubbleText   = isMe ? "text-white" : "text-on-surface";
+  
 
   return (
     <div className={`flex w-full mb-0.5 items-end ${isMe ? "justify-end" : "justify-start"} group px-1`}>
@@ -718,6 +719,7 @@ export default function MessageCenterClient({
   activeConversationId?: string;
   userId: string;
 }) {
+  const [mounted, setMounted] = useState(false); 
   const router   = useRouter();
   const supabase = useRef(createClient()).current;
 
@@ -757,6 +759,10 @@ export default function MessageCenterClient({
     : null;
 
   // ── Viewport / PWA ───────────────────────────────────────────────────────
+  useEffect(() => {
+    setMounted(true); // Set to true once we are on the client
+  }, []);
+  
   useEffect(() => {
     document.body.style.overflow = "hidden";
     const nav = document.querySelector("nav.fixed.bottom-0") as HTMLElement | null;
@@ -1008,6 +1014,7 @@ export default function MessageCenterClient({
     const cp = c.p1.id === userId ? c.p2 : c.p1;
     return cp.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
   });
+  if (!mounted) return <div className="flex-1 w-full h-full bg-[#f7f9fb]" />;
 
   // ── Deal card ─────────────────────────────────────────────────────────────
   const renderTransactionCard = () => {

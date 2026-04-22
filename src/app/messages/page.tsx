@@ -18,16 +18,18 @@ export default async function MessagesPage(props: {
   // Fetch all conversations for the user
   const { data: conversations, error } = await supabase
     .from("conversations")
-    .select(`
-      id,
-      deal_id,
-      participant_1,
-      participant_2,
-      created_at,
-      p1:profiles!participant_1(id, full_name, avatar_url),
-      p2:profiles!participant_2(id, full_name, avatar_url),
-      messages(id, content, created_at, sender_id, is_read)
-    `)
+// src/app/messages/page.tsx line 18
+  .select(`
+    id,
+    deal_id,
+    participant_1,
+    participant_2,
+    created_at,
+    p1:profiles!participant_1(id, full_name, avatar_url),
+    p2:profiles!participant_2(id, full_name, avatar_url),
+    messages(id, content, created_at, sender_id, is_read, msg_type, reply_to_id, is_deleted, is_edited, reactions)
+  `)
+    
     .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
     .order("created_at", { ascending: false });
 
