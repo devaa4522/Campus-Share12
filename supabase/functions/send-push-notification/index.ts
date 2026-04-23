@@ -1,11 +1,8 @@
 // @ts-expect-error // Supabase client import from CDN
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Declare Deno globals for TypeScript
 declare const Deno: {
-  env: {
-    get(key: string): string | undefined;
-  };
+  env: { get(key: string): string | undefined };
   serve(handler: (req: Request) => Promise<Response> | Response): void;
 };
 
@@ -14,16 +11,19 @@ const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')!;
 const VAPID_SUBJECT     = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@campusshare.app';
 
 interface PushPayload {
-  user_id:  string;
-  type:     string;
-  title:    string;
-  body:     string;
-  data?:    Record<string, unknown>;
+  user_id:         string;
+  type:            string;
+  title?:          string;
+  body?:           string;
+  data?:           Record<string, unknown>;
+  sender_id?:      string;
+  message_id?:     string;
+  conversation_id?: string;
 }
 
 async function generateVAPIDHeaders(endpoint: string): Promise<Record<string, string>> {
   const audience = new URL(endpoint).origin;
-  const expiration = Math.floor(Date.now() / 1000) + 12 * 3600; // 12 hours
+  const expiration = Math.floor(Date.now() / 1000) + 12 * 3600;
 
   const header = btoa(JSON.stringify({ typ: 'JWT', alg: 'ES256' }))
     .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
@@ -36,7 +36,6 @@ async function generateVAPIDHeaders(endpoint: string): Promise<Record<string, st
 
   const signingInput = `${header}.${payload}`;
 
-  // Import VAPID private key
   const privateKeyBytes = Uint8Array.from(
     atob(VAPID_PRIVATE_KEY.replace(/-/g, '+').replace(/_/g, '/')),
     (c) => c.charCodeAt(0)
@@ -86,6 +85,45 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    // ── Fetch sender profile if it's a message ──────────────────────────
+    let senderName = 'CampusShare';
+    let messageContent = pushPayload.body || 'You have a new notification';
+
+    if (pushPayload.type === 'new_message' && pushPayload.sender_id) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, username')
+        .eq('id', pushPayload.sender_id)
+        .single();
+
+      if (profile) {
+        senderName = profile.full_name || profile.username || 'Someone';
+      }
+
+      // Fetch actual message content
+      if (pushPayload.message_id) {
+        const { data: message } = await supabase
+          .from('messages')
+          .select('content')
+          .eq('id', pushPayload.message_id)
+          .single();
+
+        if (message) {
+          messageContent = message.content;
+        }
+      }
+    }
+
+    // ── Build final notification payload ────────────────────────────────
+    const title = pushPayload.type === 'new_message' 
+      ? senderName 
+      : (pushPayload.title || 'CampusShare');
+
+    const body = pushPayload.type === 'new_message'
+      ? messageContent
+      : pushPayload.body || 'You have a new notification';
+
+    // ── Fetch all push subscriptions for this user ─────────────────────
     const { data: subscriptions, error } = await supabase
       .from('push_subscriptions')
       .select('endpoint, p256dh, auth')
@@ -99,10 +137,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const messageBody = JSON.stringify({
-      title: pushPayload.title,
-      body:  pushPayload.body,
-      type:  pushPayload.type,
-      data:  pushPayload.data || {},
+      title,
+      body,
+      type: pushPayload.type,
+      data: pushPayload.data || {},
     });
 
     type PushSubscription = { endpoint: string; p256dh: string; auth: string };
@@ -117,6 +155,7 @@ Deno.serve(async (req: Request) => {
           body: new TextEncoder().encode(messageBody),
         });
 
+        // Clean up dead subscriptions
         if (response.status === 410 || response.status === 404) {
           await supabase
             .from('push_subscriptions')

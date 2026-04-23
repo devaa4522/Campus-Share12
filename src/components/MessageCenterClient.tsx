@@ -1,42 +1,4 @@
 "use client";
-
-/**
- * MessageCenterClient — CampusShare
- *
- * ── BACKEND MIGRATIONS REQUIRED ──────────────────────────────────────────────
- *
- * 1. Add columns to messages table:
- *    ALTER TABLE messages
- *      ADD COLUMN IF NOT EXISTS reply_to_id  uuid REFERENCES messages(id) ON DELETE SET NULL,
- *      ADD COLUMN IF NOT EXISTS reactions    jsonb NOT NULL DEFAULT '{}',
- *      ADD COLUMN IF NOT EXISTS is_deleted   boolean NOT NULL DEFAULT false,
- *      ADD COLUMN IF NOT EXISTS msg_type     text NOT NULL DEFAULT 'text',
- *      ADD COLUMN IF NOT EXISTS is_edited    boolean NOT NULL DEFAULT false;
- *
- * 2. Create Supabase Storage bucket called "message-attachments"
- *    - Authenticated users can INSERT/SELECT objects where
- *      (storage.foldername(name))[1] = auth.uid()::text
- *
- * 3. Optional — RPC to persist reactions atomically:
- *    CREATE OR REPLACE FUNCTION toggle_reaction(p_msg_id uuid, p_emoji text, p_user_id uuid)
- *    RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
- *    DECLARE r jsonb;
- *    BEGIN
- *      SELECT reactions INTO r FROM messages WHERE id = p_msg_id;
- *      IF r ? p_emoji THEN
- *        IF r->p_emoji->'user_ids' @> to_jsonb(ARRAY[p_user_id::text]) THEN
- *          r = jsonb_set(r, ARRAY[p_emoji,'user_ids'], (r->p_emoji->'user_ids') - p_user_id::text);
- *        ELSE
- *          r = jsonb_set(r, ARRAY[p_emoji,'user_ids'], (r->p_emoji->'user_ids') || to_jsonb(p_user_id::text));
- *        END IF;
- *      ELSE
- *        r = r || jsonb_build_object(p_emoji,
- *              jsonb_build_object('emoji', p_emoji, 'user_ids', jsonb_build_array(p_user_id::text)));
- *      END IF;
- *      UPDATE messages SET reactions = r WHERE id = p_msg_id;
- *    END; $$;
- */
-
 import {
   useEffect, useState, useRef, useCallback,
   type ChangeEvent,
@@ -220,10 +182,10 @@ function BubbleContent({ msg, isMe, onImageClick }: { msg: ExtendedMessage; isMe
 
   if (type === "image") return (
     <button onClick={() => onImageClick(msg.content)}
-      className="block rounded-xl overflow-hidden max-w-[240px] active:opacity-80 transition-opacity"
+      className="block rounded-xl overflow-hidden max-w-60 active:opacity-80 transition-opacity"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={msg.content} alt="photo" className="w-full h-auto max-h-[280px] object-cover block" />
+      <img src={msg.content} alt="photo" className="w-full h-auto max-w-70 object-cover block" />
     </button>
   );
 
@@ -259,7 +221,7 @@ function ReplyQuote({ source, isMe, label, onClick }: {
   return (
     <button onClick={onClick}
       className={`w-full flex gap-2 rounded-xl px-2.5 py-2 mb-1.5 border-l-[3px] text-left active:opacity-70 transition-opacity ${
-        isMe ? "bg-white/15 border-white/80" : "bg-black/5 border-primary/70"
+        isMe ? "bg-black/65 border-black/70" : "bg-black/5 border-primary/70"
       }`}
     >
       {t === "image" && (
@@ -277,7 +239,7 @@ function ReplyQuote({ source, isMe, label, onClick }: {
 // ── Reaction bubbles ──────────────────────────────────────────────────────────
 function ReactionBubble({ emoji, count, reacted, onToggle }: { emoji: string; count: number; reacted: boolean; onToggle: () => void }) {
   return (
-    <button onClick={onToggle} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] border transition-all active:scale-90 shadow-sm ${reacted ? "bg-primary/10 border-primary/25 text-primary font-bold" : "bg-white border-black/8 text-on-surface-variant"}`}>
+    <button onClick={onToggle} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] border transition-all active:scale-90 shadow-sm ${reacted ? "bg-primary/10 border-primary/25 text-primary font-bold" : "bg-black border-black/8 text-on-surface-variant"}`}>
       <span>{emoji}</span><span className="font-bold tabular-nums">{count}</span>
     </button>
   );
@@ -479,12 +441,6 @@ function SearchOverlay({ messages, userId, peerName, onClose, onJump }: {
     </motion.div>
   );
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// MessageBubble — swipe-to-reply with correct directional behaviour
-//   Sender (isMe=true):   swipe LEFT  → reply icon appears on LEFT
-//   Receiver (isMe=false):swipe RIGHT → reply icon appears on RIGHT
-// ════════════════════════════════════════════════════════════════════════════
 function MessageBubble({
   msg, isMe, isRead, isDelivered, peer, userId,
   onReact, onReply, onEdit, onDelete, allMessages, onJump, onImageClick,

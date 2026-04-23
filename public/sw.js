@@ -64,13 +64,15 @@ self.addEventListener('push', function (event) {
     const options = {
       body: data.body,
       icon: '/android-chrome-192x192.png',
-      badge: '/favicon-32x32.png', // This creates the monochrome icon in the Android status bar
-      vibrate: [200, 100, 200],
+      badge: '/favicon-32x32.png',
+      vibrate: getVibrationPattern(data.type),
       data: { 
         ...data.data, 
         url: data.data?.url || getDeepLink(data.type, data.data) 
       },
-      actions: data.actions || [] // Renders the quick-action buttons
+      actions: data.actions || [],
+      tag: data.type === 'new_message' ? `msg-${data.data?.conversation_id}` : undefined,
+      renotify: data.type === 'new_message',
     };
     
     event.waitUntil(self.registration.showNotification(data.title, options));
