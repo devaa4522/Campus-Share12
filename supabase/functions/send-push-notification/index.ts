@@ -172,7 +172,16 @@ Deno.serve(async (req: Request) => {
         r.status === 'fulfilled' && (r.value === 201 || r.value === 200)
     ).length;
 
-    
+    // ✅ ADD THIS LOGGING
+  console.log('[PUSH DEBUG]', {
+    user_id: pushPayload.user_id,
+    total_subscriptions: subscriptions.length,
+    sent_count: sent,
+    results: results.map(r => ({
+      status: r.status,
+      value: r.status === 'fulfilled' ? r.value : (r as PromiseRejectedResult).reason
+    }))
+  });
     return new Response(
       JSON.stringify({ sent, total: subscriptions.length }),
       { headers: { 'Content-Type': 'application/json' }, status: 200 }

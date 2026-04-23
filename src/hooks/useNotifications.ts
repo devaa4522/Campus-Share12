@@ -179,24 +179,51 @@ export function useNotifications(): UseNotificationsReturn {
     try {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') return false;
+
       const reg = await navigator.serviceWorker.ready;
+      
+      // Unsubscribe any existing subscription first
+      const existingSub = await reg.pushManager.getSubscription();
+      if (existingSub) {
+        await existingSub.unsubscribe();
+      }
+      
+      // ✅ FIX: Cast to BufferSource instead of BufferSource
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
       });
+
       const { endpoint, keys } = subscription.toJSON() as {
         endpoint: string;
         keys: { p256dh: string; auth: string };
       };
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
-      const { error } = await supabase.from('push_subscriptions').upsert(
-        { user_id: user.id, endpoint, p256dh: keys.p256dh, auth: keys.auth,
-          user_agent: navigator.userAgent, last_used_at: new Date().toISOString() },
-        { onConflict: 'endpoint' }
-      );
+
+      // Delete all old subscriptions for this user first
+      await supabase
+        .from('push_subscriptions')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Insert the new one
+      const { error } = await supabase
+        .from('push_subscriptions')
+        .insert({
+          user_id: user.id,
+          endpoint,
+          p256dh: keys.p256dh,
+          auth: keys.auth,
+          user_agent: navigator.userAgent,
+          last_used_at: new Date().toISOString(),
+        });
+
       if (error) throw error;
+
       setPushEnabled(true);
+      console.log('✅ Push subscription saved:', endpoint);
       return true;
     } catch (err) {
       console.error('[Push] Enable failed:', err);
