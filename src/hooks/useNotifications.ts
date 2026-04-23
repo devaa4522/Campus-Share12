@@ -189,9 +189,10 @@ export function useNotifications(): UseNotificationsReturn {
       }
       
       // ✅ FIX: Cast to BufferSource instead of BufferSource
+      // Replace the applicationServerKey line with this exact code:
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY).buffer as ArrayBuffer,
       });
 
       const { endpoint, keys } = subscription.toJSON() as {
