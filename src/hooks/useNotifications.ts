@@ -246,95 +246,145 @@ useEffect(() => {
   }, [isMounted, supabase, fetchNotifications]);
 
   // ── Enable push ──────────────────────────────────────────────
-  const enablePushNotifications = useCallback(async (): Promise<boolean> => {
-    if (typeof window === "undefined") return false;
+const enablePushNotifications = useCallback(async (): Promise<boolean> => {
+  if (typeof window === "undefined") return false;
 
-    if (!pushSupported) {
-      console.error("[Push] Not supported on this browser");
+  if (!pushSupported) {
+    console.error("[Push] Not supported on this browser");
+    return false;
+  }
+
+  if (!VAPID_PUBLIC_KEY) {
+    console.error("[Push] VAPID_PUBLIC_KEY is not set");
+    return false;
+  }
+
+  try {
+    // 1. Request OS permission
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.warn("[Push] Permission denied by user:", permission);
       return false;
     }
+    console.log("[Push] ✅ Permission granted");
 
-    if (!VAPID_PUBLIC_KEY) {
-      console.error("[Push] NEXT_PUBLIC_VAPID_PUBLIC_KEY is not set");
-      return false;
-    }
+    // 2. Get service worker registration
+    const reg = await navigator.serviceWorker.ready;
+    console.log("[Push] ✅ SW ready, scope:", reg.scope);
 
+    // 3. Check for and remove stale subscriptions
     try {
-      // 1. Request OS permission
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        console.warn("[Push] Permission denied:", permission);
-        return false;
-      }
-
-      // 2. Wait for SW to be ready
-      const reg = await navigator.serviceWorker.ready;
-      console.log("[Push] SW ready, scope:", reg.scope);
-
-      // 3. Unsubscribe any stale subscription
       const existing = await reg.pushManager.getSubscription();
       if (existing) {
+        console.log("[Push] Found existing subscription, removing...");
         await existing.unsubscribe();
-        console.log("[Push] Unsubscribed stale subscription");
+        
+        // Also clean from DB
+        await supabase
+          .from("push_subscriptions")
+          .delete()
+          .eq("endpoint", existing.endpoint)
+          // .catch(() => {}); // Ignore errors
       }
+    } catch (e) {
+      console.warn("[Push] Error checking existing subscription:", e);
+    }
 
-      // 4. Convert VAPID key correctly
-      //    ⚠️ Must use .slice() not .buffer directly to avoid
-      //    SharedArrayBuffer type mismatch and offset bugs
+    // 4. Convert VAPID key to ArrayBuffer properly
+    console.log("[Push] Converting VAPID key...");
+    let applicationServerKey: ArrayBuffer;
+    
+    try {
       const keyBytes = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-      const applicationServerKey = keyBytes.buffer.slice(
+      applicationServerKey = keyBytes.buffer.slice(
         keyBytes.byteOffset,
         keyBytes.byteOffset + keyBytes.byteLength
       ) as ArrayBuffer;
-
-      // 5. Subscribe
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly:    true,
-        applicationServerKey,
-      });
-
-      console.log("[Push] Subscribed:", subscription.endpoint.slice(0, 60));
-
-      // 6. Extract keys
-      const subJson = subscription.toJSON() as {
-        endpoint: string;
-        keys:     { p256dh: string; auth: string };
-      };
-
-      if (!subJson.keys?.p256dh || !subJson.keys?.auth) {
-        throw new Error("Subscription missing p256dh or auth keys");
-      }
-
-      // 7. Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      // 8. Upsert to DB (safe against duplicate endpoints)
-      const { error } = await supabase.from("push_subscriptions").upsert(
-        {
-          user_id:      user.id,
-          endpoint:     subJson.endpoint,
-          p256dh:       subJson.keys.p256dh,
-          auth:         subJson.keys.auth,
-          user_agent:   navigator.userAgent,
-          last_used_at: new Date().toISOString(),
-        },
-        { onConflict: "endpoint" }
-      );
-
-      if (error) throw error;
-
-      setPushEnabled(true);
-      console.log("[Push] ✅ Subscription saved to DB");
-      return true;
-    } catch (err) {
-      console.error("[Push] enablePushNotifications failed:", err);
+      
+      console.log("[Push] ✅ VAPID key converted, length:", applicationServerKey.byteLength);
+    } catch (e) {
+      console.error("[Push] VAPID key conversion failed:", e);
       return false;
     }
-  }, [pushSupported, supabase]);
 
+    // 5. Subscribe with proper options
+    console.log("[Push] Attempting subscription...");
+    let subscription: PushSubscription;
+    
+    try {
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey,
+      });
+      console.log("[Push] ✅ Subscribed:", subscription.endpoint.slice(0, 60));
+    } catch (subError) {
+      console.error("[Push] ❌ Subscription failed:", subError);
+      
+      // More detailed error logging
+      if (subError instanceof DOMException) {
+        console.error("[Push] DOMException code:", subError.code);
+        console.error("[Push] DOMException message:", subError.message);
+      }
+      
+      return false;
+    }
+
+    // 6. Extract subscription keys
+    const subJson = subscription.toJSON() as {
+      endpoint: string;
+      keys: { p256dh: string; auth: string };
+    };
+
+    if (!subJson.keys?.p256dh || !subJson.keys?.auth) {
+      console.error("[Push] ❌ Subscription missing keys");
+      await subscription.unsubscribe();
+      return false;
+    }
+
+    console.log("[Push] ✅ Keys extracted");
+
+    // 7. Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error("[Push] ❌ Not authenticated:", authError);
+      await subscription.unsubscribe();
+      return false;
+    }
+
+    console.log("[Push] ✅ User authenticated:", user.id);
+
+    // 8. Save to database
+    const { error: dbError } = await supabase.from("push_subscriptions").upsert(
+      {
+        user_id: user.id,
+        endpoint: subJson.endpoint,
+        p256dh: subJson.keys.p256dh,
+        auth: subJson.keys.auth,
+        user_agent: navigator.userAgent,
+        last_used_at: new Date().toISOString(),
+      },
+      { onConflict: "endpoint" }
+    );
+
+    if (dbError) {
+      console.error("[Push] ❌ Failed to save subscription:", dbError);
+      await subscription.unsubscribe();
+      return false;
+    }
+
+    console.log("[Push] ✅ Subscription saved to database");
+    setPushEnabled(true);
+    return true;
+
+  } catch (err) {
+    console.error("[Push] ❌ Unexpected error:", err);
+    if (err instanceof Error) {
+      console.error("[Push] Error message:", err.message);
+      console.error("[Push] Error stack:", err.stack);
+    }
+    return false;
+  }
+}, [pushSupported, supabase]);
   // ── Disable push ─────────────────────────────────────────────
   const disablePushNotifications = useCallback(async () => {
     if (typeof navigator === "undefined") return;
