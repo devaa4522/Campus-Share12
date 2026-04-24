@@ -33,6 +33,8 @@ interface UseNotificationsReturn {
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
+
+
 // ── Convert base64url → Uint8Array ────────────────────────────
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -70,6 +72,16 @@ export function useNotifications(): UseNotificationsReturn {
   const [pushSupported, setPushSupported] = useState(false);
   const channelRef  = useRef<RealtimeChannel | null>(null);
   const userIdRef   = useRef<string | null>(null);
+  // ADD THE DEBUG CODE HERE (after the state declarations):
+useEffect(() => {
+  console.log("🔧 VAPID Debug:", {
+    hasKey: !!VAPID_PUBLIC_KEY,
+    keyLength: VAPID_PUBLIC_KEY.length,
+    keyStart: VAPID_PUBLIC_KEY.slice(0, 10) + "...",
+    pushSupported,
+    pushEnabled,
+  });
+}, [pushSupported, pushEnabled]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.is_read).length,

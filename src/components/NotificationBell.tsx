@@ -7,6 +7,10 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { AppNotification, TYPE_CONFIG } from '@/types/notifications';
 import { getDeepLink } from '@/lib/notification-utils';
 import { groupByTime } from '@/lib/notification-logic';
+import { createClient } from '@/utils/supabase/client';
+
+// Add this inside the NotificationBell component
+const supabase = createClient();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -227,6 +231,70 @@ export function NotificationBell() {
         >
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/6 flex-shrink-0 bg-white/2">
+          <div className="px-5 py-3 border-b border-white/6 bg-red-500/10">
+  <button
+   onClick={async () => {
+  console.log('🧪 Testing subscription creation...');
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.error('❌ No authenticated user');
+    return;
+  }
+  
+  // Test 1: Check if we can create a fake subscription for testing
+  try {
+    const { data, error } = await supabase
+      .from('push_subscriptions')
+      .insert({
+        user_id: user.id,
+        endpoint: 'https://test-endpoint.com/test',
+        p256dh: 'test-p256dh-key',
+        auth: 'test-auth-key',
+        user_agent: navigator.userAgent,
+        last_used_at: new Date().toISOString()
+      })
+      .select();
+    
+    if (error) {
+      console.error('❌ Database insert failed:', error);
+    } else {
+      console.log('✅ Test subscription created:', data);
+      
+      // Test 2: Now test the push API with a subscription
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/push-notify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          title: 'Test with Fake Subscription',
+          body: 'Testing with a fake subscription in DB',
+          type: 'system'
+        })
+      });
+      
+      const result = await response.json();
+      console.log('🚀 API result with subscription:', result);
+      
+      // Clean up the test subscription
+      await supabase
+        .from('push_subscriptions')
+        .delete()
+        .eq('endpoint', 'https://test-endpoint.com/test');
+      console.log('🧹 Cleaned up test subscription');
+    }
+  } catch (err) {
+    console.error('💥 Test failed:', err);
+  }
+}}
+    className="w-full bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded text-xs font-bold transition-colors"
+  >
+    🧪 Test Push Notification
+  </button>
+</div>
             <div className="flex items-center gap-2.5">
               <h3 className="text-[15px] font-bold text-white/90 tracking-tight">Notifications</h3>
               {mounted && unreadCount > 0 && (
