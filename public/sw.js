@@ -53,6 +53,7 @@ self.addEventListener('fetch', (event) => {
 });
 
 // ── Push: show notification ──────────────────────────────────
+// Replace lines 60-90 in public/sw.js with this:
 self.addEventListener('push', function (event) {
   console.log('[SW] Push received');
 
@@ -65,7 +66,6 @@ self.addEventListener('push', function (event) {
   try {
     data = event.data.json();
   } catch (e) {
-    // If JSON parsing fails, try text
     console.warn('[SW] Failed to parse push JSON, using text fallback:', e);
     data = {
       title: 'CampusShare',
@@ -83,29 +83,28 @@ self.addEventListener('push', function (event) {
   // Build notification options like WhatsApp/Telegram
   const options = {
     body: data.body || '',
-    icon: '/android-chrome-192x192.png',
-    badge: '/favicon-32x32.png',
+    icon: data.icon || '/android-chrome-192x192.png',  // ⭐ Use sender avatar from payload
+    badge: data.badge || '/favicon-32x32.png',
+    image: data.image,  // ⭐ Large image for Android expanded view
     vibrate: getVibrationPattern(data.type),
     data: {
       ...(data.data || {}),
       url: url,
       type: data.type,
-      timestamp: Date.now(),
+      timestamp: data.data?.timestamp || Date.now(),  // ⭐ Use server timestamp
     },
-    // Actions — contextual quick-reply buttons
     actions: getActions(data.type, data.data),
-    // Tag: group related notifications (like WhatsApp groups messages by chat)
     tag: getTag(data.type, data.data),
-    // Renotify: vibrate again even if tag matches (for new messages in same chat)
     renotify: data.type === 'new_message',
-    // Keep notification visible until user interacts
     requireInteraction: isHighPriority(data.type),
-    // Timestamp for proper ordering
-    timestamp: Date.now(),
+    timestamp: data.data?.timestamp || Date.now(),  // ⭐ Use server timestamp
+    dir: 'auto',  // ⭐ RTL language support
+    silent: data.type === 'system',  // ⭐ Mute system notifications
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
+
 
 // ── Notification click: deep link into app ───────────────────
 self.addEventListener('notificationclick', function (event) {
