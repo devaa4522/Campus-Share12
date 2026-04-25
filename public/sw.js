@@ -27,6 +27,15 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// ── Messages from app: cache maintenance ─────────────────────
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'CLEAR_CACHE') return;
+
+  event.waitUntil(
+    caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+  );
+});
+
 // ── Fetch: network-first for API, cache-first for assets ────
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -53,7 +62,6 @@ self.addEventListener('fetch', (event) => {
 });
 
 // ── Push: show notification ──────────────────────────────────
-// Replace lines 60-90 in public/sw.js with this:
 self.addEventListener('push', function (event) {
   console.log('[SW] Push received');
 
@@ -157,9 +165,9 @@ function getDeepLink(type, data) {
     request_rejected: `/hub`,
     qr_handshake:     `/dashboard?deal=${d.deal_id || ''}`,
     deal_completed:   `/profile`,
-    new_message:      `/messages?conv=${d.conversation_id || ''}`,
-    task_claimed:     `/tasks?task=${d.task_id || ''}`,
-    task_completed:   `/profile`,
+    new_message:      `/messages?id=${d.conversation_id || ''}`,
+    task_claimed:     `/dashboard?deal=${d.task_id || ''}&type=task`,
+    task_completed:   `/dashboard?deal=${d.task_id || ''}&type=task`,
     karma_received:   `/profile`,
     karma_penalty:    `/profile`,
     system:           `/`,

@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import type { ItemWithProfile } from "@/lib/types";
 import Image from "next/image";
 import ImageWithFallback from "@/components/ImageWithFallback";
@@ -22,7 +22,7 @@ export default async function ItemDetailPage({
 
   if (!item) return notFound();
 
-  const typedItem = item as ItemWithProfile;
+  const typedItem = item as unknown as ItemWithProfile;
   const profile = typedItem.profiles;
 
   let tradeCount = 0;

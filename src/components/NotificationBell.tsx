@@ -1,7 +1,7 @@
 // src/components/NotificationBell.tsx
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useNotificationsContext } from '@/components/NotificationsProvider';
@@ -153,20 +153,19 @@ export function NotificationBell() {
   } = useNotificationsContext();
 
   const [open,           setOpen]           = useState(false);
-  const [showPushBanner, setShowPushBanner] = useState(false);
-  const [mounted,        setMounted]        = useState(false);
+  const [pushBannerDismissed, setPushBannerDismissed] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const panelRef = useRef<HTMLDivElement>(null);
   const router   = useRouter();
 
-  useEffect(() => { setMounted(true); }, []);
 
-  // Show push banner once per session
-  useEffect(() => {
-    if (pushSupported && !pushEnabled && !localStorage.getItem('cs:push-banner-dismissed')) {
-      setShowPushBanner(true);
-    }
-  }, [pushSupported, pushEnabled]);
+  const showPushBanner = mounted && pushSupported && !pushEnabled && !pushBannerDismissed &&
+    typeof window !== 'undefined' && !localStorage.getItem('cs:push-banner-dismissed');
 
   // Close on outside click
   useEffect(() => {
@@ -189,21 +188,13 @@ export function NotificationBell() {
     return () => window.removeEventListener('popstate', handler);
   }, [open]);
 
-  // Animate bell when new notification arrives
-  const prevUnreadRef = useRef(unreadCount);
-  const [bellRing, setBellRing] = useState(false);
-  useEffect(() => {
-    if (unreadCount > prevUnreadRef.current) {
-      setBellRing(true);
-      setTimeout(() => setBellRing(false), 800);
-    }
-    prevUnreadRef.current = unreadCount;
-  }, [unreadCount]);
+  // Keep bell animation render-safe for React Compiler.
+  // Framer Motion replays the entrance animation when unreadCount changes.
 
   const handleEnablePush = async () => {
     const ok = await enablePushNotifications();
     if (ok) {
-      setShowPushBanner(false);
+      setPushBannerDismissed(true);
       localStorage.setItem('cs:push-banner-dismissed', '1');
     }
   };
@@ -225,7 +216,9 @@ export function NotificationBell() {
         aria-label={mounted ? `Notifications — ${unreadCount} unread` : 'Notifications'}
       >
         <motion.span
-          animate={bellRing ? { rotate: [0, -15, 15, -10, 10, -5, 5, 0] } : {}}
+          key={`bell-${unreadCount}`}
+          initial={unreadCount > 0 ? { rotate: 0 } : false}
+          animate={unreadCount > 0 ? { rotate: [0, -15, 15, -10, 10, -5, 5, 0] } : {}}
           transition={{ duration: 0.6, ease: 'easeInOut' }}
           className="material-symbols-outlined text-2xl"
         >
@@ -322,7 +315,7 @@ export function NotificationBell() {
                 <PushBanner
                   onEnable={handleEnablePush}
                   onDismiss={() => {
-                    setShowPushBanner(false);
+                    setPushBannerDismissed(true);
                     localStorage.setItem('cs:push-banner-dismissed', '1');
                   }}
                 />

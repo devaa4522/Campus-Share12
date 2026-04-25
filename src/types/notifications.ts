@@ -35,7 +35,7 @@ export interface AppNotification {
 
 // The legacy shape from NotificationsClient (archive page).
 // Uses the same DB row — body field is the same column.
-export interface Notification extends AppNotification {}
+export type Notification = AppNotification;
 
 // Filter tab identifiers used in NotificationsClient
 export type FilterType = 'all' | 'unread' | 'deals' | 'messages' | 'karma';

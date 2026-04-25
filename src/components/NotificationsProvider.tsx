@@ -9,6 +9,7 @@ import {
   useCallback,
   useRef,
   useMemo,
+  useSyncExternalStore,
 } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -71,7 +72,11 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const [isLoading,     setIsLoading]     = useState(true);
   const [pushEnabled,   setPushEnabled]   = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
-  const [isMounted,     setIsMounted]     = useState(false);
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const channelRef  = useRef<RealtimeChannel | null>(null);
   const userIdRef   = useRef<string | null>(null);
@@ -81,8 +86,6 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     [notifications]
   );
 
-  // Hydration guard
-  useEffect(() => { setIsMounted(true); }, []);
 
   // App badge sync
   useEffect(() => {
@@ -92,9 +95,11 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       setAppBadge: (n: number) => Promise<void>;
       clearAppBadge: () => Promise<void>;
     };
-    unreadCount > 0
-      ? nav.setAppBadge(unreadCount).catch(console.error)
-      : nav.clearAppBadge().catch(console.error);
+    if (unreadCount > 0) {
+      nav.setAppBadge(unreadCount).catch(console.error);
+    } else {
+      nav.clearAppBadge().catch(console.error);
+    }
   }, [unreadCount]);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -315,37 +320,31 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
     );
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', id);
+    const { error } = await supabase.rpc('mark_notification_read', {
+      p_notification_id: id,
+    });
     if (error) console.error('[Notifications] markAsRead:', error);
   }, [supabase]);
 
   const markAllAsRead = useCallback(async () => {
     if (!userIdRef.current) return;
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', userIdRef.current)
-      .eq('is_read', false);
+    const { error } = await supabase.rpc('mark_all_notifications_read');
     if (error) console.error('[Notifications] markAllAsRead:', error);
   }, [supabase]);
 
   const deleteNotification = useCallback(async (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
-    const { error } = await supabase.from('notifications').delete().eq('id', id);
+    const { error } = await supabase.rpc('delete_notification', {
+      p_notification_id: id,
+    });
     if (error) console.error('[Notifications] delete:', error);
   }, [supabase]);
 
   const clearAll = useCallback(async () => {
     if (!userIdRef.current) return;
     setNotifications([]);
-    const { error } = await supabase
-      .from('notifications')
-      .delete()
-      .eq('user_id', userIdRef.current);
+    const { error } = await supabase.rpc('clear_my_notifications');
     if (error) console.error('[Notifications] clearAll:', error);
   }, [supabase]);
 

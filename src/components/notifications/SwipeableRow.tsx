@@ -142,7 +142,7 @@ export function SwipeableRow({ children, onDelete, onRead, isRead }: SwipeableRo
 
       {/* ── Delete reveal (left side) ──────────────────────────────────────── */}
       <motion.div
-        style={{ opacity: deleteOpacity, backgroundColor: deleteBg as any }}
+        style={{ opacity: deleteOpacity, backgroundColor: deleteBg }}
         className="absolute inset-0 flex items-center px-5 pointer-events-none"
         aria-hidden
       >
@@ -158,7 +158,7 @@ export function SwipeableRow({ children, onDelete, onRead, isRead }: SwipeableRo
       {/* ── Read reveal (right side) ───────────────────────────────────────── */}
       {!isRead && (
         <motion.div
-          style={{ opacity: readOpacity, backgroundColor: readBg as any }}
+          style={{ opacity: readOpacity, backgroundColor: readBg }}
           className="absolute inset-0 flex items-center justify-end px-5 pointer-events-none"
           aria-hidden
         >

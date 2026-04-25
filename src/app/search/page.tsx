@@ -11,7 +11,7 @@ export default function SearchPage() {
   const [items, setItems] = useState<ItemWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [activePriceType, setActivePriceType] = useState<string>("All");
+  const [activePriceType, setActivePriceType] = useState<"All" | "Free" | "Rental" | "Karma">("All");
   const [activeCondition, setActiveCondition] = useState<string>("All");
   const [authed, setAuthed] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -38,7 +38,7 @@ export default function SearchPage() {
       .order("created_at", { ascending: false });
 
     if (activePriceType !== "All") {
-      q = q.eq("price_type", activePriceType);
+      q = q.eq("price_type", activePriceType as "Free" | "Rental" | "Karma");
     }
     if (activeCondition !== "All") {
       q = q.eq("condition", activeCondition);
@@ -48,7 +48,7 @@ export default function SearchPage() {
     }
 
     const { data } = await q;
-    setItems((data ?? []) as ItemWithProfile[]);
+    setItems((data ?? []) as unknown as ItemWithProfile[]);
     setLoading(false);
   }, [query, activePriceType, activeCondition, authed, userId]);
 
@@ -92,7 +92,7 @@ export default function SearchPage() {
           <section>
             <h3 className="font-headline text-xl mb-4 text-on-surface">Price</h3>
             <div className="flex flex-wrap gap-2">
-              {["All", "Free", "Karma", "Rental"].map((pt) => (
+              {(["All", "Free", "Karma", "Rental"] as const).map((pt) => (
                 <FilterChip
                   key={pt}
                   label={pt}

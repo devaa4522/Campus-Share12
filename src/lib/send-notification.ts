@@ -1,7 +1,8 @@
 // src/lib/send-notification.ts
-import { createClient } from "@/utils/supabase/client";
-
-const supabase = createClient();
+//
+// Deprecated: browser code should not insert notifications directly.
+// Business actions should call a server-authoritative RPC, and the RPC/trigger
+// should create the notification after validating permissions and state.
 
 type NotificationType =
   | "new_message"
@@ -17,9 +18,7 @@ type NotificationType =
   | "system";
 
 interface SendNotificationParams {
-  // Who receives the notification
   userId: string;
-  // Who triggered it (for name/avatar lookup)
   senderId: string;
   type: NotificationType;
   title: string;
@@ -27,29 +26,9 @@ interface SendNotificationParams {
   data?: Record<string, unknown>;
 }
 
-export async function sendNotification({
-  userId,
-  senderId,
-  type,
-  title,
-  body,
-  data = {},
-}: SendNotificationParams): Promise<void> {
-  try {
-    const { error } = await supabase.from("notifications").insert({
-      user_id:   userId,
-      sender_id: senderId,  // ⭐ triggers enrichment in DB trigger
-      type,
-      title,
-      body,
-      data,
-      is_read: false,
-    });
-
-    if (error) {
-      console.error("[sendNotification] Failed:", error);
-    }
-  } catch (err) {
-    console.error("[sendNotification] Error:", err);
-  }
+export async function sendNotification(_params: SendNotificationParams): Promise<void> {
+  console.warn(
+    "[sendNotification] Direct client notification inserts are disabled. " +
+    "Create notifications inside validated Supabase RPCs or database triggers instead."
+  );
 }

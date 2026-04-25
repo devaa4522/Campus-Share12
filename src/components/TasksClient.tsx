@@ -9,7 +9,15 @@ import PostTaskModal from "./PostTaskModal";
 
 import { TaskWithProfile } from "@/lib/types";
 
-export default function TasksClient({ initialTasks, userId }: { initialTasks: TaskWithProfile[]; userId: string }) {
+export default function TasksClient({
+  initialTasks,
+  userId,
+  focusedTaskId,
+}: {
+  initialTasks: TaskWithProfile[];
+  userId: string;
+  focusedTaskId?: string;
+}) {
   const router = useRouter();
   const [tasks, setTasks] = useState(initialTasks);
   const [activeCategory, setActiveCategory] = useState("All");
@@ -48,6 +56,19 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: Ta
     return () => { supabase.removeChannel(channel); };
   }, [supabase, userId]);
 
+  useEffect(() => {
+    if (!focusedTaskId) return;
+    setActiveCategory("All");
+    const timeout = window.setTimeout(() => {
+      document.getElementById(`task-${focusedTaskId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 120);
+
+    return () => window.clearTimeout(timeout);
+  }, [focusedTaskId]);
+
   const filteredTasks = activeCategory === "All" 
     ? tasks 
     : tasks.filter(t => t.category === activeCategory);
@@ -61,26 +82,16 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: Ta
     try {
       setClaimingId(task.id);
       
-      const { data: result, error: rpcError } = await supabase.rpc('claim_task_atomic', {
+      const { data: result, error: rpcError } = await supabase.rpc('claim_task_secure', {
         t_id: task.id,
         u_id: userId
       });
 
       if (rpcError) throw rpcError;
 
-      const convId = result?.conversation_id;
+      const claimResult = result as unknown as { conversation_id?: string } | null;
+      const convId = claimResult?.conversation_id;
       if (!convId) throw new Error("Conversation generation failed");
-
-      // Insert system message
-      const { error: msgError } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: convId,
-          sender_id: userId,
-          content: `I'm here to help with your task: ${task.title}`
-        });
-
-      if (msgError) throw msgError;
 
       toast.success("Task claimed! Opening message thread...");
       router.push(`/messages?id=${convId}`);
@@ -130,7 +141,7 @@ export default function TasksClient({ initialTasks, userId }: { initialTasks: Ta
           const rewardLabel = task.reward_type === 'cash' ? `$${task.reward_amount}` : `${task.reward_amount} Karma`;
 
           return (
-            <div key={task.id} className={`${colSpan} glass-card p-6 md:p-8 rounded-xl shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex flex-col justify-between transition-all hover:translate-y-[-4px] bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/40 dark:border-slate-800/40 min-h-[280px]`}>
+            <div id={`task-${task.id}`} key={task.id} className={`${colSpan} glass-card p-6 md:p-8 rounded-xl shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex flex-col justify-between transition-all hover:translate-y-[-4px] bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/40 dark:border-slate-800/40 min-h-[280px] ${focusedTaskId === task.id ? "ring-2 ring-secondary/80 shadow-[0_0_0_6px_rgba(0,110,12,0.08)]" : ""}`}>
               <div>
                 <div className="flex justify-between items-start mb-6">
                   {task.category && (

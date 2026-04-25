@@ -1,10 +1,9 @@
-// @ts-nocheck
 // supabase/functions/push-notify/index.ts
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const VAPID_PUBLIC_KEY  = Deno.env.get("VAPID_PUBLIC_KEY")  ?? "";
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
-const VAPID_SUBJECT     = Deno.env.get("VAPID_SUBJECT")     ?? "mailto:devendrapalli143@gmail.com";
+const VAPID_SUBJECT     = Deno.env.get("VAPID_SUBJECT")     ?? "mailto:admin@example.com";
 
 interface PushPayload {
   notification_id: string;
@@ -215,9 +214,9 @@ function getDeepLink(type: string, data?: Record<string, unknown>): string {
     request_rejected: `/hub`,
     qr_handshake: `/dashboard?deal=${String(d.deal_id ?? "")}`,
     deal_completed: `/profile`,
-    new_message: `/messages?conv=${String(d.conversation_id ?? "")}`,
-    task_claimed: `/tasks?task=${String(d.task_id ?? "")}`,
-    task_completed: `/profile`,
+    new_message: `/messages?id=${String(d.conversation_id ?? "")}`,
+    task_claimed: `/dashboard?deal=${String(d.task_id ?? "")}&type=task`,
+    task_completed: `/dashboard?deal=${String(d.task_id ?? "")}&type=task`,
     karma_received: `/profile`,
     karma_penalty: `/profile`,
     system: `/`,
@@ -249,11 +248,22 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const sbUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const webhookSecret = Deno.env.get("PUSH_WEBHOOK_SECRET") ?? "";
     if (!sbUrl || !sbKey) {
       return jsonResponse({ error: "Supabase credentials missing" }, 500);
     }
+    if (!webhookSecret) {
+      console.error("[push-notify] PUSH_WEBHOOK_SECRET is not configured");
+      return jsonResponse({ error: "Server misconfigured" }, 500);
+    }
 
-    const rawBody = await req.json() as Record<string, unknown>;
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (authHeader !== `Bearer ${webhookSecret}`) {
+      console.error("[push-notify] Unauthorized call");
+      return jsonResponse({ error: "Unauthorized" }, 401);
+    }
+
+    const rawBody = await req.json() as unknown;
     const payload = rawBody as PushPayload;
 
     if (!payload.user_id || !payload.title || !payload.body) {

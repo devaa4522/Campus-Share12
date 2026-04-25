@@ -26,6 +26,10 @@ export default function DashboardClient({
   receivedRequests,
   myTaskRequests = [],
   helpingWithTasks = [],
+  focusedDealId,
+  focusedDealType,
+  initialTab,
+  openScanner = false,
 }: {
   profile: Profile;
   items: Item[];
@@ -33,8 +37,28 @@ export default function DashboardClient({
   receivedRequests: RequestWithRelations[];
   myTaskRequests?: (Task & { task_claims?: (TaskClaim & { profiles: Profile | null })[] })[];
   helpingWithTasks?: (TaskClaim & { tasks?: (Task & { profiles: Profile | null }) | null })[]; 
+  focusedDealId?: string;
+  focusedDealType?: "item" | "task";
+  initialTab?: DealTab;
+  openScanner?: boolean;
 }) {
-  const [activeTab, setActiveTab] = useState<DealTab>("received");
+  const resolveInitialTab = (): DealTab => {
+    if (initialTab) return initialTab;
+    if (!focusedDealId) return "received";
+    if (focusedDealType === "task") {
+      return helpingWithTasks.some((claim) => claim.tasks?.id === focusedDealId) ? "helping_with" : "task_requests";
+    }
+    if (focusedDealType === "item") {
+      return madeRequests.some((req) => req.id === focusedDealId) ? "made" : "received";
+    }
+    if (madeRequests.some((req) => req.id === focusedDealId)) return "made";
+    if (receivedRequests.some((req) => req.id === focusedDealId)) return "received";
+    if (myTaskRequests.some((task) => task.id === focusedDealId)) return "task_requests";
+    if (helpingWithTasks.some((claim) => claim.tasks?.id === focusedDealId)) return "helping_with";
+    return "received";
+  };
+
+  const [activeTab, setActiveTab] = useState<DealTab>(resolveInitialTab);
   const [localMade, setLocalMade] = useState<RequestWithRelations[]>(madeRequests);
   const [localReceived, setLocalReceived] = useState<RequestWithRelations[]>(receivedRequests);
   const [localTaskRequests, setLocalTaskRequests] = useState(myTaskRequests);
@@ -46,6 +70,30 @@ export default function DashboardClient({
 
   // Removed body scroll-lock — MainWrapper handles overflow via the sandwich layout
 
+  useEffect(() => {
+    if (!focusedDealId) return;
+    const targetTab = resolveInitialTab();
+    setActiveTab(targetTab);
+
+    const timeout = window.setTimeout(() => {
+      document.getElementById(`deal-${focusedDealId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 120);
+
+    if (openScanner) {
+      setShowScannerModal(focusedDealId);
+    }
+
+    return () => window.clearTimeout(timeout);
+  // Run once per deep link change. The resolver intentionally uses the initial server payload.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedDealId, openScanner]);
+
+  const focusRingClass = "ring-2 ring-secondary/80 shadow-[0_0_0_6px_rgba(0,110,12,0.08)]";
+  const isFocusedDeal = (id?: string | null) => Boolean(id && focusedDealId === id);
+
   const handleQRConfirm = useCallback(async (scannedPayload: string, expectedTaskId: string) => {
     if (scannedPayload !== expectedTaskId) {
       haptics.error();
@@ -55,31 +103,45 @@ export default function DashboardClient({
     try {
       const supabase = createClient();
       
-      const isTask = localTaskRequests.some(t => t.id === expectedTaskId) || localHelpingWith.some(t => t.id === expectedTaskId);
+      const isTask = localTaskRequests.some(t => t.id === expectedTaskId) || localHelpingWith.some(t => t.tasks?.id === expectedTaskId);
       const itemReq = localReceived.find(r => r.id === expectedTaskId) || localMade.find(r => r.id === expectedTaskId);
       
       if (isTask) {
-        const { error } = await supabase.rpc('complete_task_handshake', { qr_payload: expectedTaskId });
+        const { error } = await supabase.rpc('verify_qr_handshake', {
+          p_deal_id: expectedTaskId,
+          p_deal_type: 'task',
+          p_qr_data: scannedPayload,
+          p_action: null,
+        });
         if (!error) {
            haptics.success();
            toast.success("Task formally completed! Escrow released & Karma awarded.");
            setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? ({ ...t, status: "completed" as const }) : t));
-           setLocalHelpingWith(prev => prev.map(t => t.id === expectedTaskId ? ({ ...t, tasks: t.tasks ? ({ ...t.tasks, status: "completed" as const }) : t.tasks }) : t));
+           setLocalHelpingWith(prev => prev.map(t => t.tasks?.id === expectedTaskId ? ({ ...t, tasks: t.tasks ? ({ ...t.tasks, status: "completed" as const }) : t.tasks }) : t));
         } else {
            haptics.error();
-           toast.error("Action could not be completed.");
+           toast.error(error.message || "Action could not be completed.");
         }
       } else if (itemReq) {
-         if (itemReq.status === 'accepted') {
-             await supabase.from("items").update({ status: 'rented' }).eq("id", itemReq.item_id);
-             await supabase.from("item_requests").update({ status: 'rented' }).eq("id", itemReq.id);
+         const { data, error } = await supabase.rpc('verify_qr_handshake', {
+           p_deal_id: itemReq.id,
+           p_deal_type: 'item',
+           p_qr_data: scannedPayload,
+           p_action: itemReq.status === 'accepted' ? 'handoff' : 'return',
+         });
+         if (error) {
+           haptics.error();
+           toast.error(error.message || "Action could not be completed.");
+           return;
+         }
+
+         const nextStatus = (data as { status?: RequestWithRelations['status'] } | null)?.status;
+         if (nextStatus === 'rented') {
              haptics.success();
              toast.success("Item handed over!");
              setLocalReceived(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'rented' } : r));
              setLocalMade(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'rented' } : r));
-         } else if (itemReq.status === 'returning') {
-             await supabase.from("items").update({ status: 'available' }).eq("id", itemReq.item_id);
-             await supabase.from("item_requests").update({ status: 'completed' }).eq("id", itemReq.id);
+         } else if (nextStatus === 'completed') {
              haptics.success();
              toast.success("Item returned safely!");
              setLocalReceived(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'completed' } : r));
@@ -124,26 +186,16 @@ export default function DashboardClient({
 
   const pendingReceivedCount = localReceived.filter(r => r.status === "pending").length;
 
-  async function handleUpdateStatus(requestId: string, newStatus: "accepted" | "declined", itemId?: string) {
+  async function handleUpdateStatus(requestId: string, newStatus: "accepted" | "declined", _itemId?: string) {
     const supabase = createClient();
-    const { error } = await supabase
-      .from("item_requests")
-      .update({ status: newStatus })
-      .eq("id", requestId);
+    const { error } = await supabase.rpc("respond_item_request", {
+      p_request_id: requestId,
+      p_action: newStatus,
+    });
       
     if (error) {
-      toast.error("Failed to update deal status");
+      toast.error(error.message || "Failed to update deal status");
       return;
-    }
-
-    if (newStatus === "accepted" && itemId) {
-      // Mark item as rented so other borrowers can't request it
-      await supabase.from("items").update({ status: "rented" }).eq("id", itemId);
-    }
-
-    if (newStatus === "declined" && itemId) {
-      // Reset item to available in case it was previously accepted/rented
-      await supabase.from("items").update({ status: "available" }).eq("id", itemId);
     }
     
     toast.success(`Deal ${newStatus}!`);
@@ -152,54 +204,52 @@ export default function DashboardClient({
     setLocalReceived(prev => prev.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
   }
 
-  async function handleMarkTaskDone(taskId: string) {
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.from("tasks").update({ status: "completed" }).eq("id", taskId);
-      if (!error) {
-         toast.success("Task completed & Karma awarded!");
-         setLocalTaskRequests(prev => prev.map(t => t.id === taskId ? { ...t, status: "completed" } : t));
-      } else {
-         toast.error("Action could not be completed. We are working on a fix.");
-      }
-    } catch (e) {
-      toast.error("Action could not be completed. We are working on a fix.");
-    }
-  }
+type CancelTaskClaimResult = {
+  success?: boolean;
+  penalty_applied?: boolean;
+  message?: string;
+  error?: string;
+};
 
-  async function handleCancelHelp(claimId: string, taskId: string) {
-    try {
-      const supabase = createClient();
-      const { data: result, error } = await supabase.rpc("cancel_task_claim", { c_id: claimId, u_id: profile.id });
-      
-      if (!error) {
-         if (result?.penalty_applied) {
-             toast.error("Help cancelled. 10% Escrow Penalty applied due to 10-Minute rule.");
-         } else {
-             toast.success("Help cancelled. Escrow refunded safely.");
-         }
-         setLocalHelpingWith(prev => prev.filter(c => c.id !== claimId));
+async function handleCancelHelp(claimId: string) {
+  try {
+    const supabase = createClient();
+
+    const { data, error } = await supabase.rpc("cancel_task_claim", {
+      c_id: claimId,
+      u_id: profile.id,
+    });
+
+    const result = data as CancelTaskClaimResult | null;
+
+    if (!error) {
+      if (result?.penalty_applied) {
+        toast.error("Help cancelled. 10% Escrow Penalty applied due to 10-Minute rule.");
       } else {
-         toast.error("Action could not be completed. We are working on a fix.");
+        toast.success("Help cancelled. Escrow refunded safely.");
       }
-    } catch (e) {
+
+      setLocalHelpingWith((prev) => prev.filter((c) => c.id !== claimId));
+    } else {
       toast.error("Action could not be completed. We are working on a fix.");
     }
+  } catch {
+    toast.error("Action could not be completed. We are working on a fix.");
   }
+}
 
   const handleMessageForTask = async (taskId: string) => {
     try {
       const supabase = createClient();
-      const { data: existingConv } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("deal_id", taskId)
-        .maybeSingle();
-      
-      if (existingConv) {
-         router.push(`/messages?id=${existingConv.id}`);
+      const { data, error } = await supabase.rpc("get_task_conversation", {
+        p_task_id: taskId,
+      });
+
+      const conversationId = (data as { conversation_id?: string } | null)?.conversation_id;
+      if (!error && conversationId) {
+         router.push(`/messages?id=${conversationId}`);
       } else {
-         toast.error("Action could not be completed. We are working on a fix.");
+         toast.error(error?.message || "Action could not be completed. We are working on a fix.");
       }
     } catch (e) {
       toast.error("Action could not be completed. We are working on a fix.");
@@ -209,7 +259,11 @@ export default function DashboardClient({
   const handleInitiateReturn = async (requestId: string) => {
     try {
       const supabase = createClient();
-      await supabase.from("item_requests").update({ status: 'returning' }).eq("id", requestId);
+      const { error } = await supabase.rpc("initiate_item_return", { p_request_id: requestId });
+      if (error) {
+        toast.error(error.message || "Action could not be completed. We are working on a fix.");
+        return;
+      }
       toast.success("Return initiated!");
       setLocalMade(prev => prev.map(r => r.id === requestId ? { ...r, status: 'returning' } : r));
     } catch (e) {
@@ -224,35 +278,17 @@ export default function DashboardClient({
 
     try {
       const supabase = createClient();
-      // 1. Check if conversation already exists for this deal
-      const { data: existingConv } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("deal_id", req.id)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("create_item_conversation", {
+        p_request_id: req.id,
+      });
 
-      if (existingConv) {
-         router.push(`/messages?id=${existingConv.id}`);
+      const conversationId = (data as { conversation_id?: string } | null)?.conversation_id;
+      if (error || !conversationId) {
+         toast.error(error?.message || "Could not start conversation");
          return;
       }
 
-      // 2. Create the unified conversation room
-      const { data: newConv, error } = await supabase
-        .from("conversations")
-        .insert({
-           deal_id: req.id,
-           participant_1: borrowerId,
-           participant_2: lenderId
-        })
-        .select()
-        .maybeSingle();
-
-      if (error || !newConv) {
-         toast.error("Could not start conversation");
-         return;
-      }
-
-      router.push(`/messages?id=${newConv.id}`);
+      router.push(`/messages?id=${conversationId}`);
     } catch (e) {
       toast.error("Error connecting to chat");
     }
@@ -271,7 +307,7 @@ export default function DashboardClient({
     else if (req.status === 'declined') statusColor = 'bg-error/10 text-error';
 
     return (
-      <div key={req.id} className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] border border-outline-variant/10 group hover:border-primary/20 transition-all duration-300">
+      <div id={`deal-${req.id}`} key={req.id} className={`bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] border border-outline-variant/10 group hover:border-primary/20 transition-all duration-300 ${isFocusedDeal(req.id) ? focusRingClass : ""}`}>
         <div className="flex flex-col md:flex-row gap-6">
           <div className="w-full md:w-32 h-32 rounded-lg bg-surface-container overflow-hidden flex-shrink-0 relative">
             {item.images?.[0] ? (
@@ -357,7 +393,7 @@ export default function DashboardClient({
       : 'Flexible Target';
 
     return (
-      <div key={task.id} className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/10 flex flex-col md:flex-row gap-6">
+      <div id={`deal-${task.id}`} key={task.id} className={`bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/10 flex flex-col md:flex-row gap-6 ${isFocusedDeal(task.id) ? focusRingClass : ""}`}>
         <div className="flex-grow flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-start mb-2">
@@ -420,7 +456,7 @@ export default function DashboardClient({
       : 'Flexible Target';
 
     return (
-      <div key={claim.id} className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/10 flex flex-col md:flex-row gap-6 border-l-4 border-l-secondary">
+      <div id={`deal-${task.id}`} key={claim.id} className={`bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/10 flex flex-col md:flex-row gap-6 border-l-4 border-l-secondary ${isFocusedDeal(task.id) ? focusRingClass : ""}`}>
         <div className="flex-grow flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-start mb-2">
@@ -458,7 +494,7 @@ export default function DashboardClient({
                 <button onClick={() => setShowQrModal(task.id)} className="bg-primary text-white shadow-md shadow-primary/20 px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center gap-2">
                   <span className="material-symbols-outlined text-[16px]">qr_code_2</span> Complete Task
                 </button>
-                <button onClick={() => handleCancelHelp(claim.id, task.id)} className="border border-outline-variant/30 text-error px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-error/5 transition-colors">
+                <button onClick={() => handleCancelHelp(claim.id)} className="border border-outline-variant/30 text-error px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-error/5 transition-colors">
                   Cancel Help
                 </button>
                 <button onClick={() => handleMessageForTask(task.id)} className="text-secondary font-bold text-xs uppercase tracking-widest hover:underline flex items-center gap-1">

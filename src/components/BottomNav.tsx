@@ -55,8 +55,6 @@ export default function BottomNav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [isHidden]);
 
-  // Always reset visible when route changes
-  useEffect(() => { setVisible(true); }, [pathname]);
 
   if (isHidden) return null;
 

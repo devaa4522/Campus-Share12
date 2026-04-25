@@ -1,11 +1,17 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import type { ComponentProps } from "react";
 import type { Item, Profile } from "@/lib/types";
 import DashboardClient from "@/components/DashboardClient";
 
+type DashboardClientProps = ComponentProps<typeof DashboardClient>;
+
 export const metadata = { title: "My Activity" };
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: {
+  searchParams?: Promise<{ deal?: string; type?: string; tab?: string; scan?: string }>;
+}) {
+  const searchParams = await props.searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -35,10 +41,14 @@ export default async function DashboardPage() {
     <DashboardClient
       profile={profile as Profile}
       items={(myItems ?? []) as Item[]}
-      madeRequests={madeRequests ?? []}
-      receivedRequests={receivedRequests ?? []}
-      myTaskRequests={myTaskRequests ?? []}
-      helpingWithTasks={helpingWithTasks ?? []}
+      madeRequests={(madeRequests ?? []) as unknown as DashboardClientProps["madeRequests"]}
+      receivedRequests={(receivedRequests ?? []) as unknown as DashboardClientProps["receivedRequests"]}
+      myTaskRequests={(myTaskRequests ?? []) as unknown as DashboardClientProps["myTaskRequests"]}
+      helpingWithTasks={(helpingWithTasks ?? []) as unknown as DashboardClientProps["helpingWithTasks"]}
+      focusedDealId={searchParams?.deal}
+      focusedDealType={searchParams?.type === "task" ? "task" : searchParams?.type === "item" ? "item" : undefined}
+      initialTab={searchParams?.tab as DashboardClientProps["initialTab"]}
+      openScanner={searchParams?.scan === "true"}
     />
   );
 }

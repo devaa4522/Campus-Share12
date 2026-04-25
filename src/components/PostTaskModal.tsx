@@ -4,10 +4,13 @@ import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import toast from "react-hot-toast";
 
-export default function PostTaskModal({ onClose, onSuccess, userId }: { onClose: () => void, onSuccess: (task: unknown) => void, userId: string }) {
+const DEADLINE_OPTIONS = ["30m", "1hr", "Today"] as const;
+type DeadlineOption = (typeof DEADLINE_OPTIONS)[number];
+
+export default function PostTaskModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: (task: unknown) => void, userId: string }) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("General");
-  const [deadline, setDeadline] = useState("Today");
+  const [deadline, setDeadline] = useState<DeadlineOption>("Today");
   const [description, setDescription] = useState("");
   const [rewardType, setRewardType] = useState<"cash" | "karma">("cash");
   const [rewardAmount, setRewardAmount] = useState("");
@@ -25,29 +28,22 @@ export default function PostTaskModal({ onClose, onSuccess, userId }: { onClose:
 
     setIsSubmitting(true);
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("college_domain")
-        .eq("id", userId)
-        .single();
-        
-      if (!profile?.college_domain) throw new Error("No college domain found in profile");
+      const deadlineAt = (() => {
+        const now = new Date();
+        if (deadline === "30m") now.setMinutes(now.getMinutes() + 30);
+        else if (deadline === "1hr") now.setHours(now.getHours() + 1);
+        else now.setHours(23, 59, 59, 999);
+        return now.toISOString();
+      })();
 
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-          user_id: userId,
-          title,
-          category,
-          deadline,
-          description,
-          reward_type: rewardType,
-          reward_amount: parseFloat(rewardAmount),
-          college_domain: profile.college_domain,
-          status: 'open'
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc("create_task", {
+        p_title: title,
+        p_description: description,
+        p_category: category,
+        p_deadline: deadlineAt,
+        p_reward_type: rewardType,
+        p_reward_amount: parseFloat(rewardAmount),
+      });
 
       if (error) throw error;
 
@@ -117,7 +113,7 @@ export default function PostTaskModal({ onClose, onSuccess, userId }: { onClose:
             <div className="space-y-2">
               <label className="block font-headline text-sm font-bold text-primary-container">Deadline</label>
               <div className="flex gap-2">
-                {["30m", "1hr", "Today"].map(d => (
+                {DEADLINE_OPTIONS.map((d) => (
                   <label key={d} className="flex-1 cursor-pointer">
                     <input 
                       checked={deadline === d}

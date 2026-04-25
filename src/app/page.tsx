@@ -21,7 +21,7 @@ export default async function HomePage() {
       .neq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(6);
-    featuredItems = (items ?? []) as ItemWithProfile[];
+    featuredItems = (items ?? []) as unknown as ItemWithProfile[];
   }
 
   return (

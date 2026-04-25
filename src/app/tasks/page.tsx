@@ -1,8 +1,12 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import TasksClient from "@/components/TasksClient";
+import type { TaskWithProfile } from "@/lib/types";
 
-export default async function TasksPage() {
+export default async function TasksPage(props: {
+  searchParams?: Promise<{ task?: string }>;
+}) {
+  const searchParams = await props.searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -32,9 +36,27 @@ export default async function TasksPage() {
     console.error("Error fetching tasks:", error);
   }
 
+  let initialTasks = (tasks ?? []) as unknown as TaskWithProfile[];
+  const focusedTaskId = searchParams?.task;
+
+  if (focusedTaskId && !initialTasks.some((task) => task.id === focusedTaskId)) {
+    const { data: focusedTask, error: focusedTaskError } = await supabase
+      .from("tasks")
+      .select("*, profiles:user_id(full_name, avatar_url, degree, year_of_study)")
+      .eq("id", focusedTaskId)
+      .eq("college_domain", profile.college_domain)
+      .maybeSingle();
+
+    if (focusedTaskError) {
+      console.error("Error fetching focused task:", focusedTaskError);
+    } else if (focusedTask) {
+      initialTasks = [focusedTask, ...initialTasks];
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8">
-      <TasksClient initialTasks={tasks || []} userId={user.id} />
+      <TasksClient initialTasks={initialTasks} userId={user.id} focusedTaskId={focusedTaskId} />
     </div>
   );
 }

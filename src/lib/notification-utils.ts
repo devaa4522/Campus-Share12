@@ -2,25 +2,51 @@
 // Shared deep-link resolver. Import this in NotificationBell, NotificationToast,
 // SingleNotifRow, and anywhere a notification needs to navigate.
 
-import { NotificationType } from '@/types/notifications';
+import type { NotificationType } from '@/types/notifications';
+
+type NotificationData = Record<string, string | number | boolean | null | undefined>;
+
+function withParam(path: string, key: string, value: unknown): string {
+  if (value === null || value === undefined || value === '') return path;
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}${key}=${encodeURIComponent(String(value))}`;
+}
+
+function dashboardDealLink(dealId: unknown, options?: { type?: 'item' | 'task'; scan?: boolean }): string {
+  let path = withParam('/dashboard', 'deal', dealId);
+  if (options?.type) path = withParam(path, 'type', options.type);
+  if (options?.scan) path = withParam(path, 'scan', 'true');
+  return path;
+}
 
 export function getDeepLink(
   type: NotificationType,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: Record<string, any> | undefined
+  data: NotificationData | undefined
 ): string {
   const d = data ?? {};
-  const routes: Partial<Record<NotificationType, string>> = {
-    new_request:      `/dashboard?deal=${d.deal_id}`,
-    request_accepted: `/dashboard?deal=${d.deal_id}&scan=true`,
-    qr_handshake:     `/dashboard?deal=${d.deal_id}`,
-    deal_completed:   `/profile`,
-    new_message:      `/messages?id=${d.conversation_id}`,
-    task_claimed:     `/tasks?task=${d.task_id}`,
-    task_completed:   `/tasks?task=${d.task_id}`,
-    karma_received:   `/profile`,
-    karma_penalty:    `/profile`,
-    system:           `/`,
-  };
-  return routes[type] ?? '/';
+
+  switch (type) {
+    case 'new_request':
+      return dashboardDealLink(d.deal_id, { type: 'item' });
+    case 'request_accepted':
+      return dashboardDealLink(d.deal_id, { type: 'item', scan: true });
+    case 'qr_handshake':
+    case 'item_returned':
+      return dashboardDealLink(d.deal_id, { type: 'item' });
+    case 'request_rejected':
+      return '/hub';
+    case 'deal_completed':
+      return dashboardDealLink(d.deal_id, { type: 'item' });
+    case 'new_message':
+      return withParam('/messages', 'id', d.conversation_id);
+    case 'task_claimed':
+    case 'task_completed':
+      return dashboardDealLink(d.task_id, { type: 'task' });
+    case 'karma_received':
+    case 'karma_penalty':
+      return '/profile';
+    case 'system':
+    default:
+      return '/';
+  }
 }

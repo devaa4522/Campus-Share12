@@ -5,10 +5,10 @@ import MessageCenterLoader from "@/components/MessageCenterLoader";
 import type { Conversation } from "@/lib/types";
 
 export default async function MessagesPage(props: {
-  searchParams?: Promise<{ id?: string }>;
+  searchParams?: Promise<{ id?: string; conv?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const activeId     = searchParams?.id;
+  const activeId     = searchParams?.id ?? searchParams?.conv;
   const supabase     = await createClient();
 
   const {
