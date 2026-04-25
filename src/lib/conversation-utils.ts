@@ -1,37 +1,42 @@
-import type { Conversation } from "@/lib/types";
-
-// This is the shape expected from the joined query
-export type ConvRecord = Conversation & {
-  [key: string]: unknown;
-};
-
 // src/lib/conversation-utils.ts
-function getLastTime(conv: Conversation): number {
-  const msgDate = conv.messages && conv.messages.length > 0
-    ? conv.messages[conv.messages.length - 1].created_at
-    : conv.created_at;
-    
-  return msgDate ? new Date(msgDate).getTime() : Date.now();
+import type { Conversation } from '@/lib/types';
+
+function getLastMessageTime(conv: Conversation): number {
+  if (!conv.messages || conv.messages.length === 0) {
+    return conv.created_at ? new Date(conv.created_at).getTime() : 0;
+  }
+  // Messages are already sorted ascending by the DB query
+  return new Date(conv.messages[conv.messages.length - 1].created_at).getTime();
 }
 
-export function deduplicateConversations(initialConversations: Conversation[], userId: string): Conversation[] {
-  const dedupedMap = initialConversations.reduce<Record<string, Conversation>>((acc, conv) => {
-    const peerId = conv.p1.id === userId ? conv.p2.id : conv.p1.id;
-    const currentLastTime = getLastTime(conv);
+/**
+ * Sorts conversations by most recent message (newest first).
+ * Does NOT deduplicate by peer — each deal has its own conversation thread.
+ *
+ * Previously this function dropped older conversations with the same peer,
+ * which caused data loss when two deals existed between the same two users.
+ */
+export function deduplicateConversations(
+  conversations: Conversation[],
+  _userId: string   // kept for API compatibility, no longer used for filtering
+): Conversation[] {
+  // Remove exact duplicate IDs only (safety net)
+  const seen = new Set<string>();
+  const unique = conversations.filter((c) => {
+    if (seen.has(c.id)) return false;
+    seen.add(c.id);
+    return true;
+  });
 
-    if (!acc[peerId] || currentLastTime > getLastTime(acc[peerId])) {
-      acc[peerId] = conv;
-    }
-    return acc;
-  }, {});
-
-  return (Object.values(dedupedMap))
-    .sort((a, b) => getLastTime(b) - getLastTime(a))
-    .map(c => ({
+  // Sort: newest activity first
+  return unique
+    .sort((a, b) => getLastMessageTime(b) - getLastMessageTime(a))
+    .map((c) => ({
       ...c,
       messages: c.messages
         ? [...c.messages].sort(
-            (x, y) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime()
+            (x, y) =>
+              new Date(x.created_at).getTime() - new Date(y.created_at).getTime()
           )
         : [],
     }));

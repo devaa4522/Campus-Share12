@@ -249,10 +249,16 @@ useEffect(() => {
 const enablePushNotifications = useCallback(async (): Promise<boolean> => {
   if (typeof window === "undefined") return false;
 
-  if (!pushSupported) {
-    console.error("[Push] Not supported on this browser");
-    return false;
-  }
+const supported =
+  typeof window !== "undefined" &&
+  "serviceWorker" in navigator &&
+  "PushManager" in window &&
+  "Notification" in window;
+
+if (!supported) {
+  console.error("[Push] Not supported on this browser");
+  return false;
+}
 
   if (!VAPID_PUBLIC_KEY) {
     console.error("[Push] VAPID_PUBLIC_KEY is not set");

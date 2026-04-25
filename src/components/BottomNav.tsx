@@ -1,22 +1,79 @@
+// src/components/BottomNav.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
+import { t } from "@/lib/design/tokens";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Home", icon: "grid_view" },
-  { href: "/hub", label: "Hub", icon: "search" },
-  { href: "/post", label: "Post", icon: "add_circle" },
-  { href: "/tasks", label: "Tasks", icon: "task_alt" },
-  { href: "/dashboard", label: "Activity", icon: "explore" },
+  { href: "/",         label: "Home",     icon: "grid_view"  },
+  { href: "/hub",      label: "Hub",      icon: "search"     },
+  { href: "/post",     label: "Post",     icon: "add_circle" },
+  { href: "/tasks",    label: "Tasks",    icon: "task_alt"   },
+  { href: "/dashboard",label: "Activity", icon: "explore"    },
 ] as const;
 
+// Routes where BottomNav should never appear
+const HIDDEN_ROUTES = [
+  "/messages",
+  "/notifications",
+  "/onboarding",
+];
+
 export default function BottomNav() {
-  const pathname = usePathname();
+  const pathname   = usePathname();
+  const [visible, setVisible]     = useState(true);
+  const lastScroll = useRef(0);
+  const ticking    = useRef(false);
+
+  const isHidden = HIDDEN_ROUTES.some(r => pathname.startsWith(r));
+
+  useEffect(() => {
+    if (isHidden) return;
+
+    const onScroll = () => {
+      if (ticking.current) return;
+      ticking.current = true;
+
+      requestAnimationFrame(() => {
+        const current = window.scrollY;
+        const delta   = current - lastScroll.current;
+
+        if (delta > 8 && current > 80) {
+          setVisible(false);
+        } else if (delta < -8) {
+          setVisible(true);
+        }
+
+        lastScroll.current = current;
+        ticking.current    = false;
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isHidden]);
+
+  // Always reset visible when route changes
+  useEffect(() => { setVisible(true); }, [pathname]);
+
+  if (isHidden) return null;
 
   return (
-    <nav className="md:hidden flex-none fixed bottom-0 left-0 w-full z-50 bg-white/85 dark:bg-[#000a1e]/85 backdrop-blur-xl shadow-[0px_-4px_16px_rgba(0,10,30,0.04)] rounded-t-xl" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-      <div className="flex justify-around items-center h-16 px-4 max-w-7xl mx-auto w-full">
+    <nav
+      className="md:hidden fixed bottom-0 left-0 w-full z-50 transition-transform duration-300 ease-out"
+      style={{
+        transform:     visible ? "translateY(0)" : "translateY(100%)",
+        background:    t.nav.bg,
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderTop:     `1px solid ${t.border}`,
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        boxShadow:     "0 -4px 24px rgba(0,10,30,0.05)",
+      }}
+    >
+      <div className="flex justify-around items-center h-16 px-2 max-w-7xl mx-auto w-full">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/"
@@ -27,22 +84,38 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              prefetch={true}
-              className={`flex flex-col items-center justify-center w-full h-full transition-all active:bg-slate-100 dark:active:bg-slate-800 ${
-                isActive
-                  ? "text-[#006e0c] relative after:content-[''] after:w-1 after:h-1 after:bg-[#006e0c] after:rounded-full after:mt-1"
-                  : "text-slate-500 dark:text-slate-400"
-              }`}
+              prefetch
+              className="flex flex-col items-center justify-center gap-0.5 w-full h-full rounded-xl transition-all active:scale-90"
+              style={{
+                color: isActive ? t.nav.active : t.nav.inactive,
+              }}
             >
               <span
-                className={`material-symbols-outlined ${item.href === "/post" ? "text-3xl" : ""}`}
-                style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                className="material-symbols-outlined text-[24px]"
+                style={{
+                  fontVariationSettings: isActive
+                    ? "'FILL' 1, 'wght' 600"
+                    : "'FILL' 0, 'wght' 400",
+                }}
               >
                 {item.icon}
               </span>
-              <span className="font-sans text-[11px] font-semibold uppercase tracking-wider">
+              <span
+                className="text-[10px] font-bold uppercase tracking-wider"
+                style={{
+                  opacity: isActive ? 1 : 0.7,
+                }}
+              >
                 {item.label}
               </span>
+
+              {/* Active dot */}
+              {isActive && (
+                <div
+                  className="absolute bottom-1 w-1 h-1 rounded-full"
+                  style={{ background: t.nav.active }}
+                />
+              )}
             </Link>
           );
         })}
