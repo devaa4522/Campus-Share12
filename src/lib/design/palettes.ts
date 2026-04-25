@@ -6,7 +6,7 @@
 
 export type ThemeName = "oxford" | "signature";
 
-export const ACTIVE_THEME: ThemeName = "signature";
+export const ACTIVE_THEME: ThemeName = "oxford";
 
 export interface Palette {
   // Core brand
