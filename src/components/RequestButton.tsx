@@ -12,7 +12,7 @@ export default function RequestButton({
   isLoggedIn: boolean;
   itemId: string;
 }) {
-  const router = useRouter();
+  const router  = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleRequest() {
@@ -23,7 +23,7 @@ export default function RequestButton({
 
     setLoading(true);
     const supabase = createClient();
-    
+
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -32,24 +32,66 @@ export default function RequestButton({
       return;
     }
 
+    // Get item details + owner info
+    const { data: item } = await supabase
+      .from("items")
+      .select("id, title, user_id, profiles(full_name, avatar_url)")
+      .eq("id", itemId)
+      .single();
+
+    if (!item) {
+      toast.error("Item not found.");
+      setLoading(false);
+      return;
+    }
+
     // Insert request
-    const { error } = await supabase
+    const { data: request, error } = await supabase
       .from("item_requests")
       .insert({
-        item_id: itemId,
+        item_id:      itemId,
         requester_id: user.id,
-        duration_days: 7, // default
-        status: "pending",
-      });
+        duration_days: 7,
+        status:       "pending",
+      })
+      .select()
+      .single();
 
     if (error) {
       console.error(error);
       toast.error("Failed to send request.");
-    } else {
-      toast.success("Request sent! The lender will be notified.");
+      setLoading(false);
+      return;
     }
-    
+
+    toast.success("Request sent! The lender will be notified.");
+
+    // ⭐ Notify the item owner
+    if (item.user_id && item.user_id !== user.id) {
+      const { data: requesterProfile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single();
+
+      await supabase.from("notifications").insert({
+        user_id:   item.user_id,          // Notify the OWNER
+        sender_id: user.id,               // Requester is the sender
+        type:      "new_request",
+        title:     `${requesterProfile?.full_name ?? "Someone"} wants to borrow`,
+        body:      `"${item.title}" — Tap to view the request`,
+        data: {
+          deal_id:  request.id,
+          item_id:  itemId,
+          item_title: item.title,
+          url:      `/dashboard?deal=${request.id}`,
+        },
+        is_read: false,
+      });
+    }
+
     setLoading(false);
+    router.refresh();
   }
 
   return (

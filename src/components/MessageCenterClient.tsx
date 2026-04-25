@@ -885,9 +885,30 @@ export default function MessageCenterClient({
       content: finalContent, reply_to_id: replyingTo?.id ?? null, msg_type: msgType,
     });
     if (error) {
-      toast.error("Failed to send.");
-      setConversations(prev => prev.map(c => c.id === activeConversationId ? { ...c, messages: c.messages.filter(m => m.id !== tempId) } : c));
-    }
+  toast.error("Failed to send.");
+  setConversations(prev => prev.map(c => c.id === activeConversationId 
+    ? { ...c, messages: c.messages.filter(m => m.id !== tempId) } 
+    : c));
+} else {
+  // ⭐ ADD THIS BLOCK - Send notification to the other participant
+  if (peer?.id) {
+    // Don't await - fire and forget so it doesn't slow down UX
+    supabase.from("notifications").insert({
+      user_id:   peer.id,           // Notify the OTHER person
+      sender_id: userId,            // You are the sender
+      type:      "new_message",
+      title:     "New message",     // Will be replaced by trigger with your name
+      body:      finalContent,      // Will be replaced by trigger with actual content
+      data: {
+        conversation_id: activeConversationId,
+        url: `/messages?id=${activeConversationId}`,
+      },
+      is_read: false,
+    }).then(({ error: notifError }) => {
+      if (notifError) console.error("[Notification] Failed:", notifError);
+    });
+  }
+}
   };
 
   const handleKeyboardInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -930,19 +951,50 @@ export default function MessageCenterClient({
     } catch { toast.error("Action failed."); }
   };
 
-  const handleAcceptDecline = async (action: "accepted" | "declined") => {
-    if (!dealInfo) return;
-    try {
-      if (dealInfo.type === "item") {
-        await supabase.from("item_requests").update({ status: action }).eq("id", dealInfo.id);
-        if (action === "declined" && dealInfo.item_id) await supabase.from("items").update({ status: "available" }).eq("id", dealInfo.item_id);
-      } else {
-        await supabase.from("tasks").update({ status: action === "accepted" ? "claimed" : "open" }).eq("id", dealInfo.id);
+ const handleAcceptDecline = async (action: "accepted" | "declined") => {
+  if (!dealInfo) return;
+  try {
+    if (dealInfo.type === "item") {
+      await supabase.from("item_requests").update({ status: action }).eq("id", dealInfo.id);
+      if (action === "declined" && dealInfo.item_id) {
+        await supabase.from("items").update({ status: "available" }).eq("id", dealInfo.item_id);
       }
-      setDealInfo(p => p ? { ...p, status: action } : p);
-      toast.success(`Request ${action}.`);
-    } catch { toast.error("Failed."); }
-  };
+    } else {
+      await supabase.from("tasks").update({ 
+        status: action === "accepted" ? "claimed" : "open" 
+      }).eq("id", dealInfo.id);
+    }
+
+    setDealInfo(p => p ? { ...p, status: action } : p);
+    toast.success(`Request ${action}.`);
+
+    // ⭐ Notify the requester
+    if (dealInfo.requester_id && dealInfo.requester_id !== userId) {
+      const notifType = action === "accepted" ? "request_accepted" : "request_rejected";
+      const notifBody = action === "accepted"
+        ? `Your request for "${dealInfo.title}" was accepted! Open the chat to complete the handover.`
+        : `Your request for "${dealInfo.title}" was declined.`;
+
+      await supabase.from("notifications").insert({
+        user_id:   dealInfo.requester_id,  // Notify the REQUESTER
+        sender_id: userId,                  // Owner is the sender
+        type:      notifType,
+        title:     action === "accepted" ? "Request Accepted! 🎉" : "Request Declined",
+        body:      notifBody,
+        data: {
+          deal_id:    dealInfo.id,
+          item_title: dealInfo.title,
+          url: action === "accepted" 
+            ? `/dashboard?deal=${dealInfo.id}&scan=true`
+            : `/hub`,
+        },
+        is_read: false,
+      });
+    }
+  } catch {
+    toast.error("Failed.");
+  }
+};
 
   const initiateReturn = async () => {
     if (!dealInfo) return;
