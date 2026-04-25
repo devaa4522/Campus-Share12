@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useNotificationsContext } from '@/components/NotificationsProvider';
 import { AppNotification, TYPE_CONFIG } from '@/types/notifications';
-import { getDeepLink } from '@/lib/notification-utils';
+import { formatNotification, getDeepLink } from '@/lib/notification-utils';
 import { groupByTime } from '@/lib/notification-logic';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -27,14 +27,17 @@ function BellRow({
   notif, onRead, onDelete,
 }: {
   notif: AppNotification;
-  onRead:   (id: string) => void;
-  onDelete: (id: string) => void;
+  onRead:   (id: string) => Promise<void> | void;
+  onDelete: (id: string) => Promise<void> | void;
 }) {
   const cfg    = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.system;
+  const display = formatNotification(notif);
   const router = useRouter();
 
-  const handleClick = () => {
-    if (!notif.is_read) onRead(notif.id);
+  const handleClick = async () => {
+    if (!notif.is_read) {
+      try { await onRead(notif.id); } catch { /* provider already rolled back/logged */ }
+    }
     router.push(getDeepLink(notif.type, notif.data));
   };
 
@@ -79,10 +82,10 @@ function BellRow({
           <p className={`text-[13px] leading-tight mb-0.5
             ${notif.is_read ? 'text-white/50 font-normal' : 'text-white/88 font-semibold'}`}
           >
-            {notif.title}
+            {display.title}
           </p>
           <p className="text-[11.5px] text-white/32 line-clamp-2 leading-relaxed">
-            {notif.body}
+            {display.body}
           </p>
         </div>
 

@@ -125,7 +125,7 @@ self.addEventListener('notificationclick', function (event) {
   if (event.action === 'reply') {
     targetUrl = notifData.url || '/messages';
   } else if (event.action === 'view_deal') {
-    targetUrl = `/dashboard?deal=${notifData.deal_id || ''}`;
+    targetUrl = getDeepLink(notifData.type, notifData);
   } else if (event.action === 'view_profile') {
     targetUrl = '/profile';
   } else if (event.action === 'dismiss') {
@@ -157,22 +157,69 @@ self.addEventListener('notificationclose', (event) => {
 
 // ── Helpers ──────────────────────────────────────────────────
 
+function firstPresent() {
+  for (const value of arguments) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  }
+  return undefined;
+}
+
+function idFrom(data) {
+  const keys = Array.prototype.slice.call(arguments, 1);
+  for (const key of keys) {
+    const value = data?.[key];
+    if (value !== null && value !== undefined && String(value).trim() !== '') return String(value);
+  }
+  return '';
+}
+
+function withParam(path, key, value) {
+  if (value === null || value === undefined || value === '') return path;
+  const separator = path.includes('?') ? '&' : '?';
+  return path + separator + key + '=' + encodeURIComponent(String(value));
+}
+
+function dashboardDealLink(dealId, type, scan) {
+  let path = withParam('/dashboard', 'deal', dealId);
+  if (type) path = withParam(path, 'type', type);
+  if (scan) path = withParam(path, 'scan', 'true');
+  return path;
+}
+
 function getDeepLink(type, data) {
   const d = data || {};
-  const routes = {
-    new_request:      `/dashboard?deal=${d.deal_id || ''}`,
-    request_accepted: `/dashboard?deal=${d.deal_id || ''}&scan=true`,
-    request_rejected: `/hub`,
-    qr_handshake:     `/dashboard?deal=${d.deal_id || ''}`,
-    deal_completed:   `/profile`,
-    new_message:      `/messages?id=${d.conversation_id || ''}`,
-    task_claimed:     `/dashboard?deal=${d.task_id || ''}&type=task`,
-    task_completed:   `/dashboard?deal=${d.task_id || ''}&type=task`,
-    karma_received:   `/profile`,
-    karma_penalty:    `/profile`,
-    system:           `/`,
-  };
-  return routes[type] || '/';
+  const explicitUrl = firstPresent(d.url, d.href, d.link);
+  if (explicitUrl && explicitUrl.startsWith('/')) return explicitUrl;
+
+  const conversationId = idFrom(d, 'conversation_id', 'conv_id', 'conversationId');
+  const itemDealId = idFrom(d, 'deal_id', 'item_request_id', 'request_id', 'itemRequestId');
+  const taskId = idFrom(d, 'task_id', 'deal_id', 'taskId');
+
+  switch (type) {
+    case 'new_request':
+      return dashboardDealLink(itemDealId, 'item');
+    case 'request_accepted':
+      return dashboardDealLink(itemDealId, 'item', true);
+    case 'request_rejected':
+      return itemDealId ? dashboardDealLink(itemDealId, 'item') : '/hub';
+    case 'qr_handshake':
+    case 'item_returned':
+      return dashboardDealLink(itemDealId, 'item');
+    case 'deal_completed':
+      return itemDealId ? dashboardDealLink(itemDealId, 'item') : '/profile';
+    case 'new_message':
+      return withParam('/messages', 'id', conversationId);
+    case 'task_claimed':
+    case 'task_completed':
+      return dashboardDealLink(taskId, 'task');
+    case 'karma_received':
+    case 'karma_penalty':
+      return '/profile';
+    case 'system':
+    default:
+      return '/';
+  }
 }
 
 function getVibrationPattern(type) {

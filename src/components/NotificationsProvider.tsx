@@ -14,6 +14,7 @@ import {
 import { createClient } from '@/utils/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { AppNotification, NotificationType } from '@/types/notifications';
+import { formatNotification } from '@/lib/notification-utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,31 @@ function getVibrationPattern(type: NotificationType): number[] {
   return patterns[type] ?? [100];
 }
 
+type NotificationRow = AppNotification & {
+  sender?: { full_name?: string | null; avatar_url?: string | null } | null;
+};
+
+function normalizeNotification(row: NotificationRow): AppNotification {
+  const data = { ...(row.data ?? {}) } as AppNotification['data'];
+  const senderName = row.sender?.full_name?.trim();
+  const senderAvatar = row.sender?.avatar_url?.trim();
+  if (senderName && !data.sender_name) data.sender_name = senderName;
+  if (senderAvatar && !data.sender_avatar) data.sender_avatar = senderAvatar;
+
+  const normalized: AppNotification = {
+    ...row,
+    data,
+    sender: row.sender ?? null,
+  };
+
+  const display = formatNotification(normalized);
+  return {
+    ...normalized,
+    title: display.title,
+    body: display.body,
+  };
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
@@ -108,13 +134,13 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     setIsLoading(true);
     const { data, error } = await supabase
       .from('notifications')
-      .select('*')
+      .select('*, sender:profiles!notifications_sender_id_fkey(full_name, avatar_url)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(100);
 
     if (error) console.error('[Notifications] fetch error:', error);
-    else if (data) setNotifications(data as AppNotification[]);
+    else if (data) setNotifications((data as unknown as NotificationRow[]).map(normalizeNotification));
 
     setIsLoading(false);
   }, [supabase]);
@@ -161,8 +187,15 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
             table:  'notifications',
             filter: `user_id=eq.${user.id}`,
           },
-          (payload) => {
-            const n = payload.new as AppNotification;
+          async (payload) => {
+            let n = normalizeNotification(payload.new as NotificationRow);
+            const { data: hydrated } = await supabase
+              .from('notifications')
+              .select('*, sender:profiles!notifications_sender_id_fkey(full_name, avatar_url)')
+              .eq('id', n.id)
+              .maybeSingle();
+            if (hydrated) n = normalizeNotification(hydrated as unknown as NotificationRow);
+
             setNotifications((prev) => {
               if (prev.some((x) => x.id === n.id)) return prev;
               return [n, ...prev];
@@ -186,7 +219,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            const updated = payload.new as AppNotification;
+            const updated = normalizeNotification(payload.new as NotificationRow);
             setNotifications((prev) =>
               prev.map((n) => (n.id === updated.id ? updated : n))
             );
@@ -316,37 +349,56 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   const markAsRead = useCallback(async (id: string) => {
-    // Optimistic update — Realtime UPDATE will confirm it
+    const previous = notifications;
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
     );
     const { error } = await supabase.rpc('mark_notification_read', {
       p_notification_id: id,
     });
-    if (error) console.error('[Notifications] markAsRead:', error);
-  }, [supabase]);
+    if (error) {
+      console.error('[Notifications] markAsRead:', error);
+      setNotifications(previous);
+      throw error;
+    }
+  }, [notifications, supabase]);
 
   const markAllAsRead = useCallback(async () => {
     if (!userIdRef.current) return;
+    const previous = notifications;
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     const { error } = await supabase.rpc('mark_all_notifications_read');
-    if (error) console.error('[Notifications] markAllAsRead:', error);
-  }, [supabase]);
+    if (error) {
+      console.error('[Notifications] markAllAsRead:', error);
+      setNotifications(previous);
+      throw error;
+    }
+  }, [notifications, supabase]);
 
   const deleteNotification = useCallback(async (id: string) => {
+    const previous = notifications;
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     const { error } = await supabase.rpc('delete_notification', {
       p_notification_id: id,
     });
-    if (error) console.error('[Notifications] delete:', error);
-  }, [supabase]);
+    if (error) {
+      console.error('[Notifications] delete:', error);
+      setNotifications(previous);
+      throw error;
+    }
+  }, [notifications, supabase]);
 
   const clearAll = useCallback(async () => {
     if (!userIdRef.current) return;
+    const previous = notifications;
     setNotifications([]);
     const { error } = await supabase.rpc('clear_my_notifications');
-    if (error) console.error('[Notifications] clearAll:', error);
-  }, [supabase]);
+    if (error) {
+      console.error('[Notifications] clearAll:', error);
+      setNotifications(previous);
+      throw error;
+    }
+  }, [notifications, supabase]);
 
   const refresh = useCallback(async () => {
     if (!userIdRef.current) return;

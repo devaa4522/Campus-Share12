@@ -28,9 +28,11 @@ export interface AppNotification {
   type: NotificationType;
   title: string;
   body: string;
-  data: Record<string, string | number | boolean>;
+  data: Record<string, string | number | boolean | null | undefined>;
   is_read: boolean;
   created_at: string;
+  sender_id?: string | null;
+  sender?: { full_name?: string | null; avatar_url?: string | null } | null;
 }
 
 // The legacy shape from NotificationsClient (archive page).

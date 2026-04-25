@@ -8,8 +8,8 @@ import { SingleNotifRow } from './SingleNotifRow';
 
 interface DealGroupRowProps {
   group: NotificationGroupType;
-  onRead: (id: string) => void;
-  onDelete: (id: string) => void;
+  onRead: (id: string) => Promise<void> | void;
+  onDelete: (id: string) => Promise<void> | void;
 }
 
 export function DealGroupRow({ group, onRead, onDelete }: DealGroupRowProps) {

@@ -220,7 +220,7 @@ export default function NotificationsClient() {
     <main
       className="
         flex flex-col w-full
-        h-[100dvh] md:h-[calc(100dvh-64px)]
+        h-full min-h-0
         bg-surface overflow-hidden
       "
     >
@@ -423,11 +423,13 @@ export default function NotificationsClient() {
       </AnimatePresence>
 
       {/* Scrollable content via PullToRefresh */}
+      <div className="flex-1 min-h-0 overflow-hidden">
       <PullToRefresh onRefresh={refresh}>
         <div className="max-w-3xl mx-auto w-full">
           {renderContent()}
         </div>
       </PullToRefresh>
+      </div>
     </main>
   );
 }

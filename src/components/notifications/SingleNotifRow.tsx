@@ -4,15 +4,15 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppNotification, TYPE_CONFIG } from '@/types/notifications';
 import { timeAgo } from '@/lib/notification-logic';
-import { getDeepLink } from '@/lib/notification-utils';
+import { formatNotification, getDeepLink } from '@/lib/notification-utils';
 import { SwipeableRow } from './SwipeableRow';
 import { ContextMenu } from './ContextMenu';
 import { useRouter } from 'next/navigation';
 
 interface SingleNotifRowProps {
   notif: AppNotification;
-  onRead: () => void;
-  onDelete: () => void;
+  onRead: () => Promise<void> | void;
+  onDelete: () => Promise<void> | void;
   index: number;
   compact?: boolean;
 }
@@ -25,6 +25,7 @@ export function SingleNotifRow({
   const router = useRouter();
 
   const cfg = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.system;
+  const display = formatNotification(notif);
 
   const cancelLongPress = () => {
     if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
@@ -38,8 +39,10 @@ export function SingleNotifRow({
     }, 480);
   };
 
-  const handleClick = () => {
-    if (!notif.is_read) onRead();
+  const handleClick = async () => {
+    if (!notif.is_read) {
+      try { await onRead(); } catch { /* provider already rolled back/logged */ }
+    }
     const link = getDeepLink(notif.type, notif.data);
     router.push(link);
   };
@@ -60,12 +63,12 @@ export function SingleNotifRow({
     ...(notif.data?.deal_id ? [{
       label: 'View deal',
       icon: 'handshake',
-      onClick: () => router.push(`/dashboard?deal=${notif.data.deal_id}`),
+      onClick: () => router.push(getDeepLink(notif.type, notif.data)),
     }] : []),
     ...(notif.data?.conversation_id ? [{
       label: 'Open message',
       icon: 'chat_bubble',
-      onClick: () => router.push(`/messages?id=${notif.data.conversation_id}`),
+      onClick: () => router.push(getDeepLink(notif.type, notif.data)),
     }] : []),
   ];
 
@@ -124,11 +127,11 @@ export function SingleNotifRow({
               <p className={`text-sm leading-snug mb-0.5
                 ${notif.is_read ? 'text-on-surface-variant font-normal' : 'text-on-surface font-semibold'}`}
               >
-                {notif.title}
+                {display.title}
               </p>
 
               <p className="text-xs text-on-surface-variant/60 line-clamp-2 leading-relaxed">
-                {notif.body}
+                {display.body}
               </p>
             </div>
 

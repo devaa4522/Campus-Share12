@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { AppNotification, TYPE_CONFIG } from '@/types/notifications';
-import { getDeepLink } from '@/lib/notification-utils';
+import { formatNotification, getDeepLink } from '@/lib/notification-utils';
+import { useNotificationsContext } from '@/components/NotificationsProvider';
 
 export function NotificationToastContainer() {
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const router = useRouter();
+  const { markAsRead } = useNotificationsContext();
 
   const dismiss = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -32,9 +34,12 @@ export function NotificationToastContainer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleClick = (notif: AppNotification) => {
+  const handleClick = async (notif: AppNotification) => {
+    if (!notif.is_read) {
+      try { await markAsRead(notif.id); } catch { /* provider already rolled back/logged */ }
+    }
     const link = getDeepLink(notif.type, notif.data);
-    if (link && link !== '/') router.push(link);
+    if (link) router.push(link);
     dismiss(notif.id);
   };
 
@@ -60,6 +65,7 @@ export function NotificationToastContainer() {
         <AnimatePresence>
           {toasts.map((toast) => {
             const cfg = TYPE_CONFIG[toast.type] ?? TYPE_CONFIG.system;
+            const display = formatNotification(toast);
             return (
               <motion.div
                 key={toast.id}
@@ -100,10 +106,10 @@ export function NotificationToastContainer() {
                       {cfg.label}
                     </p>
                     <p className="text-sm font-semibold text-white/90 leading-tight truncate">
-                      {toast.title}
+                      {display.title}
                     </p>
                     <p className="text-xs text-white/45 line-clamp-1 leading-snug mt-0.5">
-                      {toast.body}
+                      {display.body}
                     </p>
                   </div>
 

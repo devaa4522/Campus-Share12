@@ -39,10 +39,10 @@ export default function MainWrapper({
     );
   }
 
-  // Dashboard also fixed
-  if (pathname.startsWith("/dashboard")) {
+  // Dashboard and notifications also use fixed app-style layouts
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/notifications")) {
     return (
-      <main className="fixed inset-0 pt-16 md:pt-20 overflow-hidden">
+      <main className="fixed inset-0 pt-16 md:pt-20 pb-20 md:pb-0 overflow-hidden">
         <div className="h-full w-full max-w-7xl mx-auto">
           {children}
         </div>

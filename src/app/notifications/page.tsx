@@ -15,7 +15,7 @@ export default async function NotificationsPage() {
    * We just need a full-width flex container.
    */
   return (
-    <div className="w-full flex bg-surface">
+    <div className="h-full w-full flex bg-surface min-h-0">
       <NotificationsClient />
     </div>
   );

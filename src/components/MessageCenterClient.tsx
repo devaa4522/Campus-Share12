@@ -102,11 +102,13 @@ export default function MessageCenterClient({
   const fileInputRef      = useRef<HTMLInputElement>(null);
   const dealInfoRef       = useRef<DealInfo | null>(null);
   const userIdRef         = useRef(userId);
+  const activeConversationIdRef = useRef(activeConversationId);
   const conversationsRef  = useRef(conversations);   // always-fresh read for handlers
   const isAtBottomRef     = useRef(true);
   const [showScrollFab,   setShowScrollFab]   = useState(false);
 
   useEffect(() => { userIdRef.current      = userId;        }, [userId]);
+  useEffect(() => { activeConversationIdRef.current = activeConversationId; }, [activeConversationId]);
   useEffect(() => { dealInfoRef.current    = dealInfo;      }, [dealInfo]);
   useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
 
@@ -311,6 +313,8 @@ export default function MessageCenterClient({
 
     supabase.rpc("mark_conversation_as_read", {
       p_conversation_id: activeConversationId,
+    }).then(({ error }) => {
+      if (error) console.error("[Messages] mark_conversation_as_read failed:", error);
     });
 
     setConversations(prev =>
@@ -323,8 +327,7 @@ export default function MessageCenterClient({
         }
       )
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConversationId]);
+  }, [activeConversationId, conversations, supabase, userId]);
 
   // ── Realtime ─────────────────────────────────────────────────
   useEffect(() => {
@@ -341,6 +344,15 @@ export default function MessageCenterClient({
       { event: "INSERT", schema: "public", table: "messages" },
       async ({ new: m }) => {
         const nm = m as ExtendedMessage;
+        const openConversationId = activeConversationIdRef.current;
+        if (nm.conversation_id === openConversationId && nm.sender_id !== userIdRef.current) {
+          nm.is_read = true;
+          supabase.rpc("mark_conversation_as_read", {
+            p_conversation_id: nm.conversation_id,
+          }).then(({ error }) => {
+            if (error) console.error("[Messages] realtime mark read failed:", error);
+          });
+        }
 
         setConversations(prev => {
           const idx = prev.findIndex(c => c.id === nm.conversation_id);
