@@ -3,7 +3,7 @@
 
 import { useState, useRef, useEffect, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useNotificationsContext } from '@/components/NotificationsProvider';
 import { AppNotification, TYPE_CONFIG } from '@/types/notifications';
 import { formatNotification, getDeepLink } from '@/lib/notification-utils';
@@ -24,21 +24,17 @@ function timeAgo(dateStr: string) {
 // ── Bell notification row ─────────────────────────────────────────────────────
 
 function BellRow({
-  notif, onRead, onDelete,
+  notif, onOpen, onDelete,
 }: {
   notif: AppNotification;
-  onRead:   (id: string) => Promise<void> | void;
+  onOpen:   (notif: AppNotification) => Promise<void> | void;
   onDelete: (id: string) => Promise<void> | void;
 }) {
   const cfg    = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.system;
   const display = formatNotification(notif);
-  const router = useRouter();
 
   const handleClick = async () => {
-    if (!notif.is_read) {
-      try { await onRead(notif.id); } catch { /* provider already rolled back/logged */ }
-    }
-    router.push(getDeepLink(notif.type, notif.data));
+    await onOpen(notif);
   };
 
   return (
@@ -165,6 +161,7 @@ export function NotificationBell() {
 
   const panelRef = useRef<HTMLDivElement>(null);
   const router   = useRouter();
+  const pathname = usePathname();
 
 
   const showPushBanner = mounted && pushSupported && !pushEnabled && !pushBannerDismissed &&
@@ -181,6 +178,12 @@ export function NotificationBell() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
+
+  // Close the popup after any route change. This prevents the panel from
+  // staying open when a notification navigates to Messages, Deals, or Tasks.
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   // PWA hardware back closes panel
   useEffect(() => {
@@ -200,6 +203,18 @@ export function NotificationBell() {
       setPushBannerDismissed(true);
       localStorage.setItem('cs:push-banner-dismissed', '1');
     }
+  };
+
+  const handleOpenNotification = async (notif: AppNotification) => {
+    setOpen(false);
+    if (!notif.is_read) {
+      try {
+        await markAsRead(notif.id);
+      } catch {
+        // Provider handles rollback/logging. Continue navigation so the tap still works.
+      }
+    }
+    router.push(getDeepLink(notif.type, notif.data));
   };
 
   const grouped = groupByTime(notifications);
@@ -362,7 +377,7 @@ export function NotificationBell() {
                           <BellRow
                             key={n.id}
                             notif={n}
-                            onRead={markAsRead}
+                            onOpen={handleOpenNotification}
                             onDelete={deleteNotification}
                           />
                         ))}
