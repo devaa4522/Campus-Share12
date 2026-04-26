@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type MouseEvent } from "react";
 import { createClient } from "@/utils/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import Image from "next/image";
@@ -22,10 +22,10 @@ interface TaskWithProfile {
   category?: string | null;
   reward_type?: string | null;
   reward_amount?: number | null;
-  status: string;
+  status: string | null;
   deadline?: string | null;
   college_domain?: string | null;
-  created_at: string;
+  created_at: string | null;
   profiles?: TaskProfile | null;
 }
 
@@ -76,7 +76,7 @@ function ClaimSheet({
   const dl = deadlineLabel(task.deadline);
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[#000a1e]/60 backdrop-blur-sm" onClick={onCancel}>
-      <div className="bg-surface-container-lowest w-full max-w-lg rounded-t-3xl p-6 pb-10 shadow-2xl border-t border-outline-variant/10" onClick={e => e.stopPropagation()}>
+      <div className="bg-surface-container-lowest w-full max-w-lg rounded-t-3xl p-6 pb-10 shadow-2xl border-t border-outline-variant/10" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div className="w-10 h-1 bg-outline-variant/40 rounded-full mx-auto mb-5" />
 
         <div className="flex items-start gap-3 mb-5">
@@ -187,7 +187,7 @@ function TaskCard({ task, onClaim, userId }: {
               <p className="text-[9px] text-on-surface-variant/60 truncate">{task.profiles.degree} {task.profiles.year_of_study ? `· Y${task.profiles.year_of_study}` : ""}</p>
             )}
           </div>
-          <span className="text-[9px] text-on-surface-variant/40">{timeAgo(task.created_at)}</span>
+          <span className="text-[9px] text-on-surface-variant/40">{task.created_at ? timeAgo(task.created_at) : ""}</span>
         </div>
 
         {/* CTA */}
@@ -249,29 +249,27 @@ export default function TasksClient({
   useEffect(() => {
     const supabase = createClient();
 
-    channelRef.current = supabase
-      .channel("tasks-feed")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "tasks" }, payload => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    channelRef.current = (supabase.channel("tasks-feed") as any)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "tasks" }, (payload: { new: TaskWithProfile }) => {
         const newTask = payload.new as TaskWithProfile;
-        // Don't show own tasks or claimed/completed
         if (newTask.user_id === userId) return;
         if (newTask.status !== "open") return;
-        setTasks(prev => {
-          if (prev.some(t => t.id === newTask.id)) return prev;
+        setTasks((prev: TaskWithProfile[]) => {
+          if (prev.some((t: TaskWithProfile) => t.id === newTask.id)) return prev;
           return [newTask, ...prev];
         });
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks" }, payload => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks" }, (payload: { new: TaskWithProfile }) => {
         const updated = payload.new as TaskWithProfile;
-        setTasks(prev => {
-          // Remove if no longer open (claimed, completed, cancelled)
-          if (updated.status !== "open") return prev.filter(t => t.id !== updated.id);
-          return prev.map(t => t.id === updated.id ? { ...t, ...updated } : t);
+        setTasks((prev: TaskWithProfile[]) => {
+          if (updated.status !== "open") return prev.filter((t: TaskWithProfile) => t.id !== updated.id);
+          return prev.map((t: TaskWithProfile) => t.id === updated.id ? { ...t, ...updated } : t);
         });
       })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "tasks" }, payload => {
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "tasks" }, (payload: { old: { id: string } }) => {
         const deleted = payload.old as { id: string };
-        setTasks(prev => prev.filter(t => t.id !== deleted.id));
+        setTasks((prev: TaskWithProfile[]) => prev.filter((t: TaskWithProfile) => t.id !== deleted.id));
       })
       .subscribe();
 
@@ -311,7 +309,7 @@ export default function TasksClient({
 
       toast.success("You're helping! Check your dashboard for details.");
       // Remove the task immediately from the feed — it's no longer "open"
-      setTasks(prev => prev.filter(t => t.id !== claimTarget.id));
+      setTasks((prev: TaskWithProfile[]) => prev.filter((t: TaskWithProfile) => t.id !== claimTarget.id));
       setClaimTarget(null);
     } catch {
       toast.error("Could not claim task. Please try again.");
@@ -322,7 +320,7 @@ export default function TasksClient({
 
   // Filter
   const CATEGORIES = ["All", "Academic", "Delivery", "Labor/Help", "Tech Support", "General"];
-  const filtered = filter === "All" ? tasks : tasks.filter(t => (t.category ?? "General") === filter);
+  const filtered = filter === "All" ? tasks : tasks.filter((t: TaskWithProfile) => (t.category ?? "General") === filter);
 
   return (
     <div className="pt-6 pb-32 min-h-full">
@@ -377,7 +375,7 @@ export default function TasksClient({
         </div>
       ) : filtered.length > 0 ? (
         <div className="flex flex-col gap-3">
-          {filtered.map(task => (
+          {filtered.map((task: TaskWithProfile) => (
             <div id={`task-${task.id}`} key={task.id}>
               <TaskCard task={task} onClaim={setClaimTarget} userId={userId} />
             </div>

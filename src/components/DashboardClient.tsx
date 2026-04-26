@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import type { Item, Profile, ItemRequest, Task, TaskClaim } from "@/lib/types";
+import { useState, useEffect, useCallback, type MouseEvent } from "react";
 import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,8 +10,83 @@ import QRCode from "react-qr-code";
 import { Html5Qrcode } from "html5-qrcode";
 import { useHaptics } from "@/hooks/useHaptics";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// ── Inline types (from DB schema) ──────────────────────────────────────────────
 type DealTab = "received" | "made" | "my_listings" | "task_requests" | "helping_with";
+
+interface Profile {
+  id: string;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  karma_score?: number | null;
+  college_domain?: string | null;
+  college_type?: string | null;
+  major?: string | null;
+  year_of_study?: string | null;
+  bio?: string | null;
+  degree?: string | null;
+  branch?: string | null;
+  department?: string | null;
+  notifications_enabled?: boolean | null;
+  profile_public?: boolean | null;
+  karma_escrow?: number | null;
+  total_tasks_claimed?: number | null;
+  total_tasks_completed?: number | null;
+  reliability_score?: number | null;
+  is_verified?: boolean | null;
+  is_shadow_banned?: boolean | null;
+  flags_count?: number | null;
+  banned_until?: string | null;
+}
+
+interface Item {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  condition?: string | null;
+  price_type?: string | null;
+  price_amount?: number | null;
+  status: string | null;
+  images?: string[] | null;
+  created_at?: string | null;
+  college_domain?: string | null;
+  is_hidden?: boolean | null;
+  thumbnail_url?: string | null;
+  profiles?: Profile | null;
+}
+
+interface ItemRequest {
+  id: string;
+  item_id: string;
+  requester_id: string;
+  duration_days: number;
+  status: string | null;
+  created_at: string;
+}
+
+interface Task {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  reward_type?: string | null;
+  reward_amount?: number | null;
+  status: string | null;
+  deadline?: string | null;
+  college_domain?: string | null;
+  created_at: string;
+  profiles?: Profile | null;
+}
+
+interface TaskClaim {
+  id: string;
+  task_id: string;
+  claimed_by: string;
+  created_at?: string | null;
+  profiles?: Profile | null;
+}
 
 interface RequestWithRelations extends ItemRequest {
   items: (Item & { profiles?: Profile | null }) | null;
@@ -146,7 +220,7 @@ function ScanConfirmSheet({ data, onConfirm, onCancel }: {
   if (!data) return null;
   return (
     <div className="fixed inset-0 z-[110] flex items-end justify-center bg-[#000a1e]/60 backdrop-blur-sm" onClick={onCancel}>
-      <div className="bg-surface-container-lowest w-full max-w-lg rounded-t-3xl p-6 pb-10 shadow-2xl border-t border-outline-variant/10" onClick={e => e.stopPropagation()}>
+      <div className="bg-surface-container-lowest w-full max-w-lg rounded-t-3xl p-6 pb-10 shadow-2xl border-t border-outline-variant/10" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div className="w-10 h-1 bg-outline-variant/40 rounded-full mx-auto mb-5" />
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -179,7 +253,7 @@ function ScanConfirmSheet({ data, onConfirm, onCancel }: {
 function QRModal({ dealId, onClose }: { dealId: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/80 backdrop-blur-md p-4" onClick={onClose}>
-      <div className="bg-surface-container-lowest rounded-3xl w-full max-w-xs overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-7" onClick={e => e.stopPropagation()}>
+      <div className="bg-surface-container-lowest rounded-3xl w-full max-w-xs overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-7" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high">
           <span className="material-symbols-outlined text-on-surface-variant text-[18px]">close</span>
         </button>
@@ -288,34 +362,37 @@ export default function DashboardClient({
   const focused = (id?: string | null) => Boolean(id && focusedDealId === id);
 
   // QR confirm
+  type HelpingEntry = TaskClaim & { tasks?: (Task & { profiles: Profile | null }) | null };
+  type TaskReqEntry = Task & { task_claims?: (TaskClaim & { profiles: Profile | null })[] };
+
   const handleQRConfirm = useCallback(async (scanned: string, expected: string) => {
     if (scanned !== expected) { haptics.error(); toast.error("Wrong QR code for this deal."); return; }
     try {
       const supabase = createClient();
-      const isTask = localTaskReqs.some(t => t.id === expected) || localHelping.some(c => c.tasks?.id === expected);
-      const itemReq = localReceived.find(r => r.id === expected) ?? localMade.find(r => r.id === expected);
+      const isTask = localTaskReqs.some((t: TaskReqEntry) => t.id === expected) || localHelping.some((c: HelpingEntry) => c.tasks?.id === expected);
+      const itemReq = localReceived.find((r: RequestWithRelations) => r.id === expected) ?? localMade.find((r: RequestWithRelations) => r.id === expected);
 
       if (isTask) {
         const { error } = await supabase.rpc("verify_qr_handshake", { p_deal_id: expected, p_deal_type: "task", p_qr_data: scanned, p_action: null });
         if (error) { haptics.error(); toast.error(error.message || "Could not complete."); return; }
         haptics.success(); toast.success("Task completed! Karma awarded 🎉");
-        setLocalTaskReqs(prev => prev.map(t => t.id === expected ? { ...t, status: "completed" as const } : t));
-        setLocalHelping(prev => prev.map(c => c.tasks?.id === expected ? { ...c, tasks: c.tasks ? { ...c.tasks, status: "completed" as const } : c.tasks } : c));
+        setLocalTaskReqs((prev: TaskReqEntry[]) => prev.map((t: TaskReqEntry) => t.id === expected ? { ...t, status: "completed" as const } : t));
+        setLocalHelping((prev: HelpingEntry[]) => prev.map((c: HelpingEntry) => c.tasks?.id === expected ? { ...c, tasks: c.tasks ? { ...c.tasks, status: "completed" as const } : c.tasks } : c));
       } else if (itemReq) {
         const { data, error } = await supabase.rpc("verify_qr_handshake", {
           p_deal_id: itemReq.id, p_deal_type: "item", p_qr_data: scanned,
           p_action: itemReq.status === "accepted" ? "handoff" : "return",
         });
         if (error) { haptics.error(); toast.error(error.message || "Could not complete."); return; }
-        const next = (data as { status?: RequestWithRelations["status"] } | null)?.status;
+        const next = (data as { status?: string } | null)?.status;
         if (next === "rented") {
           haptics.success(); toast.success("Handoff confirmed! Rental started.");
-          setLocalReceived(p => p.map(r => r.id === expected ? { ...r, status: "rented" } : r));
-          setLocalMade(p => p.map(r => r.id === expected ? { ...r, status: "rented" } : r));
+          setLocalReceived((p: RequestWithRelations[]) => p.map((r: RequestWithRelations) => r.id === expected ? { ...r, status: "rented" } : r));
+          setLocalMade((p: RequestWithRelations[]) => p.map((r: RequestWithRelations) => r.id === expected ? { ...r, status: "rented" } : r));
         } else if (next === "completed") {
           haptics.success(); toast.success("Item returned! Deal complete 🎉");
-          setLocalReceived(p => p.map(r => r.id === expected ? { ...r, status: "completed" } : r));
-          setLocalMade(p => p.map(r => r.id === expected ? { ...r, status: "completed" } : r));
+          setLocalReceived((p: RequestWithRelations[]) => p.map((r: RequestWithRelations) => r.id === expected ? { ...r, status: "completed" } : r));
+          setLocalMade((p: RequestWithRelations[]) => p.map((r: RequestWithRelations) => r.id === expected ? { ...r, status: "completed" } : r));
         }
       }
     } catch { toast.error("Action could not be completed."); }
@@ -326,8 +403,8 @@ export default function DashboardClient({
     if (!showScanner) return;
     const qr = new Html5Qrcode("qr-reader");
     qr.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 240, height: 240 } },
-      decoded => { setShowScanner(null); handleQRConfirm(decoded, showScanner); }, () => {}
-    ).catch(err => { console.error(err); toast.error("Camera access denied."); });
+      (decoded: string) => { setShowScanner(null); handleQRConfirm(decoded, showScanner); }, () => {}
+    ).catch((err: unknown) => { console.error(err); toast.error("Camera access denied."); });
     return () => { if (qr.isScanning) qr.stop().catch(console.error); else qr.clear(); };
   }, [showScanner, handleQRConfirm]);
 
@@ -338,7 +415,7 @@ export default function DashboardClient({
     setLoadingId(null);
     if (error) { toast.error(error.message || "Could not update status."); return; }
     toast.success(action === "accepted" ? "Deal accepted! 🤝" : "Deal declined.");
-    setLocalReceived(p => p.map(r => r.id === requestId ? { ...r, status: action } : r));
+    setLocalReceived((p: RequestWithRelations[]) => p.map((r: RequestWithRelations) => r.id === requestId ? { ...r, status: action } : r));
   }
 
   async function handleCancelHelp(claimId: string) {
@@ -349,7 +426,7 @@ export default function DashboardClient({
     const res = data as CancelTaskClaimResult | null;
     if (res?.penalty_applied) toast.error("Cancelled — 10% escrow penalty applied.");
     else toast.success("Cancelled. Escrow refunded.");
-    setLocalHelping(p => p.filter(c => c.id !== claimId));
+    setLocalHelping((p: HelpingEntry[]) => p.filter((c: HelpingEntry) => c.id !== claimId));
   }
 
   async function handleInitiateReturn(requestId: string) {
@@ -358,7 +435,7 @@ export default function DashboardClient({
     setLoadingId(null);
     if (error) { toast.error(error.message || "Could not initiate return."); return; }
     toast.success("Return initiated!");
-    setLocalMade(p => p.map(r => r.id === requestId ? { ...r, status: "returning" } : r));
+    setLocalMade((p: RequestWithRelations[]) => p.map((r: RequestWithRelations) => r.id === requestId ? { ...r, status: "returning" } : r));
   }
 
   async function handleMessageUser(req: RequestWithRelations) {
@@ -369,23 +446,28 @@ export default function DashboardClient({
   }
 
   async function handleMessageForTask(taskId: string) {
-    const { data, error } = await createClient().rpc("get_task_conversation", { p_task_id: taskId });
-    const convId = (data as { conversation_id?: string } | null)?.conversation_id;
-    if (error || !convId) { toast.error("Could not open chat."); return; }
-    router.push(`/messages?id=${convId}`);
+  const { data, error } = await createClient().rpc("get_task_conversation", {
+    p_task_id: taskId,
+  });
+  const convId = (data as { conversation_id?: string } | null)?.conversation_id;
+  if (error || !convId) {
+    toast.error("Could not open chat.");
+    return;
   }
+  router.push(`/messages?id=${convId}`);
+}
 
   // Stats
-  const pendingCount = localReceived.filter(r => r.status === "pending").length;
-  const activeRentals = items.filter(i => i.status === "rented").length;
-  const activeEarnings = items.filter(i => i.status === "rented").reduce((a, c) => a + (c.price_amount || 0), 0);
-  const helpingCount = localHelping.filter(c => c.tasks?.status === "claimed").length;
+  const pendingCount = localReceived.filter((r: RequestWithRelations) => r.status === "pending").length;
+  const activeRentals = items.filter((i: Item) => i.status === "rented").length;
+  const activeEarnings = items.filter((i: Item) => i.status === "rented").reduce((a: number, c: Item) => a + (c.price_amount || 0), 0);
+  const helpingCount = localHelping.filter((c: HelpingEntry) => c.tasks?.status === "claimed").length;
 
   const tabs: { id: DealTab; label: string; icon: string; badge?: number }[] = [
     { id: "received",      label: "Incoming",    icon: "inbox",     badge: pendingCount },
     { id: "made",          label: "Requested",   icon: "send" },
     { id: "my_listings",   label: "Listings",    icon: "storefront", badge: items.length },
-    { id: "task_requests", label: "My Tasks",    icon: "task_alt",   badge: localTaskReqs.filter(t => t.status === "claimed").length },
+    { id: "task_requests", label: "My Tasks",    icon: "task_alt",   badge: localTaskReqs.filter((t: TaskReqEntry) => t.status === "claimed").length },
     { id: "helping_with",  label: "Helping",     icon: "handshake",  badge: helpingCount },
   ];
 
@@ -397,7 +479,7 @@ export default function DashboardClient({
     const isLender = item.user_id === profile.id;
     const isBorrower = req.requester_id === profile.id;
     const canManage = isLenderView && isLender;
-    const st = ITEM_STATUS[req.status] ?? ITEM_STATUS.pending;
+    const st = ITEM_STATUS[req.status ?? "pending"] ?? ITEM_STATUS.pending;
     const loading = loadingId === req.id;
 
     return (
@@ -426,7 +508,7 @@ export default function DashboardClient({
             </div>
           </div>
 
-          <DealStepper status={req.status} />
+          <DealStepper status={req.status ?? "pending"} />
 
           <div className="flex gap-2 mt-3 flex-wrap">
             {req.status === "pending" && canManage && (
@@ -471,7 +553,7 @@ export default function DashboardClient({
                 <span className="material-symbols-outlined text-[14px]">qr_code_2</span>Show Return QR
               </button>
             )}
-            {["pending", "accepted", "rented", "returning"].includes(req.status) && (
+            {["pending", "accepted", "rented", "returning"].includes(req.status ?? "") && (
               <button onClick={() => handleMessageUser(req)}
                 className="border border-outline-variant/20 text-secondary py-2.5 px-3 rounded-xl text-xs font-bold active:scale-95 transition-transform flex items-center gap-1">
                 <span className="material-symbols-outlined text-[14px]">chat</span>
@@ -519,7 +601,7 @@ export default function DashboardClient({
             <span className="text-xs font-bold text-secondary">{task.reward_amount} {task.reward_type === "karma" ? "CP" : "₹"}</span>
           </div>
 
-          <TaskStepper status={task.status} />
+          <TaskStepper status={task.status ?? "open"} />
 
           {helper && task.status !== "open" && (
             <div className="flex items-center gap-2 mt-2 py-2 border-t border-outline-variant/10">
@@ -586,7 +668,7 @@ export default function DashboardClient({
             )}
           </div>
 
-          <TaskStepper status={task.status} />
+          <TaskStepper status={task.status ?? "open"} />
 
           {creator && (
             <div className="flex items-center gap-2 mt-2 py-2 border-t border-outline-variant/10">
@@ -697,11 +779,11 @@ export default function DashboardClient({
 
         {/* Content */}
         <div className="flex flex-col gap-3">
-          {activeTab === "received" && (localReceived.length > 0 ? localReceived.map(r => renderItemCard(r, true)) : <EmptyState icon="inbox" text="No incoming requests yet. List items to start lending." cta="Go to Hub" ctaHref="/hub" />)}
-          {activeTab === "made" && (localMade.length > 0 ? localMade.map(r => renderItemCard(r, false)) : <EmptyState icon="send" text="You haven't requested any items yet." cta="Browse Hub" ctaHref="/hub" />)}
+          {activeTab === "received" && (localReceived.length > 0 ? localReceived.map((r: RequestWithRelations) => renderItemCard(r, true)) : <EmptyState icon="inbox" text="No incoming requests yet. List items to start lending." cta="Go to Hub" ctaHref="/hub" />)}
+          {activeTab === "made" && (localMade.length > 0 ? localMade.map((r: RequestWithRelations) => renderItemCard(r, false)) : <EmptyState icon="send" text="You haven't requested any items yet." cta="Browse Hub" ctaHref="/hub" />)}
           {activeTab === "my_listings" && (items.length > 0 ? items.map(renderListingCard) : <EmptyState icon="storefront" text="No listings yet. Share items with your campus." cta="Post an Item" ctaHref="/post" />)}
-          {activeTab === "task_requests" && (localTaskReqs.length > 0 ? localTaskReqs.map(t => renderMyTaskCard(t)) : <EmptyState icon="task_alt" text="No tasks posted yet." cta="Browse Tasks" ctaHref="/tasks" />)}
-          {activeTab === "helping_with" && (localHelping.length > 0 ? localHelping.map(c => renderHelpingCard(c)) : <EmptyState icon="handshake" text="Not helping with any tasks right now." cta="Browse Tasks" ctaHref="/tasks" />)}
+          {activeTab === "task_requests" && (localTaskReqs.length > 0 ? localTaskReqs.map((t: TaskReqEntry) => renderMyTaskCard(t)) : <EmptyState icon="task_alt" text="No tasks posted yet." cta="Browse Tasks" ctaHref="/tasks" />)}
+          {activeTab === "helping_with" && (localHelping.length > 0 ? localHelping.map((c: HelpingEntry) => renderHelpingCard(c)) : <EmptyState icon="handshake" text="Not helping with any tasks right now." cta="Browse Tasks" ctaHref="/tasks" />)}
         </div>
       </div>
     </div>
