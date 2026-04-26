@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNotificationsContext } from '@/components/NotificationsProvider';
 import { FilterType, FILTER_CONFIG } from '@/types/notifications';
 import { groupByTime, groupByDeal } from '@/lib/notification-logic';
-import { PullToRefresh }  from './notifications/PullToRefresh';
 import { SectionHeader }  from './notifications/SectionHeader';
 import { SingleNotifRow } from './notifications/SingleNotifRow';
 import { DealGroupRow }   from './notifications/DealGroupRow';
@@ -265,6 +264,15 @@ export default function NotificationsClient() {
 
           {/* Action buttons */}
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={refresh}
+              className="w-9 h-9 flex items-center justify-center rounded-full text-on-surface-variant/45 hover:bg-surface-container-high active:bg-surface-container-highest transition-colors"
+              aria-label="Refresh notifications"
+            >
+              <span className="material-symbols-outlined text-xl">sync</span>
+            </button>
+
             <AnimatePresence>
               {unreadCount > 0 && (
                 <motion.button
@@ -422,13 +430,14 @@ export default function NotificationsClient() {
         )}
       </AnimatePresence>
 
-      {/* Scrollable content via PullToRefresh */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-      <PullToRefresh onRefresh={refresh}>
+      {/* Scrollable notification list */}
+      <div
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         <div className="max-w-3xl mx-auto w-full">
           {renderContent()}
         </div>
-      </PullToRefresh>
       </div>
     </main>
   );

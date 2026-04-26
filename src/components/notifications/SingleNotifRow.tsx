@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { AppNotification, TYPE_CONFIG } from '@/types/notifications';
 import { timeAgo } from '@/lib/notification-logic';
 import { formatNotification, getDeepLink } from '@/lib/notification-utils';
 import { SwipeableRow } from './SwipeableRow';
-import { ContextMenu } from './ContextMenu';
 import { useRouter } from 'next/navigation';
 
 interface SingleNotifRowProps {
@@ -20,57 +19,25 @@ interface SingleNotifRowProps {
 export function SingleNotifRow({
   notif, onRead, onDelete, index, compact = false,
 }: SingleNotifRowProps) {
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const longPressRef = useRef<NodeJS.Timeout | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [closeSignal, setCloseSignal] = useState(0);
   const router = useRouter();
 
   const cfg = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.system;
   const display = formatNotification(notif);
 
-  const cancelLongPress = () => {
-    if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
-  };
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    const { clientX, clientY } = e;
-    longPressRef.current = setTimeout(() => {
-      setContextMenu({ x: clientX, y: clientY });
-      if (navigator.vibrate) navigator.vibrate(28);
-    }, 480);
-  };
-
   const handleClick = async () => {
+    if (actionsOpen) {
+      setCloseSignal((value) => value + 1);
+      return;
+    }
+
     if (!notif.is_read) {
       try { await onRead(); } catch { /* provider already rolled back/logged */ }
     }
-    const link = getDeepLink(notif.type, notif.data);
-    router.push(link);
-  };
 
-  const contextActions = [
-    ...(!notif.is_read ? [{
-      label: 'Mark as read',
-      icon: 'done_all',
-      color: '#006e0c',
-      onClick: onRead,
-    }] : []),
-    {
-      label: 'Delete',
-      icon: 'delete',
-      color: '#ba1a1a',
-      onClick: onDelete,
-    },
-    ...(notif.data?.deal_id ? [{
-      label: 'View deal',
-      icon: 'handshake',
-      onClick: () => router.push(getDeepLink(notif.type, notif.data)),
-    }] : []),
-    ...(notif.data?.conversation_id ? [{
-      label: 'Open message',
-      icon: 'chat_bubble',
-      onClick: () => router.push(getDeepLink(notif.type, notif.data)),
-    }] : []),
-  ];
+    router.push(getDeepLink(notif.type, notif.data));
+  };
 
   return (
     <>
@@ -81,12 +48,15 @@ export function SingleNotifRow({
         exit={{ opacity: 0, scale: 0.96 }}
         transition={{ duration: 0.18, delay: Math.min(index * 0.025, 0.15) }}
       >
-        <SwipeableRow onDelete={onDelete} onRead={onRead} isRead={notif.is_read}>
+        <SwipeableRow
+          onDelete={onDelete}
+          onRead={onRead}
+          isRead={notif.is_read}
+          onOpenChange={setActionsOpen}
+          closeSignal={closeSignal}
+        >
           <div
             onClick={handleClick}
-            onPointerDown={handlePointerDown}
-            onPointerUp={cancelLongPress}
-            onPointerLeave={cancelLongPress}
             className={`
               flex gap-3.5 select-none cursor-pointer transition-colors duration-150
               hover:bg-surface-container-low/60 active:bg-surface-container-low
@@ -150,17 +120,6 @@ export function SingleNotifRow({
           </div>
         </SwipeableRow>
       </motion.div>
-
-      <AnimatePresence>
-        {contextMenu && (
-          <ContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            actions={contextActions}
-            onClose={() => setContextMenu(null)}
-          />
-        )}
-      </AnimatePresence>
     </>
   );
 }
