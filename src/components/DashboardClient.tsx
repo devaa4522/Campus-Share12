@@ -11,14 +11,221 @@ import QRCode from "react-qr-code";
 import { Html5Qrcode } from "html5-qrcode";
 import { useHaptics } from "@/hooks/useHaptics";
 
-
-type DealTab = "made" | "received" | "my_listings" | "task_requests" | "helping_with";
+// ── Types ──────────────────────────────────────────────────────────────────────
+type DealTab = "received" | "made" | "my_listings" | "task_requests" | "helping_with";
 
 interface RequestWithRelations extends ItemRequest {
   items: (Item & { profiles?: Profile | null }) | null;
   profiles: Profile | null;
 }
 
+type CancelTaskClaimResult = {
+  success?: boolean;
+  penalty_applied?: boolean;
+  message?: string;
+  error?: string;
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function deadlineLabel(deadline: string | null | undefined): string {
+  if (!deadline) return "Flexible";
+  const diff = new Date(deadline).getTime() - Date.now();
+  if (diff < 0) return "Overdue";
+  const days = Math.ceil(diff / 86400000);
+  if (days === 0) return "Due today";
+  return `${days}d left`;
+}
+
+function timeAgo(date: string): string {
+  const diff = Date.now() - new Date(date).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+// ── Steppers ───────────────────────────────────────────────────────────────────
+const ITEM_STEPS = ["Pending", "Accepted", "Rented", "Returning", "Done"];
+const ITEM_STEP_IDX: Record<string, number> = {
+  pending: 0, accepted: 1, rented: 2, returning: 3, completed: 4, declined: -1,
+};
+
+function DealStepper({ status }: { status: string }) {
+  if (status === "declined") return (
+    <div className="flex items-center gap-1.5 py-2">
+      <span className="w-4 h-4 rounded-full bg-error/20 flex items-center justify-center flex-shrink-0">
+        <span className="material-symbols-outlined text-error" style={{ fontSize: 10 }}>close</span>
+      </span>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-error">Declined</span>
+    </div>
+  );
+  const cur = ITEM_STEP_IDX[status] ?? 0;
+  return (
+    <div className="flex items-center gap-0.5 py-2 overflow-x-auto no-scrollbar">
+      {ITEM_STEPS.map((step, i) => (
+        <div key={step} className="flex items-center gap-0.5 flex-shrink-0">
+          <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide transition-all flex items-center gap-0.5 ${
+            i < cur ? "bg-secondary/15 text-secondary" :
+            i === cur ? "bg-primary text-on-primary" :
+            "bg-surface-container-high text-on-surface-variant/30"
+          }`}>
+            {i < cur && <span className="material-symbols-outlined" style={{ fontSize: 9 }}>check</span>}
+            {step}
+          </div>
+          {i < ITEM_STEPS.length - 1 && (
+            <div className={`w-3 h-px flex-shrink-0 ${i < cur ? "bg-secondary/30" : "bg-outline-variant/20"}`} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const TASK_STEPS = ["Posted", "Helper Found", "In Progress", "Done"];
+const TASK_STEP_IDX: Record<string, number> = { open: 0, claimed: 2, completed: 3 };
+
+function TaskStepper({ status }: { status: string }) {
+  const cur = TASK_STEP_IDX[status] ?? 0;
+  return (
+    <div className="flex items-center gap-0.5 py-2 overflow-x-auto no-scrollbar">
+      {TASK_STEPS.map((step, i) => (
+        <div key={step} className="flex items-center gap-0.5 flex-shrink-0">
+          <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide transition-all flex items-center gap-0.5 ${
+            i < cur ? "bg-secondary/15 text-secondary" :
+            i === cur ? "bg-primary text-on-primary" :
+            "bg-surface-container-high text-on-surface-variant/30"
+          }`}>
+            {i < cur && <span className="material-symbols-outlined" style={{ fontSize: 9 }}>check</span>}
+            {step}
+          </div>
+          {i < TASK_STEPS.length - 1 && (
+            <div className={`w-3 h-px flex-shrink-0 ${i < cur ? "bg-secondary/30" : "bg-outline-variant/20"}`} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Small reusable components ──────────────────────────────────────────────────
+function Avatar({ url, name, size = 32 }: { url?: string | null; name?: string | null; size?: number }) {
+  return (
+    <div className="rounded-full bg-primary/10 overflow-hidden flex-shrink-0 relative flex items-center justify-center"
+      style={{ width: size, height: size }}>
+      {url
+        ? <Image src={url} alt={name ?? "User"} fill className="object-cover" />
+        : <span className="font-bold text-primary" style={{ fontSize: size * 0.4 }}>{name?.charAt(0)?.toUpperCase() ?? "?"}</span>
+      }
+    </div>
+  );
+}
+
+function EmptyState({ icon, text, cta, ctaHref }: { icon: string; text: string; cta?: string; ctaHref?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+      <div className="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center mb-4">
+        <span className="material-symbols-outlined text-on-surface-variant/40 text-3xl">{icon}</span>
+      </div>
+      <p className="text-on-surface-variant text-sm leading-relaxed mb-4">{text}</p>
+      {cta && ctaHref && (
+        <Link href={ctaHref} className="bg-primary text-on-primary px-6 py-2.5 rounded-2xl font-bold text-sm active:scale-95 transition-transform">
+          {cta}
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// Slide-up bottom sheet: confirm before opening scanner
+function ScanConfirmSheet({ data, onConfirm, onCancel }: {
+  data: { title: string; body: string; reward?: number; rewardType?: string } | null;
+  onConfirm: () => void; onCancel: () => void;
+}) {
+  if (!data) return null;
+  return (
+    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-[#000a1e]/60 backdrop-blur-sm" onClick={onCancel}>
+      <div className="bg-surface-container-lowest w-full max-w-lg rounded-t-3xl p-6 pb-10 shadow-2xl border-t border-outline-variant/10" onClick={e => e.stopPropagation()}>
+        <div className="w-10 h-1 bg-outline-variant/40 rounded-full mx-auto mb-5" />
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <span className="material-symbols-outlined text-primary">qr_code_scanner</span>
+          </div>
+          <div>
+            <p className="font-bold text-primary text-base leading-tight">{data.title}</p>
+            <p className="text-on-surface-variant text-xs mt-0.5 leading-relaxed">{data.body}</p>
+          </div>
+        </div>
+        {data.reward !== undefined && data.reward > 0 && (
+          <div className="bg-secondary/10 rounded-2xl px-4 py-3 mb-5 flex items-center gap-3">
+            <span className="material-symbols-outlined text-secondary">toll</span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-secondary/60">Reward on completion</p>
+              <p className="font-headline font-bold text-secondary text-xl">{data.reward} {data.rewardType === "karma" ? "CP" : "₹"}</p>
+            </div>
+          </div>
+        )}
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 border border-outline-variant/30 text-on-surface-variant py-3 rounded-2xl font-bold text-sm active:scale-95 transition-transform">Cancel</button>
+          <button onClick={onConfirm} className="flex-[2] bg-primary text-on-primary py-3 rounded-2xl font-bold text-sm active:scale-95 transition-transform">Open Scanner</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// QR Display
+function QRModal({ dealId, onClose }: { dealId: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/80 backdrop-blur-md p-4" onClick={onClose}>
+      <div className="bg-surface-container-lowest rounded-3xl w-full max-w-xs overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-7" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high">
+          <span className="material-symbols-outlined text-on-surface-variant text-[18px]">close</span>
+        </button>
+        <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center mx-auto mb-3">
+          <span className="material-symbols-outlined text-secondary">qr_code_2</span>
+        </div>
+        <h2 className="font-headline font-bold text-lg text-primary mb-1">Proof of Work</h2>
+        <p className="text-on-surface-variant text-xs mb-5 leading-relaxed">Show this to the other party to confirm the handshake</p>
+        <div className="bg-white p-5 rounded-2xl inline-block shadow-lg border-4 border-secondary/30 mb-4">
+          <QRCode value={dealId} size={200} fgColor="#000a1e" />
+        </div>
+        <p className="text-[9px] uppercase font-bold tracking-[0.2em] text-secondary">Encrypted · Tamper-proof</p>
+      </div>
+    </div>
+  );
+}
+
+// Scanner
+function ScannerModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/90 backdrop-blur-md">
+      <div className="w-full max-w-sm relative p-6 text-center">
+        <button onClick={onClose} className="absolute top-0 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-error/20 hover:bg-error/30 z-[120]">
+          <span className="material-symbols-outlined text-error">close</span>
+        </button>
+        <p className="text-white/70 text-sm mb-4">Point camera at the QR code</p>
+        <div className="bg-black rounded-2xl overflow-hidden border-4 border-secondary/40">
+          <div id="qr-reader" className="w-full min-h-[280px]" />
+        </div>
+        <p className="text-white/40 text-xs mt-3">Deal completes automatically when scanned</p>
+      </div>
+    </div>
+  );
+}
+
+// Status config
+const ITEM_STATUS: Record<string, { label: string; dot: string; text: string; bar: string }> = {
+  pending:   { label: "Awaiting",  dot: "bg-on-surface-variant/40", text: "text-on-surface-variant", bar: "border-l-outline-variant/30" },
+  accepted:  { label: "Accepted",  dot: "bg-secondary",             text: "text-secondary",          bar: "border-l-secondary" },
+  rented:    { label: "Active",    dot: "bg-blue-500",              text: "text-blue-600",           bar: "border-l-blue-500" },
+  returning: { label: "Returning", dot: "bg-error",                 text: "text-error",              bar: "border-l-error" },
+  completed: { label: "Complete",  dot: "bg-secondary/50",          text: "text-secondary",          bar: "border-l-secondary/40" },
+  declined:  { label: "Declined",  dot: "bg-error/40",              text: "text-error",              bar: "border-l-error/30" },
+};
+
+// ── Main Component ─────────────────────────────────────────────────────────────
 export default function DashboardClient({
   profile,
   items,
@@ -36,691 +243,467 @@ export default function DashboardClient({
   madeRequests: RequestWithRelations[];
   receivedRequests: RequestWithRelations[];
   myTaskRequests?: (Task & { task_claims?: (TaskClaim & { profiles: Profile | null })[] })[];
-  helpingWithTasks?: (TaskClaim & { tasks?: (Task & { profiles: Profile | null }) | null })[]; 
+  helpingWithTasks?: (TaskClaim & { tasks?: (Task & { profiles: Profile | null }) | null })[];
   focusedDealId?: string;
   focusedDealType?: "item" | "task";
   initialTab?: DealTab;
   openScanner?: boolean;
 }) {
-  const resolveInitialTab = (): DealTab => {
+  const resolveTab = (): DealTab => {
     if (initialTab) return initialTab;
     if (!focusedDealId) return "received";
-    if (focusedDealType === "task") {
-      return helpingWithTasks.some((claim) => claim.tasks?.id === focusedDealId) ? "helping_with" : "task_requests";
-    }
-    if (focusedDealType === "item") {
-      return madeRequests.some((req) => req.id === focusedDealId) ? "made" : "received";
-    }
-    if (madeRequests.some((req) => req.id === focusedDealId)) return "made";
-    if (receivedRequests.some((req) => req.id === focusedDealId)) return "received";
-    if (myTaskRequests.some((task) => task.id === focusedDealId)) return "task_requests";
-    if (helpingWithTasks.some((claim) => claim.tasks?.id === focusedDealId)) return "helping_with";
+    if (focusedDealType === "task") return helpingWithTasks.some(c => c.tasks?.id === focusedDealId) ? "helping_with" : "task_requests";
+    if (focusedDealType === "item") return madeRequests.some(r => r.id === focusedDealId) ? "made" : "received";
+    if (madeRequests.some(r => r.id === focusedDealId)) return "made";
+    if (receivedRequests.some(r => r.id === focusedDealId)) return "received";
+    if (myTaskRequests.some(t => t.id === focusedDealId)) return "task_requests";
+    if (helpingWithTasks.some(c => c.tasks?.id === focusedDealId)) return "helping_with";
     return "received";
   };
 
-  const [activeTab, setActiveTab] = useState<DealTab>(resolveInitialTab);
+  const [activeTab, setActiveTab] = useState<DealTab>(resolveTab);
   const [localMade, setLocalMade] = useState<RequestWithRelations[]>(madeRequests);
   const [localReceived, setLocalReceived] = useState<RequestWithRelations[]>(receivedRequests);
-  const [localTaskRequests, setLocalTaskRequests] = useState(myTaskRequests);
-  const [localHelpingWith, setLocalHelpingWith] = useState(helpingWithTasks);
-  const [showQrModal, setShowQrModal] = useState<string | null>(null);
-  const [showScannerModal, setShowScannerModal] = useState<string | null>(null);
+  const [localTaskReqs, setLocalTaskReqs] = useState(myTaskRequests);
+  const [localHelping, setLocalHelping] = useState(helpingWithTasks);
+  const [showQr, setShowQr] = useState<string | null>(null);
+  const [showScanner, setShowScanner] = useState<string | null>(null);
+  const [confirmScan, setConfirmScan] = useState<{ dealId: string; title: string; body: string; reward?: number; rewardType?: string } | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
   const router = useRouter();
   const haptics = useHaptics();
 
-  // Removed body scroll-lock — MainWrapper handles overflow via the sandwich layout
-
   useEffect(() => {
     if (!focusedDealId) return;
-    const targetTab = resolveInitialTab();
-    setActiveTab(targetTab);
-
-    const timeout = window.setTimeout(() => {
-      document.getElementById(`deal-${focusedDealId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 120);
-
-    if (openScanner) {
-      setShowScannerModal(focusedDealId);
-    }
-
-    return () => window.clearTimeout(timeout);
-  // Run once per deep link change. The resolver intentionally uses the initial server payload.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setActiveTab(resolveTab());
+    const t = setTimeout(() => {
+      document.getElementById(`deal-${focusedDealId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+    if (openScanner) setShowScanner(focusedDealId);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusedDealId, openScanner]);
 
-  const focusRingClass = "ring-2 ring-secondary/80 shadow-[0_0_0_6px_rgba(0,110,12,0.08)]";
-  const isFocusedDeal = (id?: string | null) => Boolean(id && focusedDealId === id);
+  const focused = (id?: string | null) => Boolean(id && focusedDealId === id);
 
-  const handleQRConfirm = useCallback(async (scannedPayload: string, expectedTaskId: string) => {
-    if (scannedPayload !== expectedTaskId) {
-      haptics.error();
-      toast.error('Invalid QR Code for this specific arrangement!');
-      return;
-    }
+  // QR confirm
+  const handleQRConfirm = useCallback(async (scanned: string, expected: string) => {
+    if (scanned !== expected) { haptics.error(); toast.error("Wrong QR code for this deal."); return; }
     try {
       const supabase = createClient();
-      
-      const isTask = localTaskRequests.some(t => t.id === expectedTaskId) || localHelpingWith.some(t => t.tasks?.id === expectedTaskId);
-      const itemReq = localReceived.find(r => r.id === expectedTaskId) || localMade.find(r => r.id === expectedTaskId);
-      
+      const isTask = localTaskReqs.some(t => t.id === expected) || localHelping.some(c => c.tasks?.id === expected);
+      const itemReq = localReceived.find(r => r.id === expected) ?? localMade.find(r => r.id === expected);
+
       if (isTask) {
-        const { error } = await supabase.rpc('verify_qr_handshake', {
-          p_deal_id: expectedTaskId,
-          p_deal_type: 'task',
-          p_qr_data: scannedPayload,
-          p_action: null,
-        });
-        if (!error) {
-           haptics.success();
-           toast.success("Task formally completed! Escrow released & Karma awarded.");
-           setLocalTaskRequests(prev => prev.map(t => t.id === expectedTaskId ? ({ ...t, status: "completed" as const }) : t));
-           setLocalHelpingWith(prev => prev.map(t => t.tasks?.id === expectedTaskId ? ({ ...t, tasks: t.tasks ? ({ ...t.tasks, status: "completed" as const }) : t.tasks }) : t));
-        } else {
-           haptics.error();
-           toast.error(error.message || "Action could not be completed.");
-        }
+        const { error } = await supabase.rpc("verify_qr_handshake", { p_deal_id: expected, p_deal_type: "task", p_qr_data: scanned, p_action: null });
+        if (error) { haptics.error(); toast.error(error.message || "Could not complete."); return; }
+        haptics.success(); toast.success("Task completed! Karma awarded 🎉");
+        setLocalTaskReqs(prev => prev.map(t => t.id === expected ? { ...t, status: "completed" as const } : t));
+        setLocalHelping(prev => prev.map(c => c.tasks?.id === expected ? { ...c, tasks: c.tasks ? { ...c.tasks, status: "completed" as const } : c.tasks } : c));
       } else if (itemReq) {
-         const { data, error } = await supabase.rpc('verify_qr_handshake', {
-           p_deal_id: itemReq.id,
-           p_deal_type: 'item',
-           p_qr_data: scannedPayload,
-           p_action: itemReq.status === 'accepted' ? 'handoff' : 'return',
-         });
-         if (error) {
-           haptics.error();
-           toast.error(error.message || "Action could not be completed.");
-           return;
-         }
-
-         const nextStatus = (data as { status?: RequestWithRelations['status'] } | null)?.status;
-         if (nextStatus === 'rented') {
-             haptics.success();
-             toast.success("Item handed over!");
-             setLocalReceived(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'rented' } : r));
-             setLocalMade(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'rented' } : r));
-         } else if (nextStatus === 'completed') {
-             haptics.success();
-             toast.success("Item returned safely!");
-             setLocalReceived(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'completed' } : r));
-             setLocalMade(prev => prev.map(r => r.id === expectedTaskId ? { ...r, status: 'completed' } : r));
-         }
+        const { data, error } = await supabase.rpc("verify_qr_handshake", {
+          p_deal_id: itemReq.id, p_deal_type: "item", p_qr_data: scanned,
+          p_action: itemReq.status === "accepted" ? "handoff" : "return",
+        });
+        if (error) { haptics.error(); toast.error(error.message || "Could not complete."); return; }
+        const next = (data as { status?: RequestWithRelations["status"] } | null)?.status;
+        if (next === "rented") {
+          haptics.success(); toast.success("Handoff confirmed! Rental started.");
+          setLocalReceived(p => p.map(r => r.id === expected ? { ...r, status: "rented" } : r));
+          setLocalMade(p => p.map(r => r.id === expected ? { ...r, status: "rented" } : r));
+        } else if (next === "completed") {
+          haptics.success(); toast.success("Item returned! Deal complete 🎉");
+          setLocalReceived(p => p.map(r => r.id === expected ? { ...r, status: "completed" } : r));
+          setLocalMade(p => p.map(r => r.id === expected ? { ...r, status: "completed" } : r));
+        }
       }
-    } catch (e) {
-      toast.error("Action could not be completed.");
-    }
-  }, [localTaskRequests, localHelpingWith, localReceived, localMade, haptics]);
+    } catch { toast.error("Action could not be completed."); }
+  }, [localTaskReqs, localHelping, localReceived, localMade, haptics]);
 
+  // Scanner effect
   useEffect(() => {
-    if (!showScannerModal) return;
+    if (!showScanner) return;
+    const qr = new Html5Qrcode("qr-reader");
+    qr.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 240, height: 240 } },
+      decoded => { setShowScanner(null); handleQRConfirm(decoded, showScanner); }, () => {}
+    ).catch(err => { console.error(err); toast.error("Camera access denied."); });
+    return () => { if (qr.isScanning) qr.stop().catch(console.error); else qr.clear(); };
+  }, [showScanner, handleQRConfirm]);
 
-    const html5QrCode = new Html5Qrcode("qr-reader");
-
-    html5QrCode.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      (decodedText) => {
-        setShowScannerModal(null);
-        handleQRConfirm(decodedText, showScannerModal);
-      },
-      (error) => { /* ignore */ }
-    ).catch(err => {
-      console.error(err);
-      toast.error("Camera access failed. Please check permissions.");
-    });
-
-    return () => {
-      if (html5QrCode.isScanning) {
-        html5QrCode.stop().catch(e => console.error(e));
-      } else {
-        html5QrCode.clear();
-      }
-    };
-  }, [showScannerModal, handleQRConfirm]);
-
-  const activeEarnings = items
-    .filter((i) => i.status === "rented")
-    .reduce((acc, curr) => acc + (curr.price_amount || 0), 0);
-
-  const pendingReceivedCount = localReceived.filter(r => r.status === "pending").length;
-
-  async function handleUpdateStatus(requestId: string, newStatus: "accepted" | "declined", _itemId?: string) {
-    const supabase = createClient();
-    const { error } = await supabase.rpc("respond_item_request", {
-      p_request_id: requestId,
-      p_action: newStatus,
-    });
-      
-    if (error) {
-      toast.error(error.message || "Failed to update deal status");
-      return;
-    }
-    
-    toast.success(`Deal ${newStatus}!`);
-    
-    // Optimistic UI
-    setLocalReceived(prev => prev.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
+  // Actions
+  async function handleUpdateStatus(requestId: string, action: "accepted" | "declined") {
+    setLoadingId(requestId);
+    const { error } = await createClient().rpc("respond_item_request", { p_request_id: requestId, p_action: action });
+    setLoadingId(null);
+    if (error) { toast.error(error.message || "Could not update status."); return; }
+    toast.success(action === "accepted" ? "Deal accepted! 🤝" : "Deal declined.");
+    setLocalReceived(p => p.map(r => r.id === requestId ? { ...r, status: action } : r));
   }
 
-type CancelTaskClaimResult = {
-  success?: boolean;
-  penalty_applied?: boolean;
-  message?: string;
-  error?: string;
-};
-
-async function handleCancelHelp(claimId: string) {
-  try {
-    const supabase = createClient();
-
-    const { data, error } = await supabase.rpc("cancel_task_claim", {
-      c_id: claimId,
-      u_id: profile.id,
-    });
-
-    const result = data as CancelTaskClaimResult | null;
-
-    if (!error) {
-      if (result?.penalty_applied) {
-        toast.error("Help cancelled. 10% Escrow Penalty applied due to 10-Minute rule.");
-      } else {
-        toast.success("Help cancelled. Escrow refunded safely.");
-      }
-
-      setLocalHelpingWith((prev) => prev.filter((c) => c.id !== claimId));
-    } else {
-      toast.error("Action could not be completed. We are working on a fix.");
-    }
-  } catch {
-    toast.error("Action could not be completed. We are working on a fix.");
+  async function handleCancelHelp(claimId: string) {
+    setLoadingId(claimId);
+    const { data, error } = await createClient().rpc("cancel_task_claim", { c_id: claimId, u_id: profile.id });
+    setLoadingId(null);
+    if (error) { toast.error("Could not cancel."); return; }
+    const res = data as CancelTaskClaimResult | null;
+    if (res?.penalty_applied) toast.error("Cancelled — 10% escrow penalty applied.");
+    else toast.success("Cancelled. Escrow refunded.");
+    setLocalHelping(p => p.filter(c => c.id !== claimId));
   }
-}
 
-  const handleMessageForTask = async (taskId: string) => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.rpc("get_task_conversation", {
-        p_task_id: taskId,
-      });
+  async function handleInitiateReturn(requestId: string) {
+    setLoadingId(requestId);
+    const { error } = await createClient().rpc("initiate_item_return", { p_request_id: requestId });
+    setLoadingId(null);
+    if (error) { toast.error(error.message || "Could not initiate return."); return; }
+    toast.success("Return initiated!");
+    setLocalMade(p => p.map(r => r.id === requestId ? { ...r, status: "returning" } : r));
+  }
 
-      const conversationId = (data as { conversation_id?: string } | null)?.conversation_id;
-      if (!error && conversationId) {
-         router.push(`/messages?id=${conversationId}`);
-      } else {
-         toast.error(error?.message || "Action could not be completed. We are working on a fix.");
-      }
-    } catch (e) {
-      toast.error("Action could not be completed. We are working on a fix.");
-    }
-  };
+  async function handleMessageUser(req: RequestWithRelations) {
+    const { data, error } = await createClient().rpc("create_item_conversation", { p_request_id: req.id });
+    const convId = (data as { conversation_id?: string } | null)?.conversation_id;
+    if (error || !convId) { toast.error("Could not open chat."); return; }
+    router.push(`/messages?id=${convId}`);
+  }
 
-  const handleInitiateReturn = async (requestId: string) => {
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.rpc("initiate_item_return", { p_request_id: requestId });
-      if (error) {
-        toast.error(error.message || "Action could not be completed. We are working on a fix.");
-        return;
-      }
-      toast.success("Return initiated!");
-      setLocalMade(prev => prev.map(r => r.id === requestId ? { ...r, status: 'returning' } : r));
-    } catch (e) {
-      toast.error("Action could not be completed. We are working on a fix.");
-    }
-  };
+  async function handleMessageForTask(taskId: string) {
+    const { data, error } = await createClient().rpc("get_task_conversation", { p_task_id: taskId });
+    const convId = (data as { conversation_id?: string } | null)?.conversation_id;
+    if (error || !convId) { toast.error("Could not open chat."); return; }
+    router.push(`/messages?id=${convId}`);
+  }
 
-  const handleMessageUser = async (req: RequestWithRelations) => {
-    const lenderId = req.items?.user_id;
-    const borrowerId = req.requester_id;
-    if (!lenderId || !borrowerId) return;
+  // Stats
+  const pendingCount = localReceived.filter(r => r.status === "pending").length;
+  const activeRentals = items.filter(i => i.status === "rented").length;
+  const activeEarnings = items.filter(i => i.status === "rented").reduce((a, c) => a + (c.price_amount || 0), 0);
+  const helpingCount = localHelping.filter(c => c.tasks?.status === "claimed").length;
 
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.rpc("create_item_conversation", {
-        p_request_id: req.id,
-      });
+  const tabs: { id: DealTab; label: string; icon: string; badge?: number }[] = [
+    { id: "received",      label: "Incoming",    icon: "inbox",     badge: pendingCount },
+    { id: "made",          label: "Requested",   icon: "send" },
+    { id: "my_listings",   label: "Listings",    icon: "storefront", badge: items.length },
+    { id: "task_requests", label: "My Tasks",    icon: "task_alt",   badge: localTaskReqs.filter(t => t.status === "claimed").length },
+    { id: "helping_with",  label: "Helping",     icon: "handshake",  badge: helpingCount },
+  ];
 
-      const conversationId = (data as { conversation_id?: string } | null)?.conversation_id;
-      if (error || !conversationId) {
-         toast.error(error?.message || "Could not start conversation");
-         return;
-      }
-
-      router.push(`/messages?id=${conversationId}`);
-    } catch (e) {
-      toast.error("Error connecting to chat");
-    }
-  };
-
-  const renderRequestCard = (req: RequestWithRelations, isLenderView: boolean) => {
-    const otherPerson = isLenderView ? req.profiles : req.items?.profiles;
+  // ── Card: Item request ─────────────────────────────────────────────────────
+  const renderItemCard = (req: RequestWithRelations, isLenderView: boolean) => {
     const item = req.items;
     if (!item) return null;
-
-    const isActualLender = item.user_id === profile.id;
-    const isActualBorrower = req.requester_id === profile.id;
-    const canManageRequest = isLenderView && isActualLender;
-
-    let statusColor = 'bg-surface-container-high text-on-surface-variant';
-    if (req.status === 'accepted') statusColor = 'bg-secondary-container text-on-secondary-container';
-    else if (req.status === 'rented') statusColor = 'bg-blue-600/10 text-blue-600';
-    else if (req.status === 'returning') statusColor = 'bg-error/10 text-error';
-    else if (req.status === 'completed') statusColor = 'bg-primary/10 text-primary';
-    else if (req.status === 'declined') statusColor = 'bg-error/10 text-error';
+    const other = isLenderView ? req.profiles : item.profiles;
+    const isLender = item.user_id === profile.id;
+    const isBorrower = req.requester_id === profile.id;
+    const canManage = isLenderView && isLender;
+    const st = ITEM_STATUS[req.status] ?? ITEM_STATUS.pending;
+    const loading = loadingId === req.id;
 
     return (
-      <div id={`deal-${req.id}`} key={req.id} className={`bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_rgba(0,10,30,0.06)] border border-outline-variant/10 group hover:border-primary/20 transition-all duration-300 ${isFocusedDeal(req.id) ? focusRingClass : ""}`}>
-        <div className="flex flex-col md:flex-row gap-6">
-          <div className="w-full md:w-32 h-32 rounded-lg bg-surface-container overflow-hidden flex-shrink-0 relative">
-            {item.images?.[0] ? (
-              <Image src={item.images[0]} alt={item.title} fill sizes="(max-width: 768px) 100vw, 128px" className="object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-surface-container text-on-surface-variant font-bold text-lg">
-                No Image
+      <div id={`deal-${req.id}`} key={req.id}
+        className={`bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10 border-l-4 ${st.bar} transition-all ${focused(req.id) ? "ring-2 ring-secondary/70 shadow-[0_0_0_4px_rgba(0,110,12,0.10)]" : "shadow-sm"}`}>
+        <div className="p-4">
+          <div className="flex gap-3 mb-3">
+            <div className="w-16 h-16 rounded-xl bg-surface-container overflow-hidden flex-shrink-0 relative">
+              {item.images?.[0]
+                ? <Image src={item.images[0]} alt={item.title} fill sizes="64px" className="object-cover" />
+                : <div className="w-full h-full flex items-center justify-center"><span className="material-symbols-outlined text-on-surface-variant/40 text-2xl">inventory_2</span></div>}
+            </div>
+            <div className="flex-grow min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${st.dot}`} />
+                <span className={`text-[9px] font-bold uppercase tracking-widest ${st.text}`}>{st.label}</span>
+                <span className="text-[9px] text-on-surface-variant/40 ml-auto">{timeAgo(req.created_at)}</span>
               </div>
-            )}
-          </div>
-          <div className="flex-grow">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <span className={`px-2.5 py-0.5 rounded text-xs font-semibold tracking-wider uppercase mb-2 inline-block ${statusColor}`}>{req.status}</span>
-                <h3 className="font-headline text-xl font-bold text-primary">{item.title}</h3>
+              <h3 className="font-headline font-bold text-primary text-sm leading-tight truncate">{item.title}</h3>
+              <div className="flex items-center gap-2 mt-1.5">
+                <Avatar url={other?.avatar_url} name={other?.full_name} size={20} />
+                <span className="text-xs text-on-surface-variant truncate">{other?.full_name ?? "Unknown"}</span>
+                <span className="text-on-surface-variant/30 text-xs">·</span>
+                <span className="text-xs text-on-surface-variant">{req.duration_days}d</span>
               </div>
             </div>
-            
-            <div className="flex items-center gap-4 py-4 mb-4 border-y border-outline-variant/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-surface-container overflow-hidden flex-shrink-0 flex items-center justify-center relative">
-                   {otherPerson?.avatar_url ? (
-                     <Image src={otherPerson.avatar_url} alt="Profile" fill className="object-cover" />
-                   ) : (
-                     <span className="font-bold">
-                       {otherPerson?.full_name?.charAt(0) || "?"}
-                     </span>
-                   )}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-primary">{otherPerson?.full_name || "Unknown User"}</p>
-                </div>
-              </div>
-              <div className="h-8 w-[1px] bg-outline-variant/30"></div>
-              <div>
-                <p className="text-xs text-on-surface-variant uppercase font-bold tracking-widest">Duration</p>
-                <p className="text-sm font-medium">{req.duration_days} Days</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 flex-wrap">
-              {req.status === "pending" && canManageRequest && (
-                <>
-                  <button onClick={() => handleUpdateStatus(req.id, "accepted", item.id)} className="bg-primary text-on-primary px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:bg-slate-900 transition-colors">Accept Deal</button>
-                  <button onClick={() => handleUpdateStatus(req.id, "declined", item.id)} className="border border-outline-variant/30 text-on-surface-variant px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:border-primary hover:text-primary transition-colors">Decline</button>
-                </>
-              )}
-              
-              {req.status === "accepted" && canManageRequest && (
-                 <button onClick={() => setShowScannerModal(req.id)} className="bg-[#006e0c] text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan Borrower&apos;s QR</button>
-              )}
-              {req.status === "accepted" && isActualBorrower && (
-                 <button onClick={() => setShowQrModal(req.id)} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_2</span> Show Receive QR</button>
-              )}
-
-              {req.status === "rented" && isActualBorrower && (
-                 <button onClick={() => handleInitiateReturn(req.id)} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2"><span className="material-symbols-outlined text-[16px]">assignment_return</span> Initiate Return</button>
-              )}
-
-              {req.status === "returning" && canManageRequest && (
-                 <button onClick={() => setShowQrModal(req.id)} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_2</span> Show Return QR</button>
-              )}
-              {req.status === "returning" && isActualBorrower && (
-                 <button onClick={() => setShowScannerModal(req.id)} className="bg-[#006e0c] text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan Lender&apos;s QR</button>
-              )}
-
-              <button onClick={() => handleMessageUser(req)} className="border border-outline-variant/30 text-secondary px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:border-secondary transition-colors flex items-center gap-1">
-                 Message {isLenderView ? 'Borrower' : 'Lender'}
-              </button>
-            </div>
           </div>
-        </div>
-      </div>
-    );
-  };
 
-   const renderTaskRequestCard = (task: Task & { task_claims?: (TaskClaim & { profiles: Profile | null })[] }) => {
-    const helperProfile = task.task_claims?.[0]?.profiles;
-    const deadlineText = task.deadline 
-      ? new Date(task.deadline).getTime() > new Date().getTime() 
-        ? Math.ceil((new Date(task.deadline).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) + ' Days Left'
-        : 'Overdue'
-      : 'Flexible Target';
+          <DealStepper status={req.status} />
 
-    return (
-      <div id={`deal-${task.id}`} key={task.id} className={`bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/10 flex flex-col md:flex-row gap-6 ${isFocusedDeal(task.id) ? focusRingClass : ""}`}>
-        <div className="flex-grow flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-start mb-2">
-               <div>
-                  <span className={`px-2.5 py-0.5 rounded text-xs font-semibold tracking-wider uppercase mb-2 inline-block ${
-                    task.category === 'Academic' ? 'bg-primary/10 text-primary' :
-                    task.category === 'Delivery' ? 'bg-secondary/10 text-secondary' : 'bg-surface-container-high text-on-surface-variant'
-                  }`}>
-                    {task.category || 'General'}
-                  </span>
-                  <h3 className="font-headline text-xl font-bold text-primary">{task.title}</h3>
-               </div>
-               <div className="text-right">
-                 <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                    task.status === 'open' ? 'bg-error/10 text-error' :
-                    task.status === 'claimed' ? 'bg-secondary-container text-on-secondary-container' : 'bg-primary text-white'
-                 }`}>
-                   {task.status}
-                 </span>
-                 <p className="text-[10px] text-on-surface-variant font-bold uppercase mt-1.5 tracking-widest">{deadlineText}</p>
-               </div>
-            </div>
-            
-            {task.status === 'claimed' && helperProfile && (
-              <div className="flex items-center gap-3 mt-4 py-3 border-y border-outline-variant/10">
-                <span className="text-xs uppercase font-bold tracking-widest text-on-surface-variant">Helper:</span>
-                <span className="text-sm font-semibold text-primary">{helperProfile.full_name}</span>
-                 <button onClick={() => handleMessageForTask(task.id)} className="ml-auto text-secondary text-xs uppercase font-bold hover:underline flex items-center gap-1">Message <span className="material-symbols-outlined text-[14px]">chevron_right</span></button>
-              </div>
-            )}
-            {task.status === 'completed' && helperProfile && (
-              <div className="flex items-center gap-3 mt-4 py-3 border-y border-outline-variant/10">
-                <span className="text-xs uppercase font-bold tracking-widest text-[#006e0c]">Completed By:</span>
-                <span className="text-sm font-semibold text-primary">{helperProfile.full_name}</span>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex gap-3 mt-4">
-            {task.status === 'claimed' && (
-              <button onClick={() => setShowScannerModal(task.id)} className="bg-primary text-white px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:bg-slate-800 transition-colors flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan to Confirm
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-   const renderHelpingCard = (claim: TaskClaim & { tasks?: (Task & { profiles: Profile | null }) | null }) => {
-    const task = claim.tasks;
-    if (!task) return null;
-    const creator = task.profiles;
-
-    const deadlineText = task.deadline 
-      ? new Date(task.deadline).getTime() > new Date().getTime() 
-        ? Math.ceil((new Date(task.deadline).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) + ' Days Left'
-        : 'Overdue'
-      : 'Flexible Target';
-
-    return (
-      <div id={`deal-${task.id}`} key={claim.id} className={`bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/10 flex flex-col md:flex-row gap-6 border-l-4 border-l-secondary ${isFocusedDeal(task.id) ? focusRingClass : ""}`}>
-        <div className="flex-grow flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-start mb-2">
-               <div>
-                  <span className={`px-2.5 py-0.5 rounded text-xs font-semibold tracking-wider uppercase mb-2 inline-block bg-surface-container-high text-on-surface-variant`}>
-                    {task.category || 'General'}
-                  </span>
-                  <h3 className="font-headline text-xl font-bold text-primary">{task.title}</h3>
-               </div>
-               <div className="text-right">
-                 <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                    task.status === 'claimed' ? 'bg-secondary-container text-on-secondary-container' : 'bg-primary text-white'
-                 }`}>
-                   {task.status}
-                 </span>
-                 {task.status === 'claimed' && (
-                    <p className="text-[10px] text-error font-bold uppercase mt-1.5 tracking-widest">Escrow: {Math.floor((task.reward_amount || 0) * 0.1)} CP Locked</p>
-                 )}
-                 <p className="text-[10px] text-on-surface-variant font-bold uppercase mt-1 tracking-widest">{deadlineText}</p>
-               </div>
-            </div>
-            
-            {creator && (
-              <div className="flex items-center gap-3 mt-4 py-3 border-y border-outline-variant/10">
-                <span className="text-xs uppercase font-bold tracking-widest text-on-surface-variant">Requester:</span>
-                <span className="text-sm font-semibold text-primary">{creator.full_name}</span>
-              </div>
-            )}
-            <p className="text-sm text-on-surface-variant mt-3 line-clamp-2">{task.description}</p>
-          </div>
-          
-          <div className="flex gap-4 mt-4 items-center">
-            {task.status === 'claimed' && (
+          <div className="flex gap-2 mt-3 flex-wrap">
+            {req.status === "pending" && canManage && (
               <>
-                <button onClick={() => setShowQrModal(task.id)} className="bg-primary text-white shadow-md shadow-primary/20 px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[16px]">qr_code_2</span> Complete Task
+                <button disabled={loading} onClick={() => handleUpdateStatus(req.id, "accepted")}
+                  className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-1">
+                  {loading ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span className="material-symbols-outlined text-[14px]">check</span>Accept</>}
                 </button>
-                <button onClick={() => handleCancelHelp(claim.id)} className="border border-outline-variant/30 text-error px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-error/5 transition-colors">
-                  Cancel Help
-                </button>
-                <button onClick={() => handleMessageForTask(task.id)} className="text-secondary font-bold text-xs uppercase tracking-widest hover:underline flex items-center gap-1">
-                  Message <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                <button disabled={loading} onClick={() => handleUpdateStatus(req.id, "declined")}
+                  className="border border-outline-variant/30 text-on-surface-variant py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform disabled:opacity-50">
+                  Decline
                 </button>
               </>
             )}
+            {req.status === "accepted" && canManage && (
+              <button onClick={() => setConfirmScan({ dealId: req.id, title: "Confirm Handoff", body: "Scan the borrower's QR to mark the item as rented." })}
+                className="flex-1 bg-secondary text-on-secondary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">qr_code_scanner</span>Scan Borrower QR
+              </button>
+            )}
+            {req.status === "accepted" && isBorrower && (
+              <button onClick={() => setShowQr(req.id)}
+                className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">qr_code_2</span>Show My QR
+              </button>
+            )}
+            {req.status === "rented" && isBorrower && (
+              <button disabled={loadingId === req.id} onClick={() => handleInitiateReturn(req.id)}
+                className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">assignment_return</span>Initiate Return
+              </button>
+            )}
+            {req.status === "returning" && canManage && (
+              <button onClick={() => setConfirmScan({ dealId: req.id, title: "Confirm Return", body: "Scan the borrower's QR to finalise the return." })}
+                className="flex-1 bg-secondary text-on-secondary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">qr_code_scanner</span>Scan Return QR
+              </button>
+            )}
+            {req.status === "returning" && isBorrower && (
+              <button onClick={() => setShowQr(req.id)}
+                className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">qr_code_2</span>Show Return QR
+              </button>
+            )}
+            {["pending", "accepted", "rented", "returning"].includes(req.status) && (
+              <button onClick={() => handleMessageUser(req)}
+                className="border border-outline-variant/20 text-secondary py-2.5 px-3 rounded-xl text-xs font-bold active:scale-95 transition-transform flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">chat</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
     );
   };
 
-  return (
-    <div className="h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] overflow-y-auto w-full pb-24">
-      {showQrModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/80 backdrop-blur-md p-4">
-          <div className="bg-surface-container-lowest rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-8">
-            <button
-               onClick={() => setShowQrModal(null)}
-               className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors"
-            >
-               <span className="material-symbols-outlined text-on-surface-variant">close</span>
-            </button>
-            <h2 className="font-headline font-bold text-2xl text-primary mb-2">Proof of Work</h2>
-            <p className="text-on-surface-variant font-body text-sm mb-6 leading-relaxed">Present this encrypted Handshake to the Task Creator. Verifying this grants your total Karma Reward and unbinds Escrow.</p>
-            <div className="bg-white p-6 rounded-2xl inline-block shadow-lg mx-auto mb-6 border-4 border-[#006e0c]">
-               <QRCode value={showQrModal} size={220} fgColor="#000a1e" />
-            </div>
-            <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#006e0c]">Encrypted Subroutine Active</p>
-          </div>
-        </div>
-      )}
+  // ── Card: Task I posted ────────────────────────────────────────────────────
+  const renderMyTaskCard = (task: Task & { task_claims?: (TaskClaim & { profiles: Profile | null })[] }) => {
+    const helper = task.task_claims?.[0]?.profiles;
+    const dl = deadlineLabel(task.deadline);
+    const isOverdue = task.deadline && new Date(task.deadline) < new Date();
 
-      {showScannerModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/80 backdrop-blur-md p-4">
-          <div className="bg-surface-container-lowest rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-8">
-            <button
-               onClick={() => setShowScannerModal(null)}
-               className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-error/10 hover:bg-error/20 transition-colors z-[120]"
-            >
-               <span className="material-symbols-outlined text-error font-bold block">close</span>
-            </button>
-            <h2 className="font-headline font-bold text-2xl text-primary mb-2">Scan Handshake</h2>
-            <p className="text-on-surface-variant font-body text-sm mb-6">Point your camera strictly at the Helper&apos;s Proof of Work QR schema to mathematically conclude this transaction.</p>
-            <div className="bg-[#000a1e] rounded-2xl overflow-hidden shadow-inner border-4 border-error mb-2">
-               <div id="qr-reader" className="w-full h-full min-h-[250px] bg-black"></div>
-            </div>
-          </div>
-        </div>
-      )}
-
-    <div className="px-6 max-w-7xl mx-auto min-h-full pt-24 pb-8">
-      {/* Editorial Header */}
-      <header className="mb-10">
-        <h1 className="font-headline text-4xl font-bold tracking-tight text-primary mb-2">Deal Manager</h1>
-        <p className="text-on-surface-variant font-body text-lg">Curating the circular economy of your campus community.</p>
-      </header>
-
-      {/* Bento Layout for Tabs */}
-      <div className="flex flex-col gap-8">
-        
-        {/* Tab Navigation */}
-        <div className="flex gap-12 border-b border-outline-variant/20 mb-2 overflow-x-auto whitespace-nowrap">
-          <button 
-            onClick={() => setActiveTab("made")}
-            className={`pb-4 tracking-tight transition-colors relative ${activeTab === "made" ? "text-primary font-bold border-b-2 border-primary" : "text-on-surface-variant font-medium hover:text-primary"}`}
-          >
-            Requests I&apos;ve Made
-          </button>
-          <button 
-            onClick={() => setActiveTab("received")}
-            className={`pb-4 tracking-tight transition-colors relative ${activeTab === "received" ? "text-primary font-bold border-b-2 border-primary" : "text-on-surface-variant font-medium hover:text-primary"}`}
-          >
-            Requests for my Items
-            {pendingReceivedCount > 0 && (
-              <span className="ml-2 px-2 py-0.5 bg-secondary-container text-on-secondary-container text-xs rounded-full">
-                {pendingReceivedCount}
-              </span>
-            )}
-          </button>
-          <button 
-            onClick={() => setActiveTab("my_listings")}
-            className={`pb-4 tracking-tight transition-colors relative ${activeTab === "my_listings" ? "text-primary font-bold border-b-2 border-primary" : "text-on-surface-variant font-medium hover:text-primary"}`}
-          >
-            My Listings
-            <span className="ml-2 px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-xs rounded-full">
-              {items.length}
-            </span>
-          </button>
-          <button 
-            onClick={() => setActiveTab("task_requests")}
-            className={`pb-4 tracking-tight transition-colors relative ${activeTab === "task_requests" ? "text-primary font-bold border-b-2 border-primary" : "text-on-surface-variant font-medium hover:text-primary"}`}
-          >
-            My Task Requests
-          </button>
-          <button 
-            onClick={() => setActiveTab("helping_with")}
-            className={`pb-4 tracking-tight transition-colors relative ${activeTab === "helping_with" ? "text-primary font-bold border-b-2 border-primary" : "text-on-surface-variant font-medium hover:text-primary"}`}
-          >
-            Helping With
-          </button>
-        </div>
-
-        {/* View Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-24">
-          
-          {/* Left / Main Column: Request Cards */}
-          <div className="lg:col-span-8 flex flex-col gap-6">
-            {activeTab === "my_listings" ? (
-              items.length > 0 ? (
-                items.map(item => (
-                  <div key={item.id} className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-outline-variant/10 flex flex-col md:flex-row gap-6">
-                    <div className="w-full md:w-32 h-32 rounded-lg bg-surface-container overflow-hidden flex-shrink-0 relative">
-                      {(item.thumbnail_url || item.images?.[0]) ? (
-                        <Image src={item.thumbnail_url || item.images![0]} alt={item.title} fill sizes="(max-width: 768px) 100vw, 128px" className="object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-surface-container text-on-surface-variant font-bold text-lg">
-                          No Image
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-grow flex flex-col justify-between">
-                      <div>
-                        <div className="flex justify-between">
-                          <h3 className="font-headline text-xl font-bold text-primary">{item.title}</h3>
-                          <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${item.is_hidden ? 'bg-surface-container-highest' : 'bg-secondary/10 text-secondary'}`}>
-                            {item.is_hidden ? 'Hidden' : 'Live'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-on-surface-variant mt-2 line-clamp-2">{item.description}</p>
-                      </div>
-                      <div className="flex gap-3 mt-4">
-                        <Link href={`/items/${item.id}/edit`} className="bg-primary text-white px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:bg-slate-800 transition-colors">
-                          Edit Listing
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
-                  You don&apos;t have any listings yet.
-                </div>
-              )
-            ) : activeTab === "task_requests" ? (
-              localTaskRequests.length > 0 ? (
-                localTaskRequests.map(task => renderTaskRequestCard(task))
-              ) : (
-                <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
-                  You haven&apos;t posted any tasks yet.
-                </div>
-              )
-            ) : activeTab === "helping_with" ? (
-              localHelpingWith.length > 0 ? (
-                localHelpingWith.map(claim => renderHelpingCard(claim))
-              ) : (
-                <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
-                  You aren&apos;t helping with any tasks right now.
-                </div>
-              )
-            ) : activeTab === "received" ? (
-              localReceived.length > 0 ? (
-                localReceived.map(req => renderRequestCard(req, true))
-              ) : (
-                <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
-                  No requests received yet.
-                </div>
-              )
-            ) : (
-              localMade.length > 0 ? (
-                localMade.map(req => renderRequestCard(req, false))
-              ) : (
-                <div className="text-center py-12 text-on-surface-variant border-2 border-dashed border-outline-variant/30 rounded-xl">
-                  You haven&apos;t made any requests yet.
-                </div>
-              )
-            )}
-          </div>
-
-          {/* Right Column: Stats & Actions */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-primary text-on-primary p-8 rounded-xl shadow-lg relative overflow-hidden">
-              <div className="relative z-10">
-                <h3 className="font-headline text-2xl font-bold mb-6">Lending Pulse</h3>
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-primary-fixed-dim text-xs uppercase tracking-[0.2em] font-bold mb-1">Active Karma Earnings</p>
-                    <p className="text-4xl font-headline font-bold text-secondary-fixed">{activeEarnings} CP</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-primary-fixed-dim text-[10px] uppercase tracking-widest font-bold mb-1">Items Out</p>
-                      <p className="text-xl font-bold">{items.filter((i) => i.status === "rented").length}</p>
-                    </div>
-                    <div>
-                      <p className="text-primary-fixed-dim text-[10px] uppercase tracking-widest font-bold mb-1">Total Listings</p>
-                      <p className="text-xl font-bold">{items.length}</p>
-                    </div>
-                  </div>
-                </div>
+    return (
+      <div id={`deal-${task.id}`} key={task.id}
+        className={`bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10 border-l-4 ${task.status === "claimed" ? "border-l-secondary" : task.status === "completed" ? "border-l-secondary/30" : "border-l-outline-variant/30"} transition-all ${focused(task.id) ? "ring-2 ring-secondary/70" : "shadow-sm"}`}>
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex-grow min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                  task.category === "Academic" ? "bg-primary/10 text-primary" :
+                  task.category === "Delivery" ? "bg-secondary/10 text-secondary" :
+                  "bg-surface-container-high text-on-surface-variant"}`}>
+                  {task.category ?? "General"}
+                </span>
+                <span className={`text-[9px] font-bold uppercase ${isOverdue ? "text-error" : "text-on-surface-variant/50"}`}>{dl}</span>
               </div>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-secondary opacity-20 blur-[60px] rounded-full -mr-16 -mt-16"></div>
+              <h3 className="font-headline font-bold text-primary text-sm leading-tight">{task.title}</h3>
             </div>
-
-            <div className="bg-surface-container-low p-6 rounded-xl border border-outline-variant/10">
-              <h4 className="font-bold text-sm uppercase tracking-widest text-on-surface-variant mb-4">Guidelines</h4>
-              <ul className="space-y-4">
-                <li className="flex gap-3 items-start">
-                  <span className="material-symbols-outlined text-secondary text-lg">verified_user</span>
-                  <p className="text-sm text-on-surface-variant">Inspected items upon return for campus security verification.</p>
-                </li>
-                <li className="flex gap-3 items-start">
-                  <span className="material-symbols-outlined text-secondary text-lg">history_edu</span>
-                  <p className="text-sm text-on-surface-variant">Acceptance creates a digital lending agreement instantly.</p>
-                </li>
-              </ul>
+            <div className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider flex-shrink-0 ${
+              task.status === "open" ? "bg-error/10 text-error" :
+              task.status === "claimed" ? "bg-secondary-container text-on-secondary-container" :
+              "bg-primary/10 text-primary"}`}>
+              {task.status}
             </div>
           </div>
+
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="material-symbols-outlined text-secondary text-[14px]">toll</span>
+            <span className="text-xs font-bold text-secondary">{task.reward_amount} {task.reward_type === "karma" ? "CP" : "₹"}</span>
+          </div>
+
+          <TaskStepper status={task.status} />
+
+          {helper && task.status !== "open" && (
+            <div className="flex items-center gap-2 mt-2 py-2 border-t border-outline-variant/10">
+              <Avatar url={helper.avatar_url} name={helper.full_name} size={24} />
+              <div className="flex-grow min-w-0">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant/60">{task.status === "completed" ? "Completed by" : "Helper"}</p>
+                <p className="text-xs font-semibold text-primary truncate">{helper.full_name}</p>
+              </div>
+              {task.status === "claimed" && (
+                <button onClick={() => handleMessageForTask(task.id)} className="text-secondary text-[10px] font-bold uppercase tracking-wider flex items-center gap-0.5">
+                  Chat <span className="material-symbols-outlined text-[12px]">chevron_right</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {task.status === "claimed" && (
+            <button onClick={() => setConfirmScan({
+              dealId: task.id, title: "Confirm Task Done",
+              body: "Scan your helper's QR code to confirm completion and release their reward.",
+              reward: task.reward_amount ?? 0, rewardType: task.reward_type ?? "karma",
+            })} className="mt-3 w-full bg-primary text-on-primary py-3 rounded-2xl font-bold text-sm uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-2">
+              <span className="material-symbols-outlined text-[16px]">qr_code_scanner</span>
+              Scan to Confirm Done
+            </button>
+          )}
         </div>
       </div>
+    );
+  };
+
+  // ── Card: Helping with ─────────────────────────────────────────────────────
+  const renderHelpingCard = (claim: TaskClaim & { tasks?: (Task & { profiles: Profile | null }) | null }) => {
+    const task = claim.tasks;
+    if (!task) return null;
+    const creator = task.profiles;
+    const loading = loadingId === claim.id;
+
+    return (
+      <div id={`deal-${task.id}`} key={claim.id}
+        className={`bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10 border-l-4 ${task.status === "claimed" ? "border-l-secondary" : "border-l-secondary/30"} transition-all ${focused(task.id) ? "ring-2 ring-secondary/70" : "shadow-sm"}`}>
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex-grow min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-surface-container-high text-on-surface-variant">{task.category ?? "General"}</span>
+                <span className="text-[9px] font-bold text-on-surface-variant/50">{deadlineLabel(task.deadline)}</span>
+              </div>
+              <h3 className="font-headline font-bold text-primary text-sm leading-tight">{task.title}</h3>
+            </div>
+            <div className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider flex-shrink-0 ${
+              task.status === "claimed" ? "bg-secondary-container text-on-secondary-container" : "bg-primary/10 text-primary"}`}>
+              {task.status}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-secondary text-[14px]">toll</span>
+              <span className="text-xs font-bold text-secondary">{task.reward_amount} {task.reward_type === "karma" ? "CP" : "₹"}</span>
+            </div>
+            {task.status === "claimed" && (
+              <span className="text-[9px] text-error font-bold uppercase">{Math.floor((task.reward_amount ?? 0) * 0.1)} CP escrow locked</span>
+            )}
+          </div>
+
+          <TaskStepper status={task.status} />
+
+          {creator && (
+            <div className="flex items-center gap-2 mt-2 py-2 border-t border-outline-variant/10">
+              <Avatar url={creator.avatar_url} name={creator.full_name} size={24} />
+              <div className="flex-grow min-w-0">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant/60">Requester</p>
+                <p className="text-xs font-semibold text-primary truncate">{creator.full_name}</p>
+              </div>
+            </div>
+          )}
+
+          {task.description && (
+            <p className="text-xs text-on-surface-variant mt-2 line-clamp-2 leading-relaxed">{task.description}</p>
+          )}
+
+          {task.status === "claimed" && (
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => setShowQr(task.id)}
+                className="flex-1 bg-primary text-on-primary py-3 rounded-2xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">qr_code_2</span>My Proof QR
+              </button>
+              <button onClick={() => handleMessageForTask(task.id)}
+                className="border border-outline-variant/20 text-secondary py-3 px-3 rounded-2xl font-bold text-xs active:scale-95 transition-transform">
+                <span className="material-symbols-outlined text-[14px]">chat</span>
+              </button>
+              <button disabled={loading} onClick={() => handleCancelHelp(claim.id)}
+                className="border border-error/30 text-error py-3 px-3 rounded-2xl font-bold text-xs active:scale-95 transition-transform disabled:opacity-50">
+                {loading ? <span className="w-3 h-3 border-2 border-error/30 border-t-error rounded-full animate-spin" /> : <span className="material-symbols-outlined text-[14px]">cancel</span>}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ── Card: Listing ──────────────────────────────────────────────────────────
+  const renderListingCard = (item: Item) => (
+    <div key={item.id} className="bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm flex gap-3 p-4">
+      <div className="w-16 h-16 rounded-xl bg-surface-container overflow-hidden flex-shrink-0 relative">
+        {(item.thumbnail_url || item.images?.[0])
+          ? <Image src={item.thumbnail_url ?? item.images![0]} alt={item.title} fill sizes="64px" className="object-cover" />
+          : <div className="w-full h-full flex items-center justify-center"><span className="material-symbols-outlined text-on-surface-variant/30 text-2xl">inventory_2</span></div>}
+      </div>
+      <div className="flex-grow min-w-0">
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <h3 className="font-headline font-bold text-primary text-sm leading-tight truncate">{item.title}</h3>
+          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider flex-shrink-0 ${item.is_hidden ? "bg-surface-container-highest text-on-surface-variant" : item.status === "rented" ? "bg-blue-100 text-blue-600" : "bg-secondary/10 text-secondary"}`}>
+            {item.is_hidden ? "Hidden" : item.status === "rented" ? "Rented" : "Live"}
+          </span>
+        </div>
+        {item.price_type && <p className="text-xs text-on-surface-variant mb-2">{item.price_type}{item.price_amount ? ` · ${item.price_amount}${item.price_type === "Karma" ? " CP" : " ₹"}` : ""}</p>}
+        <Link href={`/items/${item.id}/edit`} className="inline-flex items-center gap-1 text-xs font-bold text-primary border border-outline-variant/20 px-3 py-1.5 rounded-xl active:scale-95 transition-transform">
+          <span className="material-symbols-outlined text-[12px]">edit</span>Edit
+        </Link>
+      </div>
     </div>
+  );
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] overflow-y-auto w-full">
+      {showQr && <QRModal dealId={showQr} onClose={() => setShowQr(null)} />}
+      {showScanner && <ScannerModal onClose={() => setShowScanner(null)} />}
+      <ScanConfirmSheet
+        data={confirmScan ? { title: confirmScan.title, body: confirmScan.body, reward: confirmScan.reward, rewardType: confirmScan.rewardType } : null}
+        onCancel={() => setConfirmScan(null)}
+        onConfirm={() => { const id = confirmScan!.dealId; setConfirmScan(null); setShowScanner(id); }}
+      />
+
+      <div className="px-4 max-w-2xl mx-auto pb-32">
+        {/* Header */}
+        <div className="pt-6 pb-4">
+          <h1 className="font-headline text-2xl font-bold text-primary">Activity</h1>
+          <p className="text-on-surface-variant text-sm">Your deals, tasks &amp; listings</p>
+        </div>
+
+        {/* Stats strip */}
+        <div className="grid grid-cols-3 gap-2 mb-5">
+          <div className="bg-primary rounded-2xl p-3 text-center">
+            <p className="text-on-primary/60 text-[9px] uppercase font-bold tracking-widest mb-0.5">Earnings</p>
+            <p className="text-on-primary font-headline font-bold text-lg leading-tight">{activeEarnings}<span className="text-xs font-bold text-on-primary/60 ml-0.5">CP</span></p>
+          </div>
+          <div className="bg-surface-container-lowest rounded-2xl p-3 text-center border border-outline-variant/10">
+            <p className="text-on-surface-variant/60 text-[9px] uppercase font-bold tracking-widest mb-0.5">Rented Out</p>
+            <p className="text-primary font-headline font-bold text-lg leading-tight">{activeRentals}<span className="text-xs font-bold text-on-surface-variant/40 ml-0.5">items</span></p>
+          </div>
+          <div className="bg-surface-container-lowest rounded-2xl p-3 text-center border border-outline-variant/10">
+            <p className="text-on-surface-variant/60 text-[9px] uppercase font-bold tracking-widest mb-0.5">Helping</p>
+            <p className="text-primary font-headline font-bold text-lg leading-tight">{helpingCount}<span className="text-xs font-bold text-on-surface-variant/40 ml-0.5">tasks</span></p>
+          </div>
+        </div>
+
+        {/* Tab bar */}
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1 pb-1">
+          {tabs.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl font-bold text-xs uppercase tracking-wide whitespace-nowrap flex-shrink-0 transition-all active:scale-95 ${
+                activeTab === tab.id ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"}`}>
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{tab.icon}</span>
+              {tab.label}
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${activeTab === tab.id ? "bg-on-primary/20 text-on-primary" : "bg-error text-white"}`}>{tab.badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="flex flex-col gap-3">
+          {activeTab === "received" && (localReceived.length > 0 ? localReceived.map(r => renderItemCard(r, true)) : <EmptyState icon="inbox" text="No incoming requests yet. List items to start lending." cta="Go to Hub" ctaHref="/hub" />)}
+          {activeTab === "made" && (localMade.length > 0 ? localMade.map(r => renderItemCard(r, false)) : <EmptyState icon="send" text="You haven't requested any items yet." cta="Browse Hub" ctaHref="/hub" />)}
+          {activeTab === "my_listings" && (items.length > 0 ? items.map(renderListingCard) : <EmptyState icon="storefront" text="No listings yet. Share items with your campus." cta="Post an Item" ctaHref="/post" />)}
+          {activeTab === "task_requests" && (localTaskReqs.length > 0 ? localTaskReqs.map(t => renderMyTaskCard(t)) : <EmptyState icon="task_alt" text="No tasks posted yet." cta="Browse Tasks" ctaHref="/tasks" />)}
+          {activeTab === "helping_with" && (localHelping.length > 0 ? localHelping.map(c => renderHelpingCard(c)) : <EmptyState icon="handshake" text="Not helping with any tasks right now." cta="Browse Tasks" ctaHref="/tasks" />)}
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,14 +1,224 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
-import toast from "react-hot-toast";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import Image from "next/image";
-import PostTaskModal from "./PostTaskModal";
+import toast from "react-hot-toast";
+import PostTaskModal from "@/components/PostTaskModal";
 
-import { TaskWithProfile } from "@/lib/types";
+// Types (inline since lib/types may not export these)
+interface TaskProfile {
+  full_name?: string | null;
+  avatar_url?: string | null;
+  degree?: string | null;
+  year_of_study?: string | null;
+}
+interface TaskWithProfile {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  reward_type?: string | null;
+  reward_amount?: number | null;
+  status: string;
+  deadline?: string | null;
+  college_domain?: string | null;
+  created_at: string;
+  profiles?: TaskProfile | null;
+}
 
+// Helpers
+function deadlineLabel(deadline: string | null | undefined): { text: string; urgent: boolean } {
+  if (!deadline) return { text: "Flexible", urgent: false };
+  const diff = new Date(deadline).getTime() - Date.now();
+  if (diff < 0) return { text: "Overdue", urgent: true };
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return { text: `${mins}m left`, urgent: true };
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return { text: `${hours}h left`, urgent: true };
+  const days = Math.ceil(diff / 86400000);
+  return { text: `${days}d left`, urgent: days <= 1 };
+}
+
+function timeAgo(date: string): string {
+  const diff = Date.now() - new Date(date).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+const CATEGORY_COLOR: Record<string, string> = {
+  Academic:     "bg-primary/10 text-primary",
+  Delivery:     "bg-secondary/10 text-secondary",
+  "Labor/Help": "bg-blue-100 text-blue-700",
+  "Tech Support":"bg-purple-100 text-purple-700",
+  General:      "bg-surface-container-high text-on-surface-variant",
+};
+
+// Claim confirm bottom sheet
+function ClaimSheet({
+  task,
+  onConfirm,
+  onCancel,
+  loading,
+}: {
+  task: TaskWithProfile | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading: boolean;
+}) {
+  if (!task) return null;
+  const dl = deadlineLabel(task.deadline);
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[#000a1e]/60 backdrop-blur-sm" onClick={onCancel}>
+      <div className="bg-surface-container-lowest w-full max-w-lg rounded-t-3xl p-6 pb-10 shadow-2xl border-t border-outline-variant/10" onClick={e => e.stopPropagation()}>
+        <div className="w-10 h-1 bg-outline-variant/40 rounded-full mx-auto mb-5" />
+
+        <div className="flex items-start gap-3 mb-5">
+          <div className="w-11 h-11 rounded-2xl bg-secondary/10 flex items-center justify-center flex-shrink-0">
+            <span className="material-symbols-outlined text-secondary">handshake</span>
+          </div>
+          <div>
+            <h3 className="font-headline font-bold text-primary text-base leading-tight">{task.title}</h3>
+            <p className="text-on-surface-variant text-xs mt-0.5">{task.category ?? "General"} · {dl.text}</p>
+          </div>
+        </div>
+
+        {task.description && (
+          <p className="text-on-surface-variant text-sm leading-relaxed mb-4 bg-surface-container rounded-xl p-3">
+            {task.description}
+          </p>
+        )}
+
+        <div className="bg-secondary/10 rounded-2xl px-4 py-3 mb-5 flex items-center gap-3">
+          <span className="material-symbols-outlined text-secondary">toll</span>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-secondary/60">You will earn</p>
+            <p className="font-headline font-bold text-secondary text-xl">
+              {task.reward_amount} {task.reward_type === "karma" ? "CP" : "₹"}
+            </p>
+          </div>
+          <div className="ml-auto text-right">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-error/60">Escrow locked</p>
+            <p className="font-bold text-error text-sm">{Math.floor((task.reward_amount ?? 0) * 0.1)} CP</p>
+          </div>
+        </div>
+
+        <p className="text-xs text-on-surface-variant/60 text-center mb-4 leading-relaxed">
+          By helping, {Math.floor((task.reward_amount ?? 0) * 0.1)} CP escrow is locked. Cancel within 10 mins for a full refund. Cancelling later incurs the 10% penalty.
+        </p>
+
+        <div className="flex gap-3">
+          <button onClick={onCancel} disabled={loading}
+            className="flex-1 border border-outline-variant/30 text-on-surface-variant py-3.5 rounded-2xl font-bold text-sm active:scale-95 transition-transform disabled:opacity-50">
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={loading}
+            className="flex-[2] bg-primary text-on-primary py-3.5 rounded-2xl font-bold text-sm active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-2">
+            {loading
+              ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              : <><span className="material-symbols-outlined text-[16px]">handshake</span>I Can Help!</>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Task card
+function TaskCard({ task, onClaim, userId }: {
+  task: TaskWithProfile;
+  onClaim: (task: TaskWithProfile) => void;
+  userId: string;
+}) {
+  const dl = deadlineLabel(task.deadline);
+  const catClass = CATEGORY_COLOR[task.category ?? "General"] ?? CATEGORY_COLOR.General;
+
+  return (
+    <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 shadow-sm overflow-hidden active:scale-[0.99] transition-transform">
+      <div className="p-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex-grow min-w-0">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${catClass}`}>
+                {task.category ?? "General"}
+              </span>
+              {dl.urgent && (
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-error/10 text-error flex items-center gap-0.5">
+                  <span className="material-symbols-outlined" style={{ fontSize: 9 }}>schedule</span>
+                  {dl.text}
+                </span>
+              )}
+              {!dl.urgent && (
+                <span className="text-[9px] text-on-surface-variant/50 font-semibold">{dl.text}</span>
+              )}
+            </div>
+            <h3 className="font-headline font-bold text-primary text-base leading-tight">{task.title}</h3>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className="font-headline font-bold text-secondary text-lg leading-tight">{task.reward_amount}</p>
+            <p className="text-[9px] text-secondary/60 font-bold uppercase tracking-wider">{task.reward_type === "karma" ? "CP" : "₹"}</p>
+          </div>
+        </div>
+
+        {/* Description */}
+        {task.description && (
+          <p className="text-sm text-on-surface-variant leading-relaxed mb-3 line-clamp-2">{task.description}</p>
+        )}
+
+        {/* Poster row */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-full bg-primary/10 overflow-hidden flex-shrink-0 relative flex items-center justify-center">
+            {task.profiles?.avatar_url
+              ? <Image src={task.profiles.avatar_url} alt={task.profiles.full_name ?? "User"} fill className="object-cover" />
+              : <span className="text-primary font-bold text-xs">{task.profiles?.full_name?.charAt(0)?.toUpperCase() ?? "?"}</span>
+            }
+          </div>
+          <div className="flex-grow min-w-0">
+            <p className="text-xs font-semibold text-on-surface truncate">{task.profiles?.full_name ?? "Anonymous"}</p>
+            {task.profiles?.degree && (
+              <p className="text-[9px] text-on-surface-variant/60 truncate">{task.profiles.degree} {task.profiles.year_of_study ? `· Y${task.profiles.year_of_study}` : ""}</p>
+            )}
+          </div>
+          <span className="text-[9px] text-on-surface-variant/40">{timeAgo(task.created_at)}</span>
+        </div>
+
+        {/* CTA */}
+        <button
+          onClick={() => onClaim(task)}
+          className="w-full bg-primary text-on-primary py-3 rounded-2xl font-bold text-sm uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-2">
+          <span className="material-symbols-outlined text-[16px]">handshake</span>
+          I Can Help
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Skeleton loader
+function TaskSkeleton() {
+  return (
+    <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-4 animate-pulse">
+      <div className="flex justify-between mb-3">
+        <div className="h-4 bg-surface-container-high rounded-full w-24" />
+        <div className="h-6 bg-surface-container-high rounded w-12" />
+      </div>
+      <div className="h-5 bg-surface-container-high rounded w-3/4 mb-2" />
+      <div className="h-3 bg-surface-container-high rounded w-full mb-1" />
+      <div className="h-3 bg-surface-container-high rounded w-2/3 mb-4" />
+      <div className="h-10 bg-surface-container-high rounded-2xl" />
+    </div>
+  );
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────────
 export default function TasksClient({
   initialTasks,
   userId,
@@ -18,200 +228,174 @@ export default function TasksClient({
   userId: string;
   focusedTaskId?: string;
 }) {
-  const router = useRouter();
-  const [tasks, setTasks] = useState(initialTasks);
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<TaskWithProfile[]>(initialTasks);
+  const [claimTarget, setClaimTarget] = useState<TaskWithProfile | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const [showPostModal, setShowPostModal] = useState(false);
+  const [filter, setFilter] = useState<string>("All");
+  const [loading, setLoading] = useState(false);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  const supabase = createClient();
-
-  const categories = ["All", "Delivery", "Academic", "Labor/Help", "Tech Support", "General"];
-
+  // Scroll to focused task
   useEffect(() => {
-    // Name the channel per-user to avoid collisions on hot reload
-    const channel = supabase
-      .channel(`tasks-feed-${userId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, (payload) => {
+    if (!focusedTaskId) return;
+    const t = setTimeout(() => {
+      document.getElementById(`task-${focusedTaskId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 200);
+    return () => clearTimeout(t);
+  }, [focusedTaskId]);
+
+  // Realtime: subscribe to tasks table
+  useEffect(() => {
+    const supabase = createClient();
+
+    channelRef.current = supabase
+      .channel("tasks-feed")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "tasks" }, payload => {
         const newTask = payload.new as TaskWithProfile;
-        if (newTask.status === 'open' && newTask.user_id !== userId) {
-          setTasks(prev => [newTask, ...prev]);
-        }
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, (payload) => {
-        const updatedTask = payload.new as TaskWithProfile;
+        // Don't show own tasks or claimed/completed
+        if (newTask.user_id === userId) return;
+        if (newTask.status !== "open") return;
         setTasks(prev => {
-          if (updatedTask.status !== 'open') {
-            return prev.filter(t => t.id !== updatedTask.id);
-          }
-          return prev.map(t => t.id === updatedTask.id ? updatedTask : t);
+          if (prev.some(t => t.id === newTask.id)) return prev;
+          return [newTask, ...prev];
         });
       })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, (payload) => {
-        const deletedId = (payload.old as { id: string }).id;
-        setTasks(prev => prev.filter(t => t.id !== deletedId));
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks" }, payload => {
+        const updated = payload.new as TaskWithProfile;
+        setTasks(prev => {
+          // Remove if no longer open (claimed, completed, cancelled)
+          if (updated.status !== "open") return prev.filter(t => t.id !== updated.id);
+          return prev.map(t => t.id === updated.id ? { ...t, ...updated } : t);
+        });
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "tasks" }, payload => {
+        const deleted = payload.old as { id: string };
+        setTasks(prev => prev.filter(t => t.id !== deleted.id));
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [supabase, userId]);
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [userId]);
 
-  useEffect(() => {
-    if (!focusedTaskId) return;
-    setActiveCategory("All");
-    const timeout = window.setTimeout(() => {
-      document.getElementById(`task-${focusedTaskId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 120);
-
-    return () => window.clearTimeout(timeout);
-  }, [focusedTaskId]);
-
-  const filteredTasks = activeCategory === "All" 
-    ? tasks 
-    : tasks.filter(t => t.category === activeCategory);
-
-  const getColSpanCount = (index: number) => {
-    const pattern = ["md:col-span-4", "md:col-span-2", "md:col-span-3", "md:col-span-3", "md:col-span-6"];
-    return pattern[index % pattern.length];
-  };
-
-  const handleClaimTask = async (task: TaskWithProfile) => {
+  // Claim task
+  const handleClaim = useCallback(async () => {
+    if (!claimTarget) return;
+    setClaiming(true);
     try {
-      setClaimingId(task.id);
-      
-      const { data: result, error: rpcError } = await supabase.rpc('claim_task_secure', {
-        t_id: task.id,
-        u_id: userId
+      const supabase = createClient();
+      // Correct RPC: claim_task_atomic (as documented)
+      const { error } = await supabase.rpc("claim_task_atomic", {
+        t_id: claimTarget.id,
+        u_id: userId,
       });
 
-      if (rpcError) throw rpcError;
+      if (error) {
+        // Friendly mapping of common errors
+        if (error.message?.includes("already claimed") || error.message?.includes("not open")) {
+          toast.error("This task was just claimed by someone else.");
+        } else if (error.message?.includes("karma") || error.message?.includes("escrow")) {
+          toast.error("Not enough Karma Points to lock as escrow.");
+        } else {
+          toast.error(error.message || "Could not claim task. Please try again.");
+        }
+        setClaiming(false);
+        setClaimTarget(null);
+        return;
+      }
 
-      const claimResult = result as unknown as { conversation_id?: string } | null;
-      const convId = claimResult?.conversation_id;
-      if (!convId) throw new Error("Conversation generation failed");
-
-      toast.success("Task claimed! Opening message thread...");
-      router.push(`/messages?id=${convId}`);
-      
+      toast.success("You're helping! Check your dashboard for details.");
+      // Remove the task immediately from the feed — it's no longer "open"
+      setTasks(prev => prev.filter(t => t.id !== claimTarget.id));
+      setClaimTarget(null);
     } catch {
-      toast.error("Action could not be completed. We are working on a fix.");
-      setClaimingId(null);
+      toast.error("Could not claim task. Please try again.");
+    } finally {
+      setClaiming(false);
     }
-  };
+  }, [claimTarget]);
 
-  const handleTaskPosted = () => {
-    // Optimistic insert to the feed so user sees it, though they can't claim it.
-    // Actually, prompt says "exclude tasks created by current user", but it is their task.
-    // Let's reload to just get fresh status, or not show it since it's theirs.
-    router.refresh();
-  };
+  // Filter
+  const CATEGORIES = ["All", "Academic", "Delivery", "Labor/Help", "Tech Support", "General"];
+  const filtered = filter === "All" ? tasks : tasks.filter(t => (t.category ?? "General") === filter);
 
   return (
-    <div className="pt-8 pb-32">
-      <header className="mb-10">
-        <h1 className="font-headline text-4xl md:text-5xl font-bold tracking-tight text-primary mb-4">Task Marketplace</h1>
-        <p className="text-on-surface-variant max-w-2xl text-lg">Support your peers, earn rewards, and strengthen the institutional community.</p>
-      </header>
+    <div className="pt-6 pb-32 min-h-full">
+      {/* Post Modal */}
+      {showPostModal && (
+        <PostTaskModal
+          userId={userId}
+          onClose={() => setShowPostModal(false)}
+          onSuccess={(newTask) => {
+            setShowPostModal(false);
+            // Own task — don't add to feed (they can't help themselves)
+          }}
+        />
+      )}
 
-      {/* Category Filter */}
-      <div className="flex overflow-x-auto hide-scrollbar gap-3 mb-10 pb-2">
-        {categories.map(cat => (
-          <button 
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={`px-6 py-2.5 rounded-full font-medium text-sm whitespace-nowrap shadow-sm transition-colors ${
-              activeCategory === cat 
-                ? "bg-primary text-on-primary" 
-                : "bg-surface-container-lowest text-on-surface border border-outline-variant/30 hover:bg-surface-container-low"
-            }`}
-          >
+      {/* Claim confirm sheet */}
+      <ClaimSheet
+        task={claimTarget}
+        onConfirm={handleClaim}
+        onCancel={() => setClaimTarget(null)}
+        loading={claiming}
+      />
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="font-headline text-2xl font-bold text-primary">Tasks</h1>
+          <p className="text-on-surface-variant text-sm">{tasks.length} open {tasks.length === 1 ? "task" : "tasks"}</p>
+        </div>
+        <button onClick={() => setShowPostModal(true)}
+          className="bg-primary text-on-primary px-4 py-2.5 rounded-2xl font-bold text-sm uppercase tracking-wider active:scale-95 transition-transform flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-[16px]">add</span>
+          Post Task
+        </button>
+      </div>
+
+      {/* Category filter chips */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar mb-5 -mx-1 px-1 pb-1">
+        {CATEGORIES.map(cat => (
+          <button key={cat} onClick={() => setFilter(cat)}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap flex-shrink-0 transition-all active:scale-95 ${
+              filter === cat ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"}`}>
             {cat}
           </button>
         ))}
       </div>
 
-      {/* Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
-        {filteredTasks.map((task, index) => {
-          const colSpan = getColSpanCount(index);
-          const isLarge = colSpan === "md:col-span-4" || colSpan === "md:col-span-6";
-          const rewardLabel = task.reward_type === 'cash' ? `$${task.reward_amount}` : `${task.reward_amount} Karma`;
-
-          return (
-            <div id={`task-${task.id}`} key={task.id} className={`${colSpan} glass-card p-6 md:p-8 rounded-xl shadow-[0_12px_32px_rgba(0,10,30,0.06)] flex flex-col justify-between transition-all hover:translate-y-[-4px] bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/40 dark:border-slate-800/40 min-h-[280px] ${focusedTaskId === task.id ? "ring-2 ring-secondary/80 shadow-[0_0_0_6px_rgba(0,110,12,0.08)]" : ""}`}>
-              <div>
-                <div className="flex justify-between items-start mb-6">
-                  {task.category && (
-                    <span className="text-[10px] uppercase font-bold tracking-widest text-secondary">{task.category}</span>
-                  )}
-                  <span className={`${task.reward_type === 'cash' ? 'text-secondary font-bold text-sm' : 'bg-secondary/10 text-secondary px-3 py-1 rounded-full text-xs font-bold'}`}>
-                    {rewardLabel}
-                  </span>
-                </div>
-                <h3 className={`font-headline font-bold text-primary mb-3 ${isLarge ? 'text-3xl' : 'text-xl'}`}>{task.title}</h3>
-                <p className="text-on-surface-variant text-sm md:text-base line-clamp-3 mb-6 leading-relaxed">
-                  {task.description}
-                </p>
-                {task.deadline && (
-                  <div className="flex items-center gap-1 text-xs text-on-surface-variant mb-4">
-                    <span className="material-symbols-outlined text-[14px]">schedule</span> 
-                    Deadline: {task.deadline}
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex items-center justify-between mt-auto pt-4 border-t border-outline-variant/10">
-                <div className="flex items-center gap-2">
-                  <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full bg-surface-container-highest overflow-hidden">
-                    {task.profiles?.avatar_url ? (
-                      <Image src={task.profiles.avatar_url} alt="Avatar" fill sizes="40px" className="object-cover" />
-                    ) : (
-                      <span className="flex items-center justify-center w-full h-full text-xs font-bold text-on-surface-variant">
-                        {(task.profiles?.full_name || 'U').charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <span className="font-medium text-xs md:text-sm text-primary">Req. by {task.profiles?.full_name}</span>
-                </div>
-                <button 
-                  onClick={() => handleClaimTask(task)}
-                  disabled={claimingId === task.id}
-                  className="bg-primary text-on-primary px-5 py-2.5 md:px-8 md:py-3 rounded-xl font-semibold hover:bg-primary-container transition-all active:scale-95 shadow-lg disabled:opacity-50 text-sm md:text-base"
-                >
-                  {claimingId === task.id ? 'Claiming...' : 'I Can Help'}
-                </button>
-              </div>
+      {/* Task list */}
+      {loading ? (
+        <div className="flex flex-col gap-3">
+          {[1, 2, 3].map(i => <TaskSkeleton key={i} />)}
+        </div>
+      ) : filtered.length > 0 ? (
+        <div className="flex flex-col gap-3">
+          {filtered.map(task => (
+            <div id={`task-${task.id}`} key={task.id}>
+              <TaskCard task={task} onClaim={setClaimTarget} userId={userId} />
             </div>
-          );
-        })}
-
-        {filteredTasks.length === 0 && (
-          <div className="col-span-full py-20 text-center">
-             <div className="inline-flex p-4 rounded-full bg-surface-container-low mb-4">
-               <span className="material-symbols-outlined text-4xl text-on-surface-variant">inbox</span>
-             </div>
-             <h3 className="text-xl font-headline font-bold text-primary">No tasks found</h3>
-             <p className="text-on-surface-variant mt-2">Check back later or post your own task!</p>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center mb-4">
+            <span className="material-symbols-outlined text-on-surface-variant/40 text-3xl">task_alt</span>
           </div>
-        )}
-      </div>
-
-      <button 
-        onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-24 right-6 md:bottom-12 md:right-12 bg-secondary text-on-secondary w-16 h-16 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl active:scale-90 transition-transform z-40"
-      >
-        <span className="material-symbols-outlined text-3xl font-variation-settings-fill-0">add</span>
-      </button>
-
-      {isModalOpen && (
-        <PostTaskModal 
-          onClose={() => setIsModalOpen(false)} 
-          onSuccess={handleTaskPosted}
-          userId={userId}
-        />
+          <p className="text-on-surface-variant text-sm mb-4">
+            {filter !== "All" ? `No ${filter} tasks right now.` : "No open tasks right now."}
+          </p>
+          <button onClick={() => setShowPostModal(true)}
+            className="bg-primary text-on-primary px-6 py-2.5 rounded-2xl font-bold text-sm active:scale-95 transition-transform">
+            Post a Task
+          </button>
+        </div>
       )}
     </div>
   );
