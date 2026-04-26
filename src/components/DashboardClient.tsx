@@ -299,6 +299,10 @@ async function handleCancelHelp(claimId: string) {
     const item = req.items;
     if (!item) return null;
 
+    const isActualLender = item.user_id === profile.id;
+    const isActualBorrower = req.requester_id === profile.id;
+    const canManageRequest = isLenderView && isActualLender;
+
     let statusColor = 'bg-surface-container-high text-on-surface-variant';
     if (req.status === 'accepted') statusColor = 'bg-secondary-container text-on-secondary-container';
     else if (req.status === 'rented') statusColor = 'bg-blue-600/10 text-blue-600';
@@ -349,28 +353,28 @@ async function handleCancelHelp(claimId: string) {
             </div>
 
             <div className="flex gap-3 flex-wrap">
-              {req.status === "pending" && isLenderView && (
+              {req.status === "pending" && canManageRequest && (
                 <>
                   <button onClick={() => handleUpdateStatus(req.id, "accepted", item.id)} className="bg-primary text-on-primary px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:bg-slate-900 transition-colors">Accept Deal</button>
                   <button onClick={() => handleUpdateStatus(req.id, "declined", item.id)} className="border border-outline-variant/30 text-on-surface-variant px-6 py-2 rounded-lg font-bold text-sm tracking-widest uppercase hover:border-primary hover:text-primary transition-colors">Decline</button>
                 </>
               )}
               
-              {req.status === "accepted" && isLenderView && (
+              {req.status === "accepted" && canManageRequest && (
                  <button onClick={() => setShowScannerModal(req.id)} className="bg-[#006e0c] text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan Borrower&apos;s QR</button>
               )}
-              {req.status === "accepted" && !isLenderView && (
+              {req.status === "accepted" && isActualBorrower && (
                  <button onClick={() => setShowQrModal(req.id)} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_2</span> Show Receive QR</button>
               )}
 
-              {req.status === "rented" && !isLenderView && (
+              {req.status === "rented" && isActualBorrower && (
                  <button onClick={() => handleInitiateReturn(req.id)} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2"><span className="material-symbols-outlined text-[16px]">assignment_return</span> Initiate Return</button>
               )}
 
-              {req.status === "returning" && isLenderView && (
+              {req.status === "returning" && canManageRequest && (
                  <button onClick={() => setShowQrModal(req.id)} className="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_2</span> Show Return QR</button>
               )}
-              {req.status === "returning" && !isLenderView && (
+              {req.status === "returning" && isActualBorrower && (
                  <button onClick={() => setShowScannerModal(req.id)} className="bg-[#006e0c] text-white px-5 py-2 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"><span className="material-symbols-outlined text-[16px]">qr_code_scanner</span> Scan Lender&apos;s QR</button>
               )}
 

@@ -279,6 +279,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const supabase = createClient(sbUrl, sbKey);
 
+    const { data: recipientProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("notifications_enabled")
+      .eq("id", payload.user_id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("[push-notify] Could not read notification setting:", profileError.message);
+    }
+
+    if (recipientProfile?.notifications_enabled === false) {
+      return jsonResponse({ sent: 0, reason: "notifications disabled" });
+    }
+
     const { data: subscriptions, error: subError } = await supabase
       .from("push_subscriptions")
       .select("endpoint, p256dh, auth")

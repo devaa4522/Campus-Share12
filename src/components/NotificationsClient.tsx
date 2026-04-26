@@ -1,7 +1,7 @@
 // src/components/NotificationsClient.tsx
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 // import { useNotifications } from '@/hooks/useNotifications';
 import { useNotificationsContext } from '@/components/NotificationsProvider';
@@ -40,6 +40,10 @@ export default function NotificationsClient() {
   const [clearing,     setClearing]     = useState(false);
 
   const [confirmClear, setConfirmClear] = useState(false);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
   const confirmTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;

@@ -30,7 +30,11 @@ export default async function DashboardPage(props: {
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("items").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
     supabase.from("item_requests").select("*, items(*, profiles(*))").eq("requester_id", user.id).order("created_at", { ascending: false }),
-    supabase.from("item_requests").select("*, items!inner(*), profiles(*)").order("created_at", { ascending: false }),
+    supabase
+      .from("item_requests")
+      .select("*, items!inner(*), profiles(*)")
+      .eq("items.user_id", user.id)
+      .order("created_at", { ascending: false }),
     supabase.from("tasks").select("*, task_claims(*, profiles(*))").eq("user_id", user.id).order("created_at", { ascending: false }),
     supabase.from("task_claims").select("*, tasks(*, profiles(*))").eq("claimed_by", user.id).order("created_at", { ascending: false })
   ]);

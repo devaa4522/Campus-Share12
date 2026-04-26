@@ -254,6 +254,30 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     };
   }, [isMounted, supabase, fetchNotifications]);
 
+  // Recover from missed realtime events when the app regains focus or stays open.
+  useEffect(() => {
+    if (!isMounted) return;
+    const refreshIfReady = () => {
+      const userId = userIdRef.current;
+      if (!userId) return;
+      void fetchNotifications(userId);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshIfReady();
+    };
+
+    window.addEventListener('focus', refreshIfReady);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    const interval = window.setInterval(refreshIfReady, 20000);
+
+    return () => {
+      window.removeEventListener('focus', refreshIfReady);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.clearInterval(interval);
+    };
+  }, [isMounted, fetchNotifications]);
+
   // ── Push enable ───────────────────────────────────────────────────────────
 
   const enablePushNotifications = useCallback(async (): Promise<boolean> => {
