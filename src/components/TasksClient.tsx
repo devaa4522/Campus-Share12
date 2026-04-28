@@ -80,8 +80,7 @@ function ClaimSheet({
         <div className="w-10 h-1 bg-outline-variant/40 rounded-full mx-auto mb-5" />
 
         <div className="flex items-start gap-3 mb-5">
-          <div className="w-11 h-11 rounded-2xl bg-secondary/10 flex items-center justify-center shrink-0
-">
+          <div className="w-11 h-11 rounded-2xl bg-secondary/10 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-secondary">handshake</span>
           </div>
           <div>
@@ -163,8 +162,7 @@ function TaskCard({ task, onClaim, userId }: {
             </div>
             <h3 className="font-headline font-bold text-primary text-base leading-tight">{task.title}</h3>
           </div>
-          <div className="text-right shrink-0
-">
+          <div className="text-right shrink-0">
             <p className="font-headline font-bold text-secondary text-lg leading-tight">{task.reward_amount}</p>
             <p className="text-[9px] text-secondary/60 font-bold uppercase tracking-wider">{task.reward_type === "karma" ? "CP" : "₹"}</p>
           </div>
@@ -177,8 +175,7 @@ function TaskCard({ task, onClaim, userId }: {
 
         {/* Poster row */}
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-full bg-primary/10 overflow-hidden shrink-0
- relative flex items-center justify-center">
+          <div className="w-7 h-7 rounded-full bg-primary/10 overflow-hidden shrink-0 relative flex items-center justify-center">
             {task.profiles?.avatar_url
               ? <Image src={task.profiles.avatar_url} alt={task.profiles.full_name ?? "User"} fill className="object-cover" />
               : <span className="text-primary font-bold text-xs">{task.profiles?.full_name?.charAt(0)?.toUpperCase() ?? "?"}</span>
@@ -366,8 +363,7 @@ export default function TasksClient({
       <div className="flex gap-2 overflow-x-auto no-scrollbar mb-5 -mx-1 px-1 pb-1">
         {CATEGORIES.map(cat => (
           <button key={cat} onClick={() => setFilter(cat)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap shrink-0
- transition-all active:scale-95 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap shrink-0 transition-all active:scale-95 ${
               filter === cat ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"}`}>
             {cat}
           </button>

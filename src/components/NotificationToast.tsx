@@ -91,8 +91,7 @@ export function NotificationToastContainer() {
                 >
                   {/* Icon */}
                   <div
-                    className="shrink-0
- w-10 h-10 rounded-xl flex items-center justify-center text-lg border"
+                    className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg border"
                     style={{ background: cfg.bg, borderColor: `${cfg.accent}22` }}
                   >
                     {cfg.icon}
@@ -117,8 +116,7 @@ export function NotificationToastContainer() {
                   {/* Dismiss */}
                   <button
                     onClick={(e) => { e.stopPropagation(); dismiss(toast.id); }}
-                    className="shrink-0
- w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/8 transition-colors self-start"
+                    className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/8 transition-colors self-start"
                     aria-label="Dismiss"
                   >
                     <span className="material-symbols-outlined text-[16px]">close</span>

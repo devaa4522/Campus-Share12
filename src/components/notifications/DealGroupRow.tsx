@@ -36,8 +36,7 @@ export function DealGroupRow({ group, onRead, onDelete }: DealGroupRowProps) {
         style={{ background: hasUnread ? 'rgba(0,110,12,0.05)' : 'transparent' }}
       >
         {/* Icon */}
-        <div className="shrink-0
- w-10 h-10 rounded-xl bg-surface-container-high border border-outline-variant/15 flex items-center justify-center">
+        <div className="shrink-0 w-10 h-10 rounded-xl bg-surface-container-high border border-outline-variant/15 flex items-center justify-center">
           <span className="material-symbols-outlined text-primary text-xl">handshake</span>
         </div>
 
@@ -64,8 +63,7 @@ export function DealGroupRow({ group, onRead, onDelete }: DealGroupRowProps) {
         </div>
 
         {/* Badge + chevron */}
-        <div className="flex items-center gap-2 shrink-0
- self-center">
+        <div className="flex items-center gap-2 shrink-0 self-center">
           {hasUnread && (
             <span className="px-2 py-0.5 bg-primary/12 text-primary text-[10px] font-black rounded-full border border-primary/20">
               {unread}

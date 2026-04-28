@@ -37,8 +37,11 @@ export default function BottomNav() {
   const isHidden = HIDDEN_ROUTES.some((r) => pathname.startsWith(r));
 
   // Reset nav visibility when route changes
+// Reset nav visibility when route changes
   useEffect(() => {
-    setVisible(true);
+    const frame = requestAnimationFrame(() => {
+      setVisible(true);
+    });
 
     const dashboardScroll = document.getElementById("dashboard-scroll");
 
@@ -47,6 +50,10 @@ export default function BottomNav() {
     } else {
       lastScroll.current = window.scrollY;
     }
+
+    return () => {
+      cancelAnimationFrame(frame);
+    };
   }, [pathname]);
 
   // Hide on scroll down, show on scroll up

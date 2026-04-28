@@ -943,8 +943,7 @@ export default function MessageCenterClient({
       <aside
         className={`${
           activeConversationId ? "hidden md:flex" : "flex"
-        } flex-col w-full md:w-80 shrink-0
-`}
+        } flex-col w-full md:w-80 shrink-0`}
         style={{
           borderRight: `1px solid ${t.border}`,
           background:  t.surface,
@@ -952,8 +951,7 @@ export default function MessageCenterClient({
       >
         {/* Header */}
         <header
-          className="px-4 pt-4 pb-3 shrink-0
-"
+          className="px-4 pt-4 pb-3 shrink-0"
           style={{ borderBottom: `1px solid ${t.border}` }}
         >
           <div className="flex items-center justify-between mb-3">
@@ -1031,8 +1029,7 @@ export default function MessageCenterClient({
         <div className="flex-1 flex flex-col w-full overflow-hidden">
           {/* Header */}
           <header
-            className="px-4 py-3 flex items-center justify-between shrink-0
-"
+            className="px-4 py-3 flex items-center justify-between shrink-0"
             style={{
               borderBottom: `1px solid ${t.border}`,
               background:   t.card,
@@ -1190,8 +1187,7 @@ export default function MessageCenterClient({
 
           {/* Input */}
           <div
-            className="shrink-0
-"
+            className="shrink-0"
             style={{
               borderTop:  `1px solid ${t.border}`,
               background: t.card,
@@ -1281,8 +1277,7 @@ export default function MessageCenterClient({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="material-symbols-outlined p-2.5 rounded-full shrink-0
- transition-colors active:scale-90"
+                className="material-symbols-outlined p-2.5 rounded-full shrink-0 transition-colors active:scale-90"
                 style={{
                   color:      t.textMuted,
                   background: t.surfaceSoft,
@@ -1326,8 +1321,7 @@ export default function MessageCenterClient({
                 <button
                   type="button"
                   onClick={() => setShowEmojiBar(v => !v)}
-                  className="material-symbols-outlined text-[18px] shrink-0
-"
+                  className="material-symbols-outlined text-[18px] shrink-0"
                   style={{ color: t.textMuted }}
                 >
                   sentiment_satisfied
@@ -1337,8 +1331,7 @@ export default function MessageCenterClient({
               {newMessage.trim() || pendingAttachment ? (
                 <button
                   type="submit"
-                  className="p-2.5 rounded-full shrink-0
- active:scale-90 transition-all"
+                  className="p-2.5 rounded-full shrink-0 active:scale-90 transition-all"
                   style={{
                     background: t.primary,
                     color:      "#fff",

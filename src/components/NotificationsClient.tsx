@@ -88,8 +88,7 @@ export default function NotificationsClient() {
           className="flex gap-3.5 px-4 py-4 rounded-2xl animate-pulse"
           style={{ animationDelay: `${i * 60}ms` }}
         >
-          <div className="w-10 h-10 rounded-xl bg-surface-container-highest shrink-0
-" />
+          <div className="w-10 h-10 rounded-xl bg-surface-container-highest shrink-0" />
           <div className="flex-1 space-y-2 py-0.5">
             <div className="flex justify-between">
               <div className="h-2 bg-surface-container-highest rounded-full w-16" />
@@ -232,7 +231,6 @@ export default function NotificationsClient() {
       <div
         className="
           shrink-0
-
           sticky top-0 z-30
           bg-surface/95 backdrop-blur-xl
           border-b border-outline-variant/10
@@ -372,7 +370,6 @@ export default function NotificationsClient() {
                   flex items-center gap-1.5 px-4 py-2 rounded-2xl
                   whitespace-nowrap text-sm font-bold
                   transition-all duration-200 shrink-0
-
                   ${isActive
                     ? 'bg-primary text-on-primary shadow-md shadow-primary/20 scale-[1.04]'
                     : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'}
@@ -419,8 +416,7 @@ export default function NotificationsClient() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{   height: 0, opacity: 0 }}
-            className="shrink-0
- overflow-hidden"
+            className="shrink-0 overflow-hidden"
           >
             <div className="flex items-center gap-4 px-5 py-2 bg-surface-container-low/40 border-b border-outline-variant/6">
               <StatPill icon="notifications" value={totalCount} label="total" color="text-on-surface-variant/50" />
