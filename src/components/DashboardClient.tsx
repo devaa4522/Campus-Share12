@@ -250,7 +250,7 @@ function ScanConfirmSheet({ data, onConfirm, onCancel }: {
 }
 
 // QR Display
-function QRModal({ dealId, onClose }: { dealId: string; onClose: () => void }) {
+function QRModal({ dealId, userId, onClose }: { dealId: string; userId: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/80 backdrop-blur-md p-4" onClick={onClose}>
       <div className="bg-surface-container-lowest rounded-3xl w-full max-w-xs overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-7" onClick={(e: MouseEvent) => e.stopPropagation()}>
@@ -263,7 +263,7 @@ function QRModal({ dealId, onClose }: { dealId: string; onClose: () => void }) {
         <h2 className="font-headline font-bold text-lg text-primary mb-1">Proof of Work</h2>
         <p className="text-on-surface-variant text-xs mb-5 leading-relaxed">Show this to the other party to confirm the handshake</p>
         <div className="bg-white p-5 rounded-2xl inline-block shadow-lg border-4 border-secondary/30 mb-4">
-          <QRCode value={dealId} size={200} fgColor="#000a1e" />
+          <QRCode value={JSON.stringify({deal_id: dealId, user_id: userId, timestamp: Date.now(),})} size={200} fgColor="#000a1e"/>
         </div>
         <p className="text-[9px] uppercase font-bold tracking-[0.2em] text-secondary">Encrypted · Tamper-proof</p>
       </div>
@@ -746,7 +746,7 @@ export default function DashboardClient({
   className="h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] overflow-y-auto hide-scrollbar w-full"
   id="dashboard-scroll"
 >
-      {showQr && <QRModal dealId={showQr} onClose={() => setShowQr(null)} />}
+      {showQr && <QRModal dealId={showQr} userId={profile.id} onClose={() => setShowQr(null)} />}
       {showScanner && <ScannerModal onClose={() => setShowScanner(null)} />}
       <ScanConfirmSheet
         data={confirmScan ? { title: confirmScan.title, body: confirmScan.body, reward: confirmScan.reward, rewardType: confirmScan.rewardType } : null}
