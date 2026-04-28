@@ -12,6 +12,7 @@ import Image                 from "next/image";
 import toast                 from "react-hot-toast";
 import QRCode                from "react-qr-code";
 import { Html5Qrcode }       from "html5-qrcode";
+import { createHandshakeQrPayload } from "@/lib/qr-handshake";
 import {
   motion, AnimatePresence,
   useMotionValue, useTransform, useAnimation,
@@ -132,6 +133,23 @@ export default function MessageCenterClient({
     () => activeConversation?.messages ?? [],
     [activeConversation?.messages]
   );
+  const getQrAction = useCallback((): "handoff" | "return" | "complete" | null => {
+    if (!dealInfo) return null;
+
+    if (dealInfo.type === "task") {
+      return "complete";
+    }
+
+    if (dealInfo.status === "accepted") {
+      return "handoff";
+    }
+
+    if (dealInfo.status === "returning") {
+      return "return";
+    }
+
+    return null;
+  }, [dealInfo]);
 
   // ── Fetch single conversation ────────────────────────────────
   const fetchConversation = useCallback(
@@ -481,38 +499,11 @@ export default function MessageCenterClient({
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, supabase, userId]);
-
-  // ── QR scanner ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!showScannerModal) return;
-    const qr = new Html5Qrcode("qr-reader");
-    qr
-      .start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        decoded => {
-          setShowScannerModal(null);
-          handleQRConfirm(decoded, showScannerModal);
-        },
-                () => {
-          console.error("[QR] Scan error");
-        }
-      )
-      .catch(() => {
-        toast.error("Camera access denied");
-        setShowScannerModal(null);
-      });
-
-    return () => {
-      qr.stop().catch(() => {});
-    };
-  }, [showScannerModal]);
-
-  // ── Handlers ─────────────────────────────────────────────────
-
   const handleQRConfirm = useCallback(
-    async (qrData: string, action: string) => {
+    async (qrData: string) => {
       if (!dealInfo) return;
+
+      const action = getQrAction();
 
       const { error } = await supabase.rpc("verify_qr_handshake", {
         p_deal_id:   dealInfo.id,
@@ -522,14 +513,13 @@ export default function MessageCenterClient({
       });
 
       if (error) {
-        toast.error("QR verification failed");
+        toast.error(error.message || "QR verification failed");
         return;
       }
 
       toast.success("QR confirmed!");
       if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
 
-      // Refresh deal info
       const { data: updated } = await supabase
         .from(dealInfo.type === "item" ? "item_requests" : "tasks")
         .select("status")
@@ -542,8 +532,43 @@ export default function MessageCenterClient({
         );
       }
     },
-    [dealInfo, supabase]
+    [dealInfo, supabase, getQrAction]
   );
+  // ── QR scanner ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!showScannerModal) return;
+
+    const qr = new Html5Qrcode("qr-reader");
+
+    qr
+      .start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        decoded => {
+          setShowScannerModal(null);
+          handleQRConfirm(decoded);
+        },
+        () => {
+          console.error("[QR] Scan error");
+        }
+      )
+      .catch(() => {
+        toast.error("Camera access denied");
+        setShowScannerModal(null);
+      });
+
+    return () => {
+      if (qr.isScanning) {
+        qr.stop().catch(() => {});
+      } else {
+        qr.clear();
+      }
+    };
+  }, [showScannerModal, handleQRConfirm]);
+
+  // ── Handlers ─────────────────────────────────────────────────
+
+  
 
   const sendMessage = useCallback(
     async (e: React.FormEvent) => {
@@ -918,7 +943,8 @@ export default function MessageCenterClient({
       <aside
         className={`${
           activeConversationId ? "hidden md:flex" : "flex"
-        } flex-col w-full md:w-80 flex-shrink-0`}
+        } flex-col w-full md:w-80 shrink-0
+`}
         style={{
           borderRight: `1px solid ${t.border}`,
           background:  t.surface,
@@ -926,7 +952,8 @@ export default function MessageCenterClient({
       >
         {/* Header */}
         <header
-          className="px-4 pt-4 pb-3 flex-shrink-0"
+          className="px-4 pt-4 pb-3 shrink-0
+"
           style={{ borderBottom: `1px solid ${t.border}` }}
         >
           <div className="flex items-center justify-between mb-3">
@@ -1004,7 +1031,8 @@ export default function MessageCenterClient({
         <div className="flex-1 flex flex-col w-full overflow-hidden">
           {/* Header */}
           <header
-            className="px-4 py-3 flex items-center justify-between flex-shrink-0"
+            className="px-4 py-3 flex items-center justify-between shrink-0
+"
             style={{
               borderBottom: `1px solid ${t.border}`,
               background:   t.card,
@@ -1162,7 +1190,8 @@ export default function MessageCenterClient({
 
           {/* Input */}
           <div
-            className="flex-shrink-0"
+            className="shrink-0
+"
             style={{
               borderTop:  `1px solid ${t.border}`,
               background: t.card,
@@ -1252,7 +1281,8 @@ export default function MessageCenterClient({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="material-symbols-outlined p-2.5 rounded-full flex-shrink-0 transition-colors active:scale-90"
+                className="material-symbols-outlined p-2.5 rounded-full shrink-0
+ transition-colors active:scale-90"
                 style={{
                   color:      t.textMuted,
                   background: t.surfaceSoft,
@@ -1296,7 +1326,8 @@ export default function MessageCenterClient({
                 <button
                   type="button"
                   onClick={() => setShowEmojiBar(v => !v)}
-                  className="material-symbols-outlined text-[18px] flex-shrink-0"
+                  className="material-symbols-outlined text-[18px] shrink-0
+"
                   style={{ color: t.textMuted }}
                 >
                   sentiment_satisfied
@@ -1306,7 +1337,8 @@ export default function MessageCenterClient({
               {newMessage.trim() || pendingAttachment ? (
                 <button
                   type="submit"
-                  className="p-2.5 rounded-full flex-shrink-0 active:scale-90 transition-all"
+                  className="p-2.5 rounded-full shrink-0
+ active:scale-90 transition-all"
                   style={{
                     background: t.primary,
                     color:      "#fff",
@@ -1391,7 +1423,7 @@ export default function MessageCenterClient({
             initial="hidden"
             animate="visible"
             exit="hidden"
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
+            className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 p-4"
             onClick={() => setShowQrModal(null)}
           >
             <motion.div
@@ -1406,17 +1438,22 @@ export default function MessageCenterClient({
               >
                 Show This QR
               </h3>
+
               <div className="bg-white p-4 rounded-2xl">
-                <QRCode
-                  value={JSON.stringify({
-                    deal_id:   dealInfo?.id,
-                    user_id:   userId,
-                    timestamp: Date.now(),
-                  })}
-                  size={256}
-                  className="w-full h-auto"
-                />
+                {dealInfo && (
+                  <QRCode
+                    value={createHandshakeQrPayload({
+                      dealId: dealInfo.id,
+                      dealType: dealInfo.type,
+                      userId,
+                      action: getQrAction(),
+                    })}
+                    size={256}
+                    className="w-full h-auto"
+                  />
+                )}
               </div>
+
               <button
                 onClick={() => setShowQrModal(null)}
                 className="w-full mt-4 py-3 rounded-xl font-bold transition-colors"
@@ -1437,7 +1474,7 @@ export default function MessageCenterClient({
             initial="hidden"
             animate="visible"
             exit="hidden"
-            className="fixed inset-0 z-[100] flex flex-col bg-black"
+            className="fixed inset-0 z-100 flex flex-col bg-black"
           >
             <header className="p-4 flex justify-between items-center">
               <button
@@ -1459,7 +1496,7 @@ export default function MessageCenterClient({
             initial="hidden"
             animate="visible"
             exit="hidden"
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
+            className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 p-4"
             onClick={() => setShowCancelModal(false)}
           >
             <motion.div
@@ -1507,7 +1544,7 @@ export default function MessageCenterClient({
             initial="hidden"
             animate="visible"
             exit="hidden"
-            className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-4"
+            className="fixed inset-0 z-100 flex items-end justify-center bg-black/60 p-4"
             onClick={() => setForwardingMsg(null)}
           >
             <motion.div

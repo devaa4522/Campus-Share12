@@ -161,7 +161,8 @@ export default function PostPage() {
   return (
     <div className="max-w-7xl mx-auto flex flex-col lg:flex-row">
       {/* ─── Desktop Sidebar Stepper ─── */}
-      <aside className="sticky top-16 max-h-[calc(100vh-4rem)] w-72 hidden lg:flex flex-col flex-shrink-0 p-8 border-r border-slate-200/30 bg-slate-50 overflow-y-auto">
+      <aside className="sticky top-16 max-h-[calc(100vh-4rem)] w-72 hidden lg:flex flex-col shrink-0
+ p-8 border-r border-slate-200/30 bg-slate-50 overflow-y-auto">
         <div className="mb-10">
           <h2 className="font-headline italic text-secondary text-2xl leading-tight">Create Listing</h2>
           <p className="text-xs uppercase tracking-[0.2em] text-outline font-bold mt-1">Institutional Marketplace</p>

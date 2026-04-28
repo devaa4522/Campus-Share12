@@ -70,13 +70,13 @@ export default function HubClient({ userId }: { userId: string }) {
     <div className="pt-8 pb-32 px-6 max-w-7xl mx-auto min-h-full font-body text-on-surface">
       {/* Refactored Header (The Compass) */}
       <header className="mb-12">
-        <div className="bg-[#000a1e] text-white rounded-xl p-10 relative overflow-hidden shadow-2xl">
+        <div className="bg-primary text-white rounded-xl p-10 relative overflow-hidden shadow-2xl">
           <div className="relative z-10">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight font-headline">The Hub</h1>
               <button
                 onClick={() => router.push('/post')}
-                className="flex items-center justify-center gap-2 bg-[#006e0c] hover:bg-[#006e0c]/90 text-white px-5 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl active:scale-95 whitespace-nowrap"
+                className="flex items-center justify-center gap-2 bg-secondary hover:bg-secondary/90 text-white px-5 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl active:scale-95 whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-[20px]">add</span>
                 <span>Add Item</span>
@@ -85,19 +85,19 @@ export default function HubClient({ userId }: { userId: string }) {
             <div className="flex flex-col md:flex-row gap-4 items-stretch">
 
               {/* Department Filter Dropdown */}
-              <div className="relative min-w-[220px]">
+              <div className="relative min-w-55">
                 <select
                   value={activeDepartment}
                   onChange={(e) => setActiveDepartment(e.target.value)}
-                  className="w-full h-full pl-4 pr-10 py-4 bg-[#000a1e] border border-white/20 rounded-xl focus:ring-2 focus:ring-[#006e0c] focus:bg-white/10 outline-none text-white cursor-pointer hover:bg-white/5 transition-all font-body text-sm font-semibold shadow-inner"
+                  className="w-full h-full pl-4 pr-10 py-4 bg-primary border border-white/20 rounded-xl focus:ring-2 focus:ring-secondary focus:bg-white/10 outline-none text-white cursor-pointer hover:bg-white/5 transition-all font-body text-sm font-semibold shadow-inner"
                   style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', backgroundImage: 'none' }}
                 >
-                  <option className="text-white bg-[#000a1e] font-sans" value="All">All Categories</option>
-                  <option className="text-white bg-[#000a1e] font-sans" value="Books">Books</option>
-                  <option className="text-white bg-[#000a1e] font-sans" value="Electronics">Electronics</option>
-                  <option className="text-white bg-[#000a1e] font-sans" value="Supplies">Supplies</option>
-                  <option className="text-white bg-[#000a1e] font-sans" value="Lab Gear">Lab Gear</option>
-                  <option className="text-white bg-[#000a1e] font-sans" value="Other">Other</option>
+                  <option className="text-white bg-primary font-sans" value="All">All Categories</option>
+                  <option className="text-white bg-primary font-sans" value="Books">Books</option>
+                  <option className="text-white bg-primary font-sans" value="Electronics">Electronics</option>
+                  <option className="text-white bg-primary font-sans" value="Supplies">Supplies</option>
+                  <option className="text-white bg-primary font-sans" value="Lab Gear">Lab Gear</option>
+                  <option className="text-white bg-primary font-sans" value="Other">Other</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                   <span className="material-symbols-outlined text-white/50">expand_more</span>

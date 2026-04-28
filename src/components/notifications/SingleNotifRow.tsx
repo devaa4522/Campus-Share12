@@ -69,7 +69,8 @@ export function SingleNotifRow({
           >
             {/* Icon bubble */}
             <div
-              className={`flex-shrink-0 flex items-center justify-center rounded-xl border
+              className={`shrink-0
+ flex items-center justify-center rounded-xl border
                 ${compact ? 'w-8 h-8' : 'w-10 h-10'}`}
               style={{
                 background: cfg.bg,
@@ -107,7 +108,8 @@ export function SingleNotifRow({
 
             {/* Unread dot */}
             {!notif.is_read && (
-              <div className="flex-shrink-0 self-center">
+              <div className="shrink-0
+ self-center">
                 <div
                   className="w-2 h-2 rounded-full"
                   style={{

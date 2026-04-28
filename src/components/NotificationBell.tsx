@@ -62,7 +62,8 @@ function BellRow({
       >
         {/* Icon bubble */}
         <div
-          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-base border mt-0.5"
+          className="shrink-0
+ w-9 h-9 rounded-xl flex items-center justify-center text-base border mt-0.5"
           style={{ background: cfg.bg, borderColor: `${cfg.accent}22` }}
         >
           {cfg.icon}
@@ -94,7 +95,8 @@ function BellRow({
         {/* Delete on hover */}
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(notif.id); }}
-          className="flex-shrink-0 self-center opacity-0 group-hover:opacity-100
+          className="shrink-0
+ self-center opacity-0 group-hover:opacity-100
                      w-7 h-7 rounded-lg flex items-center justify-center
                      bg-white/5 hover:bg-[#ba1a1a]/20
                      text-white/30 hover:text-[#ba1a1a]
@@ -121,24 +123,28 @@ function PushBanner({
       initial={{ height: 0, opacity: 0 }}
       animate={{ height: 'auto', opacity: 1 }}
       exit={{   height: 0, opacity: 0 }}
-      className="overflow-hidden border-b border-white/6 flex-shrink-0"
+      className="overflow-hidden border-b border-white/6 shrink-0
+"
     >
       <div className="px-5 py-3 flex items-center gap-3 bg-[#006e0c]/8">
-        <span className="text-base flex-shrink-0">📲</span>
+        <span className="text-base shrink-0
+">📲</span>
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-semibold text-white/75">Enable push notifications</p>
           <p className="text-[11px] text-white/30">Alerts even when the app is closed</p>
         </div>
         <button
           onClick={onEnable}
-          className="flex-shrink-0 bg-[#006e0c] text-white text-[11px] font-bold
+          className="shrink-0
+ bg-[#006e0c] text-white text-[11px] font-bold
                      px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
         >
           Enable
         </button>
         <button
           onClick={onDismiss}
-          className="flex-shrink-0 text-white/25 hover:text-white/50 transition-colors"
+          className="shrink-0
+ text-white/25 hover:text-white/50 transition-colors"
         >
           <span className="material-symbols-outlined text-[16px]">close</span>
         </button>
@@ -271,7 +277,8 @@ export function NotificationBell() {
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3.5
-                            border-b border-white/6 flex-shrink-0 bg-white/2">
+                            border-b border-white/6 shrink-0
+ bg-white/2">
               <div className="flex items-center gap-2.5">
                 <h3 className="text-[15px] font-bold text-white/90 tracking-tight">
                   Notifications
@@ -333,7 +340,8 @@ export function NotificationBell() {
                 <div className="p-5 space-y-4">
                   {[...Array(4)].map((_, i) => (
                     <div key={i} className="flex gap-3 animate-pulse">
-                      <div className="w-9 h-9 rounded-xl bg-white/6 flex-shrink-0" />
+                      <div className="w-9 h-9 rounded-xl bg-white/6 shrink-0
+" />
                       <div className="flex-1 space-y-2 py-0.5">
                         <div className="h-2.5 bg-white/8 rounded w-3/4" />
                         <div className="h-3.5 bg-white/6 rounded w-full" />
@@ -377,7 +385,8 @@ export function NotificationBell() {
             </div>
 
             {/* Footer */}
-            <div className="flex-shrink-0 border-t border-white/5 bg-white/2">
+            <div className="shrink-0
+ border-t border-white/5 bg-white/2">
               <button
                 onClick={() => { setOpen(false); router.push('/notifications'); }}
                 className="w-full py-3 text-[12px] font-bold text-[#006e0c]

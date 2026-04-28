@@ -122,7 +122,8 @@ export function Avatar({
   const sz = `${size * 4}px`;
 
   return (
-    <div className="relative flex-shrink-0" style={{ width: sz, height: sz }}>
+    <div className="relative shrink-0
+" style={{ width: sz, height: sz }}>
       {avatarUrl ? (
         <div
           className="w-full h-full rounded-full overflow-hidden relative"
@@ -300,7 +301,8 @@ export function AudioPlayer({
 
       <button
         onClick={toggle}
-        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform"
+        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0
+ active:scale-90 transition-transform"
         style={{
           background: isMe ? "rgba(255,255,255,0.2)" : t.primary,
           color: "#fff",
@@ -412,7 +414,8 @@ export function BubbleContent({
         style={{ color: isMe ? "rgba(255,255,255,0.9)" : t.text }}
       >
         <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+"
           style={{
             background: isMe
               ? "rgba(255,255,255,0.15)"
@@ -492,7 +495,8 @@ export function ReplyQuote({
         <img
           src={source.content}
           alt=""
-          className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+          className="w-10 h-10 rounded-lg object-cover shrink-0
+"
         />
       )}
       <div className="flex-1 min-w-0">
@@ -754,7 +758,8 @@ export function VoiceNoteButton({ onSend }: { onSend: (blob: Blob) => void }) {
     <button
       type="button"
       onClick={stop}
-      className="flex items-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-bold flex-shrink-0 active:scale-95 transition-all"
+      className="flex items-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-bold shrink-0
+ active:scale-95 transition-all"
       style={{
         background: `${t.error}12`,
         color:      t.error,
@@ -762,7 +767,8 @@ export function VoiceNoteButton({ onSend }: { onSend: (blob: Blob) => void }) {
       }}
     >
       <motion.span
-        className="w-2 h-2 rounded-full inline-block flex-shrink-0"
+        className="w-2 h-2 rounded-full inline-block shrink-0
+"
         style={{ background: t.error }}
         animate={{ opacity: [1, 0.2, 1] }}
         transition={{ duration: 0.8, repeat: Infinity }}
@@ -775,7 +781,8 @@ export function VoiceNoteButton({ onSend }: { onSend: (blob: Blob) => void }) {
     <button
       type="button"
       onPointerDown={start}
-      className="material-symbols-outlined p-2.5 rounded-full flex-shrink-0 transition-colors active:scale-90"
+      className="material-symbols-outlined p-2.5 rounded-full shrink-0
+ transition-colors active:scale-90"
       style={{
         color:      t.textMuted,
         background: t.surfaceSoft,
@@ -808,7 +815,8 @@ export function AttachmentStrip({
         border:     `1px solid ${t.border}`,
       }}
     >
-      <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 relative">
+      <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0
+ relative">
         {isImg ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={url} alt="" className="w-full h-full object-cover" />
@@ -891,7 +899,8 @@ export function SearchOverlay({
       style={{ background: t.card }}
     >
       <header
-        className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
+        className="flex items-center gap-3 px-4 py-3 shrink-0
+"
         style={{ borderBottom: `1px solid ${t.border}` }}
       >
         <button
@@ -960,7 +969,8 @@ export function SearchOverlay({
                 style={{ borderBottom: `1px solid ${t.border}` }}
               >
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0
+"
                   style={{
                     background: `${t.primary}12`,
                     color:      t.primary,
@@ -1090,7 +1100,8 @@ export function ConversationRow({
           </h3>
           {lastMsg && (
             <span
-              className="text-[10px] tabular-nums whitespace-nowrap ml-2 flex-shrink-0"
+              className="text-[10px] tabular-nums whitespace-nowrap ml-2 shrink-0
+"
               style={{
                 color: unread > 0 ? t.secondary : t.textMuted,
                 fontWeight: unread > 0 ? 700 : 400,
@@ -1119,7 +1130,8 @@ export function ConversationRow({
           </p>
           {unread > 0 && (
             <span
-              className="text-[10px] font-bold min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full flex-shrink-0"
+              className="text-[10px] font-bold min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full shrink-0
+"
               style={{
                 background: t.secondary,
                 color: "#fff",
@@ -1291,7 +1303,8 @@ export const MessageBubble = ({
       {/* Selection checkbox */}
       {isSelecting && (
         <div
-          className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center mr-2 mb-1 transition-all ${
+          className={`shrink-0
+ w-5 h-5 rounded-full border-2 flex items-center justify-center mr-2 mb-1 transition-all ${
             isMe ? "order-last ml-2 mr-0" : ""
           }`}
           style={{
@@ -1307,7 +1320,8 @@ export const MessageBubble = ({
       {/* Starred indicator */}
       {isStarred && !isSelecting && (
         <span
-          className={`material-symbols-outlined text-[14px] flex-shrink-0 mb-1 ${isMe ? "mr-1 order-first" : "ml-1 order-last"}`}
+          className={`material-symbols-outlined text-[14px] shrink-0
+ mb-1 ${isMe ? "mr-1 order-first" : "ml-1 order-last"}`}
           style={{ color: t.warning, fontVariationSettings: "'FILL' 1" }}
         >
           star
@@ -1315,7 +1329,8 @@ export const MessageBubble = ({
       )}
       {/* Peer avatar — only show if not grouped */}
       {!isMe && (
-        <div className="w-7 w-7 flex-shrink-0 mr-1.5 self-end mb-0.5 hidden md:block">
+        <div className="w-7 w-7 shrink-0
+ mr-1.5 self-end mb-0.5 hidden md:block">
           {!isGrouped ? (
             <div className="w-7 h-7 rounded-full overflow-hidden relative border"
               style={{ borderColor: t.border }}>
@@ -1345,7 +1360,8 @@ export const MessageBubble = ({
       {isMe && (
         <motion.div
           style={{ opacity: swipeOpacity, scale: swipeScale }}
-          className="self-center mr-1.5 flex-shrink-0 pointer-events-none"
+          className="self-center mr-1.5 shrink-0
+ pointer-events-none"
         >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center"
@@ -1565,7 +1581,8 @@ export const MessageBubble = ({
       {!isMe && (
         <motion.div
           style={{ opacity: swipeOpacity, scale: swipeScale }}
-          className="self-center ml-1.5 flex-shrink-0 pointer-events-none"
+          className="self-center ml-1.5 shrink-0
+ pointer-events-none"
         >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center"
@@ -1739,7 +1756,8 @@ export function DealStatusCard({
 
   return (
     <div
-      className="mx-2 mb-3 rounded-2xl overflow-hidden flex-shrink-0"
+      className="mx-2 mb-3 rounded-2xl overflow-hidden shrink-0
+"
       style={{
         background: t.card,
         border:     `1px solid ${t.border}`,
@@ -1777,7 +1795,8 @@ export function DealStatusCard({
                 {steps.map((step, i) => (
                   <div key={step} className="flex items-center flex-1">
                     <div
-                      className="w-3 h-3 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+                      className="w-3 h-3 rounded-full flex items-center justify-center shrink-0
+ transition-colors"
                       style={{
                         background:
                           i <= stepIdx ? t.success : `${t.textMuted}30`,
@@ -1810,7 +1829,8 @@ export function DealStatusCard({
               {/* Deal info */}
               <div className="flex gap-3 items-center">
                 {dealInfo.image_url ? (
-                  <div className="w-11 h-11 rounded-xl overflow-hidden relative flex-shrink-0">
+                  <div className="w-11 h-11 rounded-xl overflow-hidden relative shrink-0
+">
                     <Image
                       src={dealInfo.image_url}
                       alt="item"
@@ -1820,7 +1840,8 @@ export function DealStatusCard({
                   </div>
                 ) : (
                   <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                    className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0
+"
                     style={{ background: t.surfaceSoft }}
                   >
                     <span

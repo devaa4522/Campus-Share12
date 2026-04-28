@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import QRCode from "react-qr-code";
 import { Html5Qrcode } from "html5-qrcode";
 import { useHaptics } from "@/hooks/useHaptics";
+import { createHandshakeQrPayload, parseHandshakeQrPayload } from "@/lib/qr-handshake";
 
 // ── Inline types (from DB schema) ──────────────────────────────────────────────
 type DealTab = "received" | "made" | "my_listings" | "task_requests" | "helping_with";
@@ -129,7 +130,7 @@ const ITEM_STEP_IDX: Record<string, number> = {
 function DealStepper({ status }: { status: string }) {
   if (status === "declined") return (
     <div className="flex items-center gap-1.5 py-2">
-      <span className="w-4 h-4 rounded-full bg-error/20 flex items-center justify-center flex-shrink-0">
+      <span className="w-4 h-4 rounded-full bg-error/20 flex items-center justify-center shrink-0">
         <span className="material-symbols-outlined text-error" style={{ fontSize: 10 }}>close</span>
       </span>
       <span className="text-[10px] font-bold uppercase tracking-widest text-error">Declined</span>
@@ -139,7 +140,7 @@ function DealStepper({ status }: { status: string }) {
   return (
     <div className="flex items-center gap-0.5 py-2 overflow-x-auto no-scrollbar">
       {ITEM_STEPS.map((step, i) => (
-        <div key={step} className="flex items-center gap-0.5 flex-shrink-0">
+        <div key={step} className="flex items-center gap-0.5 shrink-0">
           <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide transition-all flex items-center gap-0.5 ${
             i < cur ? "bg-secondary/15 text-secondary" :
             i === cur ? "bg-primary text-on-primary" :
@@ -149,7 +150,7 @@ function DealStepper({ status }: { status: string }) {
             {step}
           </div>
           {i < ITEM_STEPS.length - 1 && (
-            <div className={`w-3 h-px flex-shrink-0 ${i < cur ? "bg-secondary/30" : "bg-outline-variant/20"}`} />
+            <div className={`w-3 h-px shrink-0 ${i < cur ? "bg-secondary/30" : "bg-outline-variant/20"}`} />
           )}
         </div>
       ))}
@@ -165,7 +166,7 @@ function TaskStepper({ status }: { status: string }) {
   return (
     <div className="flex items-center gap-0.5 py-2 overflow-x-auto no-scrollbar">
       {TASK_STEPS.map((step, i) => (
-        <div key={step} className="flex items-center gap-0.5 flex-shrink-0">
+        <div key={step} className="flex items-center gap-0.5 shrink-0">
           <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide transition-all flex items-center gap-0.5 ${
             i < cur ? "bg-secondary/15 text-secondary" :
             i === cur ? "bg-primary text-on-primary" :
@@ -175,7 +176,7 @@ function TaskStepper({ status }: { status: string }) {
             {step}
           </div>
           {i < TASK_STEPS.length - 1 && (
-            <div className={`w-3 h-px flex-shrink-0 ${i < cur ? "bg-secondary/30" : "bg-outline-variant/20"}`} />
+            <div className={`w-3 h-px shrink-0 ${i < cur ? "bg-secondary/30" : "bg-outline-variant/20"}`} />
           )}
         </div>
       ))}
@@ -186,7 +187,7 @@ function TaskStepper({ status }: { status: string }) {
 // ── Small reusable components ──────────────────────────────────────────────────
 function Avatar({ url, name, size = 32 }: { url?: string | null; name?: string | null; size?: number }) {
   return (
-    <div className="rounded-full bg-primary/10 overflow-hidden flex-shrink-0 relative flex items-center justify-center"
+    <div className="rounded-full bg-primary/10 overflow-hidden shrink-0 relative flex items-center justify-center"
       style={{ width: size, height: size }}>
       {url
         ? <Image src={url} alt={name ?? "User"} fill className="object-cover" />
@@ -219,11 +220,11 @@ function ScanConfirmSheet({ data, onConfirm, onCancel }: {
 }) {
   if (!data) return null;
   return (
-    <div className="fixed inset-0 z-[110] flex items-end justify-center bg-[#000a1e]/60 backdrop-blur-sm" onClick={onCancel}>
+    <div className="fixed inset-0 z-110 flex items-end justify-center bg-primary/60 backdrop-blur-sm" onClick={onCancel}>
       <div className="bg-surface-container-lowest w-full max-w-lg rounded-t-3xl p-6 pb-10 shadow-2xl border-t border-outline-variant/10" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div className="w-10 h-1 bg-outline-variant/40 rounded-full mx-auto mb-5" />
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-primary">qr_code_scanner</span>
           </div>
           <div>
@@ -242,7 +243,7 @@ function ScanConfirmSheet({ data, onConfirm, onCancel }: {
         )}
         <div className="flex gap-3">
           <button onClick={onCancel} className="flex-1 border border-outline-variant/30 text-on-surface-variant py-3 rounded-2xl font-bold text-sm active:scale-95 transition-transform">Cancel</button>
-          <button onClick={onConfirm} className="flex-[2] bg-primary text-on-primary py-3 rounded-2xl font-bold text-sm active:scale-95 transition-transform">Open Scanner</button>
+          <button onClick={onConfirm} className="flex-2 bg-primary text-on-primary py-3 rounded-2xl font-bold text-sm active:scale-95 transition-transform">Open Scanner</button>
         </div>
       </div>
     </div>
@@ -250,22 +251,65 @@ function ScanConfirmSheet({ data, onConfirm, onCancel }: {
 }
 
 // QR Display
-function QRModal({ dealId, userId, onClose }: { dealId: string; userId: string; onClose: () => void }) {
+function QRModal({
+  dealId,
+  dealType,
+  userId,
+  action,
+  onClose,
+}: {
+  dealId: string;
+  dealType: "item" | "task";
+  userId: string;
+  action: "handoff" | "return" | "complete" | null;
+  onClose: () => void;
+}) {
+  const qrValue = createHandshakeQrPayload({
+    dealId,
+    dealType,
+    userId,
+    action,
+  });
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/80 backdrop-blur-md p-4" onClick={onClose}>
-      <div className="bg-surface-container-lowest rounded-3xl w-full max-w-xs overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-7" onClick={(e: MouseEvent) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high">
-          <span className="material-symbols-outlined text-on-surface-variant text-[18px]">close</span>
+    <div
+      className="fixed inset-0 z-100 flex items-center justify-center bg-primary/80 backdrop-blur-md p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-surface-container-lowest rounded-3xl w-full max-w-xs overflow-hidden shadow-2xl border border-outline-variant/10 text-center relative p-7"
+        onClick={(e: MouseEvent) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high"
+        >
+          <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
+            close
+          </span>
         </button>
+
         <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center mx-auto mb-3">
-          <span className="material-symbols-outlined text-secondary">qr_code_2</span>
+          <span className="material-symbols-outlined text-secondary">
+            qr_code_2
+          </span>
         </div>
-        <h2 className="font-headline font-bold text-lg text-primary mb-1">Proof of Work</h2>
-        <p className="text-on-surface-variant text-xs mb-5 leading-relaxed">Show this to the other party to confirm the handshake</p>
+
+        <h2 className="font-headline font-bold text-lg text-primary mb-1">
+          Proof of Work
+        </h2>
+
+        <p className="text-on-surface-variant text-xs mb-5 leading-relaxed">
+          Show this to the other party to confirm the handshake
+        </p>
+
         <div className="bg-white p-5 rounded-2xl inline-block shadow-lg border-4 border-secondary/30 mb-4">
-          <QRCode value={JSON.stringify({deal_id: dealId, user_id: userId, timestamp: Date.now(),})} size={200} fgColor="#000a1e"/>
+          <QRCode value={qrValue} size={200} fgColor="#000a1e" />
         </div>
-        <p className="text-[9px] uppercase font-bold tracking-[0.2em] text-secondary">Encrypted · Tamper-proof</p>
+
+        <p className="text-[9px] uppercase font-bold tracking-[0.2em] text-secondary">
+          Secure handshake QR
+        </p>
       </div>
     </div>
   );
@@ -274,14 +318,14 @@ function QRModal({ dealId, userId, onClose }: { dealId: string; userId: string; 
 // Scanner
 function ScannerModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/90 backdrop-blur-md">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-primary/90 backdrop-blur-md">
       <div className="w-full max-w-sm relative p-6 text-center">
-        <button onClick={onClose} className="absolute top-0 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-error/20 hover:bg-error/30 z-[120]">
+        <button onClick={onClose} className="absolute top-0 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-error/20 hover:bg-error/30 z-120">
           <span className="material-symbols-outlined text-error">close</span>
         </button>
         <p className="text-white/70 text-sm mb-4">Point camera at the QR code</p>
         <div className="bg-black rounded-2xl overflow-hidden border-4 border-secondary/40">
-          <div id="qr-reader" className="w-full min-h-[280px]" />
+          <div id="qr-reader" className="w-full min-h-70" />
         </div>
         <p className="text-white/40 text-xs mt-3">Deal completes automatically when scanned</p>
       </div>
@@ -340,7 +384,11 @@ export default function DashboardClient({
   const [localReceived, setLocalReceived] = useState<RequestWithRelations[]>(receivedRequests);
   const [localTaskReqs, setLocalTaskReqs] = useState(myTaskRequests);
   const [localHelping, setLocalHelping] = useState(helpingWithTasks);
-  const [showQr, setShowQr] = useState<string | null>(null);
+  const [showQr, setShowQr] = useState<{
+    dealId: string;
+    dealType: "item" | "task";
+    action: "handoff" | "return" | "complete" | null;
+  } | null>(null);
   const [showScanner, setShowScanner] = useState<string | null>(null);
   const [confirmScan, setConfirmScan] = useState<{ dealId: string; title: string; body: string; reward?: number; rewardType?: string } | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -366,37 +414,148 @@ export default function DashboardClient({
   type TaskReqEntry = Task & { task_claims?: (TaskClaim & { profiles: Profile | null })[] };
 
   const handleQRConfirm = useCallback(async (scanned: string, expected: string) => {
-    if (scanned !== expected) { haptics.error(); toast.error("Wrong QR code for this deal."); return; }
-    try {
-      const supabase = createClient();
-      const isTask = localTaskReqs.some((t: TaskReqEntry) => t.id === expected) || localHelping.some((c: HelpingEntry) => c.tasks?.id === expected);
-      const itemReq = localReceived.find((r: RequestWithRelations) => r.id === expected) ?? localMade.find((r: RequestWithRelations) => r.id === expected);
+  const payload = parseHandshakeQrPayload(scanned);
 
-      if (isTask) {
-        const { error } = await supabase.rpc("verify_qr_handshake", { p_deal_id: expected, p_deal_type: "task", p_qr_data: scanned, p_action: null });
-        if (error) { haptics.error(); toast.error(error.message || "Could not complete."); return; }
-        haptics.success(); toast.success("Task completed! Karma awarded 🎉");
-        setLocalTaskReqs((prev: TaskReqEntry[]) => prev.map((t: TaskReqEntry) => t.id === expected ? { ...t, status: "completed" as const } : t));
-        setLocalHelping((prev: HelpingEntry[]) => prev.map((c: HelpingEntry) => c.tasks?.id === expected ? { ...c, tasks: c.tasks ? { ...c.tasks, status: "completed" as const } : c.tasks } : c));
-      } else if (itemReq) {
-        const { data, error } = await supabase.rpc("verify_qr_handshake", {
-          p_deal_id: itemReq.id, p_deal_type: "item", p_qr_data: scanned,
-          p_action: itemReq.status === "accepted" ? "handoff" : "return",
-        });
-        if (error) { haptics.error(); toast.error(error.message || "Could not complete."); return; }
-        const next = (data as { status?: string } | null)?.status;
-        if (next === "rented") {
-          haptics.success(); toast.success("Handoff confirmed! Rental started.");
-          setLocalReceived((p: RequestWithRelations[]) => p.map((r: RequestWithRelations) => r.id === expected ? { ...r, status: "rented" } : r));
-          setLocalMade((p: RequestWithRelations[]) => p.map((r: RequestWithRelations) => r.id === expected ? { ...r, status: "rented" } : r));
-        } else if (next === "completed") {
-          haptics.success(); toast.success("Item returned! Deal complete 🎉");
-          setLocalReceived((p: RequestWithRelations[]) => p.map((r: RequestWithRelations) => r.id === expected ? { ...r, status: "completed" } : r));
-          setLocalMade((p: RequestWithRelations[]) => p.map((r: RequestWithRelations) => r.id === expected ? { ...r, status: "completed" } : r));
-        }
+  if (!payload) {
+    haptics.error();
+    toast.error("Invalid QR code.");
+    return;
+  }
+
+  if (payload.deal_id !== expected) {
+    haptics.error();
+    toast.error("Wrong QR code for this deal.");
+    return;
+  }
+
+  const isTaskDeal =
+    localTaskReqs.some((t: TaskReqEntry) => t.id === expected) ||
+    localHelping.some((c: HelpingEntry) => c.tasks?.id === expected);
+
+  const expectedDealType = isTaskDeal ? "task" : "item";
+
+  if (payload.deal_type !== expectedDealType) {
+    haptics.error();
+    toast.error("Wrong QR type for this deal.");
+    return;
+  }
+
+  try {
+    const supabase = createClient();
+
+    const isTask = isTaskDeal;
+
+    const itemReq =
+      localReceived.find((r: RequestWithRelations) => r.id === expected) ??
+      localMade.find((r: RequestWithRelations) => r.id === expected);
+
+    if (isTask) {
+      const { error } = await supabase.rpc("verify_qr_handshake", {
+        p_deal_id: expected,
+        p_deal_type: "task",
+        p_qr_data: scanned,
+        p_action: "complete",
+      });
+
+      if (error) {
+        haptics.error();
+        toast.error(error.message || "Could not complete.");
+        return;
       }
-    } catch { toast.error("Action could not be completed."); }
-  }, [localTaskReqs, localHelping, localReceived, localMade, haptics]);
+
+      haptics.success();
+      toast.success("Task completed! Karma awarded 🎉");
+
+      setLocalTaskReqs((prev: TaskReqEntry[]) =>
+        prev.map((t: TaskReqEntry) =>
+          t.id === expected ? { ...t, status: "completed" as const } : t
+        )
+      );
+
+      setLocalHelping((prev: HelpingEntry[]) =>
+        prev.map((c: HelpingEntry) =>
+          c.tasks?.id === expected
+            ? {
+                ...c,
+                tasks: c.tasks
+                  ? { ...c.tasks, status: "completed" as const }
+                  : c.tasks,
+              }
+            : c
+        )
+      );
+
+      return;
+    }
+
+    if (itemReq) {
+      const action = itemReq.status === "accepted" ? "handoff" : "return";
+
+      const { data, error } = await supabase.rpc("verify_qr_handshake", {
+        p_deal_id: itemReq.id,
+        p_deal_type: "item",
+        p_qr_data: scanned,
+        p_action: action,
+      });
+
+      if (error) {
+        haptics.error();
+        toast.error(error.message || "Could not complete.");
+        return;
+      }
+
+      const next = (data as { status?: string } | null)?.status;
+
+      if (next === "rented") {
+        haptics.success();
+        toast.success("Handoff confirmed! Rental started.");
+
+        setLocalReceived((prev: RequestWithRelations[]) =>
+          prev.map((r: RequestWithRelations) =>
+            r.id === expected ? { ...r, status: "rented" } : r
+          )
+        );
+
+        setLocalMade((prev: RequestWithRelations[]) =>
+          prev.map((r: RequestWithRelations) =>
+            r.id === expected ? { ...r, status: "rented" } : r
+          )
+        );
+
+        return;
+      }
+
+      if (next === "completed") {
+        haptics.success();
+        toast.success("Item returned! Deal complete 🎉");
+
+        setLocalReceived((prev: RequestWithRelations[]) =>
+          prev.map((r: RequestWithRelations) =>
+            r.id === expected ? { ...r, status: "completed" } : r
+          )
+        );
+
+        setLocalMade((prev: RequestWithRelations[]) =>
+          prev.map((r: RequestWithRelations) =>
+            r.id === expected ? { ...r, status: "completed" } : r
+          )
+        );
+
+        return;
+      }
+
+      haptics.success();
+      toast.success("QR confirmed.");
+      return;
+    }
+
+    haptics.error();
+    toast.error("Deal not found.");
+  } catch {
+    haptics.error();
+    toast.error("Action could not be completed.");
+  }
+}, [localTaskReqs, localHelping, localReceived, localMade, haptics]);
 
   // Scanner effect
   useEffect(() => {
@@ -487,14 +646,14 @@ export default function DashboardClient({
         className={`bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10 border-l-4 ${st.bar} transition-all ${focused(req.id) ? "ring-2 ring-secondary/70 shadow-[0_0_0_4px_rgba(0,110,12,0.10)]" : "shadow-sm"}`}>
         <div className="p-4">
           <div className="flex gap-3 mb-3">
-            <div className="w-16 h-16 rounded-xl bg-surface-container overflow-hidden flex-shrink-0 relative">
+            <div className="w-16 h-16 rounded-xl bg-surface-container overflow-hidden shrink-0 relative">
               {item.images?.[0]
                 ? <Image src={item.images[0]} alt={item.title} fill sizes="64px" className="object-cover" />
                 : <div className="w-full h-full flex items-center justify-center"><span className="material-symbols-outlined text-on-surface-variant/40 text-2xl">inventory_2</span></div>}
             </div>
-            <div className="flex-grow min-w-0">
+            <div className="grow min-w-0">
               <div className="flex items-center gap-1.5 mb-0.5">
-                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${st.dot}`} />
+                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${st.dot}`} />
                 <span className={`text-[9px] font-bold uppercase tracking-widest ${st.text}`}>{st.label}</span>
                 <span className="text-[9px] text-on-surface-variant/40 ml-auto">{timeAgo(req.created_at)}</span>
               </div>
@@ -513,61 +672,121 @@ export default function DashboardClient({
           <div className="flex gap-2 mt-3 flex-wrap">
             {req.status === "pending" && canManage && (
               <>
-                <button disabled={loading} onClick={() => handleUpdateStatus(req.id, "accepted")}
-                  className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-1">
-                  {loading ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span className="material-symbols-outlined text-[14px]">check</span>Accept</>}
+                <button
+                  disabled={loading}
+                  onClick={() => handleUpdateStatus(req.id, "accepted")}
+                  className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-1"
+                >
+                  {loading ? (
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[14px]">check</span>
+                      Accept
+                    </>
+                  )}
                 </button>
-                <button disabled={loading} onClick={() => handleUpdateStatus(req.id, "declined")}
-                  className="border border-outline-variant/30 text-on-surface-variant py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform disabled:opacity-50">
+
+                <button
+                  disabled={loading}
+                  onClick={() => handleUpdateStatus(req.id, "declined")}
+                  className="border border-outline-variant/30 text-on-surface-variant py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform disabled:opacity-50"
+                >
                   Decline
                 </button>
               </>
             )}
-            {req.status === "accepted" && canManage && (
-              <button onClick={() => setConfirmScan({ dealId: req.id, title: "Confirm Handoff", body: "Scan the borrower's QR to mark the item as rented." })}
-                className="flex-1 bg-secondary text-on-secondary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1">
-                <span className="material-symbols-outlined text-[14px]">qr_code_scanner</span>Scan Borrower QR
-              </button>
-            )}
-            {req.status === "accepted" && isBorrower && (
-              <button onClick={() => setShowQr(req.id)}
-                className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1">
-                <span className="material-symbols-outlined text-[14px]">qr_code_2</span>Show My QR
-              </button>
-            )}
-            {req.status === "rented" && isBorrower && (
-              <button disabled={loadingId === req.id} onClick={() => handleInitiateReturn(req.id)}
-                className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-1">
-                <span className="material-symbols-outlined text-[14px]">assignment_return</span>Initiate Return
-              </button>
-            )}
-            {req.status === "returning" && isBorrower && (
-              <button onClick={() => setConfirmScan({ dealId: req.id, title: "Confirm Return", body: "Scan the lender's QR to finalise the return.",
-                })
-              }
-              className="flex-1 bg-secondary text-on-secondary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1"
-            >
-              <span className="material-symbols-outlined text-[14px]">
-                qr_code_scanner
-              </span>
-              Scan Lender QR
-            </button>
-          )}
 
-          {req.status === "returning" && isLender && (
-            <button
-              onClick={() => setShowQr(req.id)}
-              className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1"
-            >
-              <span className="material-symbols-outlined text-[14px]">
-                qr_code_2
-              </span>
-              Show Return QR
-            </button>
-          )}
+            {req.status === "accepted" && canManage && (
+              <button
+                onClick={() =>
+                  setConfirmScan({
+                    dealId: req.id,
+                    title: "Confirm Handoff",
+                    body: "Scan the borrower's QR to mark the item as rented.",
+                  })
+                }
+                className="flex-1 bg-secondary text-on-secondary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">
+                  qr_code_scanner
+                </span>
+                Scan Borrower QR
+              </button>
+            )}
+
+            {req.status === "accepted" && isBorrower && (
+              <button
+                onClick={() =>
+                  setShowQr({
+                    dealId: req.id,
+                    dealType: "item",
+                    action: "handoff",
+                  })
+                }
+                className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">
+                  qr_code_2
+                </span>
+                Show My QR
+              </button>
+            )}
+
+            {req.status === "rented" && isBorrower && (
+              <button
+                disabled={loadingId === req.id}
+                onClick={() => handleInitiateReturn(req.id)}
+                className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">
+                  assignment_return
+                </span>
+                Initiate Return
+              </button>
+            )}
+
+            {req.status === "returning" && isBorrower && (
+              <button
+                onClick={() =>
+                  setConfirmScan({
+                    dealId: req.id,
+                    title: "Confirm Return",
+                    body: "Scan the lender's QR to finalise the return.",
+                  })
+                }
+                className="flex-1 bg-secondary text-on-secondary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">
+                  qr_code_scanner
+                </span>
+                Scan Lender QR
+              </button>
+            )}
+
+            {req.status === "returning" && isLender && (
+              <button
+                onClick={() =>
+                  setShowQr({
+                    dealId: req.id,
+                    dealType: "item",
+                    action: "return",
+                  })
+                }
+                className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">
+                  qr_code_2
+                </span>
+                Show Return QR
+              </button>
+            )}
+
             {["pending", "accepted", "rented", "returning"].includes(req.status ?? "") && (
-              <button onClick={() => handleMessageUser(req)}
-                className="border border-outline-variant/20 text-secondary py-2.5 px-3 rounded-xl text-xs font-bold active:scale-95 transition-transform flex items-center gap-1">
+              <button
+                onClick={() => handleMessageUser(req)}
+                className="border border-outline-variant/20 text-secondary py-2.5 px-3 rounded-xl text-xs font-bold active:scale-95 transition-transform flex items-center gap-1"
+              >
                 <span className="material-symbols-outlined text-[14px]">chat</span>
               </button>
             )}
@@ -588,7 +807,7 @@ export default function DashboardClient({
         className={`bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10 border-l-4 ${task.status === "claimed" ? "border-l-secondary" : task.status === "completed" ? "border-l-secondary/30" : "border-l-outline-variant/30"} transition-all ${focused(task.id) ? "ring-2 ring-secondary/70" : "shadow-sm"}`}>
         <div className="p-4">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex-grow min-w-0">
+            <div className="grow min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                   task.category === "Academic" ? "bg-primary/10 text-primary" :
@@ -600,7 +819,7 @@ export default function DashboardClient({
               </div>
               <h3 className="font-headline font-bold text-primary text-sm leading-tight">{task.title}</h3>
             </div>
-            <div className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider flex-shrink-0 ${
+            <div className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 ${
               task.status === "open" ? "bg-error/10 text-error" :
               task.status === "claimed" ? "bg-secondary-container text-on-secondary-container" :
               "bg-primary/10 text-primary"}`}>
@@ -618,7 +837,7 @@ export default function DashboardClient({
           {helper && task.status !== "open" && (
             <div className="flex items-center gap-2 mt-2 py-2 border-t border-outline-variant/10">
               <Avatar url={helper.avatar_url} name={helper.full_name} size={24} />
-              <div className="flex-grow min-w-0">
+              <div className="grow min-w-0">
                 <p className="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant/60">{task.status === "completed" ? "Completed by" : "Helper"}</p>
                 <p className="text-xs font-semibold text-primary truncate">{helper.full_name}</p>
               </div>
@@ -657,14 +876,14 @@ export default function DashboardClient({
         className={`bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10 border-l-4 ${task.status === "claimed" ? "border-l-secondary" : "border-l-secondary/30"} transition-all ${focused(task.id) ? "ring-2 ring-secondary/70" : "shadow-sm"}`}>
         <div className="p-4">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex-grow min-w-0">
+            <div className="grow min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-surface-container-high text-on-surface-variant">{task.category ?? "General"}</span>
                 <span className="text-[9px] font-bold text-on-surface-variant/50">{deadlineLabel(task.deadline)}</span>
               </div>
               <h3 className="font-headline font-bold text-primary text-sm leading-tight">{task.title}</h3>
             </div>
-            <div className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider flex-shrink-0 ${
+            <div className={`px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 ${
               task.status === "claimed" ? "bg-secondary-container text-on-secondary-container" : "bg-primary/10 text-primary"}`}>
               {task.status}
             </div>
@@ -685,7 +904,7 @@ export default function DashboardClient({
           {creator && (
             <div className="flex items-center gap-2 mt-2 py-2 border-t border-outline-variant/10">
               <Avatar url={creator.avatar_url} name={creator.full_name} size={24} />
-              <div className="flex-grow min-w-0">
+              <div className="grow min-w-0">
                 <p className="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant/60">Requester</p>
                 <p className="text-xs font-semibold text-primary truncate">{creator.full_name}</p>
               </div>
@@ -698,10 +917,19 @@ export default function DashboardClient({
 
           {task.status === "claimed" && (
             <div className="flex gap-2 mt-3">
-              <button onClick={() => setShowQr(task.id)}
-                className="flex-1 bg-primary text-on-primary py-3 rounded-2xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1">
-                <span className="material-symbols-outlined text-[14px]">qr_code_2</span>My Proof QR
-              </button>
+              <button 
+              onClick={() =>
+                setShowQr({
+                  dealId: task.id,
+                  dealType: "task",
+                  action: "complete",
+                })
+              }
+              className="flex-1 bg-primary text-on-primary py-3 rounded-2xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">qr_code_2</span>
+                My Proof QR
+                </button>
               <button onClick={() => handleMessageForTask(task.id)}
                 className="border border-outline-variant/20 text-secondary py-3 px-3 rounded-2xl font-bold text-xs active:scale-95 transition-transform">
                 <span className="material-symbols-outlined text-[14px]">chat</span>
@@ -720,15 +948,15 @@ export default function DashboardClient({
   // ── Card: Listing ──────────────────────────────────────────────────────────
   const renderListingCard = (item: Item) => (
     <div key={item.id} className="bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm flex gap-3 p-4">
-      <div className="w-16 h-16 rounded-xl bg-surface-container overflow-hidden flex-shrink-0 relative">
+      <div className="w-16 h-16 rounded-xl bg-surface-container overflow-hidden shrink-0 relative">
         {(item.thumbnail_url || item.images?.[0])
           ? <Image src={item.thumbnail_url ?? item.images![0]} alt={item.title} fill sizes="64px" className="object-cover" />
           : <div className="w-full h-full flex items-center justify-center"><span className="material-symbols-outlined text-on-surface-variant/30 text-2xl">inventory_2</span></div>}
       </div>
-      <div className="flex-grow min-w-0">
+      <div className="grow min-w-0">
         <div className="flex items-start justify-between gap-2 mb-1">
           <h3 className="font-headline font-bold text-primary text-sm leading-tight truncate">{item.title}</h3>
-          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider flex-shrink-0 ${item.is_hidden ? "bg-surface-container-highest text-on-surface-variant" : item.status === "rented" ? "bg-blue-100 text-blue-600" : "bg-secondary/10 text-secondary"}`}>
+          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 ${item.is_hidden ? "bg-surface-container-highest text-on-surface-variant" : item.status === "rented" ? "bg-blue-100 text-blue-600" : "bg-secondary/10 text-secondary"}`}>
             {item.is_hidden ? "Hidden" : item.status === "rented" ? "Rented" : "Live"}
           </span>
         </div>
@@ -746,7 +974,15 @@ export default function DashboardClient({
   className="h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] overflow-y-auto hide-scrollbar w-full"
   id="dashboard-scroll"
 >
-      {showQr && <QRModal dealId={showQr} userId={profile.id} onClose={() => setShowQr(null)} />}
+      {showQr && (
+        <QRModal 
+          dealId={showQr.dealId}
+          dealType={showQr.dealType}
+          userId={profile.id}
+          action={showQr.action}
+          onClose={() => setShowQr(null)}
+          />
+        )}
       {showScanner && <ScannerModal onClose={() => setShowScanner(null)} />}
       <ScanConfirmSheet
         data={confirmScan ? { title: confirmScan.title, body: confirmScan.body, reward: confirmScan.reward, rewardType: confirmScan.rewardType } : null}
@@ -781,7 +1017,7 @@ export default function DashboardClient({
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-4 -mx-1 px-1 pb-1">
           {tabs.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl font-bold text-xs uppercase tracking-wide whitespace-nowrap flex-shrink-0 transition-all active:scale-95 ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl font-bold text-xs uppercase tracking-wide whitespace-nowrap shrink-0 transition-all active:scale-95 ${
                 activeTab === tab.id ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"}`}>
               <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{tab.icon}</span>
               {tab.label}

@@ -11,7 +11,8 @@ function ConversationSkeleton() {
     <div className="flex items-center gap-3 px-4 py-3.5 animate-pulse">
       {/* Avatar */}
       <div
-        className="w-12 h-12 rounded-full flex-shrink-0"
+        className="w-12 h-12 rounded-full shrink-0
+"
         style={{ background: t.surfaceSoft }}
       />
       <div className="flex-1 min-w-0 space-y-2">
@@ -54,7 +55,8 @@ function ChatBubbleSkeleton({
     >
       {!isMe && (
         <div
-          className="w-7 h-7 rounded-full mr-2 flex-shrink-0 self-end"
+          className="w-7 h-7 rounded-full mr-2 shrink-0
+ self-end"
           style={{ background: t.surfaceSoft }}
         />
       )}
@@ -124,7 +126,8 @@ export function ChatThreadSkeleton() {
     >
       {/* Header */}
       <div
-        className="flex items-center gap-3 px-4 py-3 animate-pulse flex-shrink-0"
+        className="flex items-center gap-3 px-4 py-3 animate-pulse shrink-0
+"
         style={{
           background: t.card,
           borderBottom: `1px solid ${t.border}`,
@@ -162,7 +165,8 @@ export function ChatThreadSkeleton() {
           />
           <div className="flex gap-3">
             <div
-              className="w-12 h-12 rounded-xl flex-shrink-0"
+              className="w-12 h-12 rounded-xl shrink-0
+"
               style={{ background: t.surfaceSoft }}
             />
             <div className="flex-1 space-y-2">
@@ -188,14 +192,16 @@ export function ChatThreadSkeleton() {
 
       {/* Input skeleton */}
       <div
-        className="px-3 py-3 flex items-center gap-2 flex-shrink-0 animate-pulse"
+        className="px-3 py-3 flex items-center gap-2 shrink-0
+ animate-pulse"
         style={{
           background: t.card,
           borderTop: `1px solid ${t.border}`,
         }}
       >
         <div
-          className="w-9 h-9 rounded-full flex-shrink-0"
+          className="w-9 h-9 rounded-full shrink-0
+"
           style={{ background: t.surfaceSoft }}
         />
         <div
@@ -203,7 +209,8 @@ export function ChatThreadSkeleton() {
           style={{ background: t.surfaceSoft }}
         />
         <div
-          className="w-9 h-9 rounded-full flex-shrink-0"
+          className="w-9 h-9 rounded-full shrink-0
+"
           style={{ background: t.surfaceSoft }}
         />
       </div>
