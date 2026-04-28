@@ -541,18 +541,30 @@ export default function DashboardClient({
                 <span className="material-symbols-outlined text-[14px]">assignment_return</span>Initiate Return
               </button>
             )}
-            {req.status === "returning" && canManage && (
-              <button onClick={() => setConfirmScan({ dealId: req.id, title: "Confirm Return", body: "Scan the borrower's QR to finalise the return." })}
-                className="flex-1 bg-secondary text-on-secondary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1">
-                <span className="material-symbols-outlined text-[14px]">qr_code_scanner</span>Scan Return QR
-              </button>
-            )}
             {req.status === "returning" && isBorrower && (
-              <button onClick={() => setShowQr(req.id)}
-                className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1">
-                <span className="material-symbols-outlined text-[14px]">qr_code_2</span>Show Return QR
-              </button>
-            )}
+              <button onClick={() => setConfirmScan({ dealId: req.id, title: "Confirm Return", body: "Scan the lender's QR to finalise the return.",
+                })
+              }
+              className="flex-1 bg-secondary text-on-secondary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1"
+            >
+              <span className="material-symbols-outlined text-[14px]">
+                qr_code_scanner
+              </span>
+              Scan Lender QR
+            </button>
+          )}
+
+          {req.status === "returning" && isLender && (
+            <button
+              onClick={() => setShowQr(req.id)}
+              className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform flex items-center justify-center gap-1"
+            >
+              <span className="material-symbols-outlined text-[14px]">
+                qr_code_2
+              </span>
+              Show Return QR
+            </button>
+          )}
             {["pending", "accepted", "rented", "returning"].includes(req.status ?? "") && (
               <button onClick={() => handleMessageUser(req)}
                 className="border border-outline-variant/20 text-secondary py-2.5 px-3 rounded-xl text-xs font-bold active:scale-95 transition-transform flex items-center gap-1">
@@ -730,7 +742,10 @@ export default function DashboardClient({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] overflow-y-auto w-full">
+    <div
+  className="h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)] overflow-y-auto hide-scrollbar w-full"
+  id="dashboard-scroll"
+>
       {showQr && <QRModal dealId={showQr} onClose={() => setShowQr(null)} />}
       {showScanner && <ScannerModal onClose={() => setShowScanner(null)} />}
       <ScanConfirmSheet

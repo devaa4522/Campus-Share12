@@ -306,6 +306,8 @@ export default function TasksClient({
         setClaimTarget(null);
         return;
       }
+      
+      
 
       toast.success("You're helping! Check your dashboard for details.");
       // Remove the task immediately from the feed — it's no longer "open"

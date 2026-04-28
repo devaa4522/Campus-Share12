@@ -354,7 +354,7 @@ export default function NotificationsClient() {
 
         {/* Filter pills — ONLY this scrolls horizontally */}
         <div
-          className="flex gap-2 overflow-x-auto scrollbar-none -mx-5 px-5 pb-0.5"
+          className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 pb-0.5"
           style={{ touchAction: 'pan-x' }}
         >
           {FILTERS.map((f) => {

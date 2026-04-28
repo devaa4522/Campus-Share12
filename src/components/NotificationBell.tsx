@@ -328,7 +328,7 @@ export function NotificationBell() {
             </AnimatePresence>
 
             {/* List */}
-            <div className="overflow-y-auto flex-1 scrollbar-none">
+            <div className="overflow-y-auto no-scrollbar flex-1 -none">
               {!mounted || isLoading ? (
                 <div className="p-5 space-y-4">
                   {[...Array(4)].map((_, i) => (

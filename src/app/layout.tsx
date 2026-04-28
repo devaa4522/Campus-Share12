@@ -69,7 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
         />
       </head>
-      <body className="flex flex-col min-h-[100dvh] overflow-x-hidden bg-surface text-on-surface font-body">
+      <body className="flex flex-col min-h-dvh overflow-x-hidden bg-surface text-on-surface font-body">
         {/*
           NotificationsProvider wraps everything so both NotificationBell
           (in TopNav) and NotificationsClient (in /notifications page) share
