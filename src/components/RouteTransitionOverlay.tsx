@@ -112,7 +112,7 @@ export function RouteTransitionOverlay() {
   if (!pending) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-surface text-on-surface">
+    <div className="fixed left-0 right-0 top-16 bottom-0 md:top-20 z-40 bg-surface text-on-surface overflow-hidden">
       <PageSkeleton name={pending.name} variant={pending.variant} />
     </div>
   );
