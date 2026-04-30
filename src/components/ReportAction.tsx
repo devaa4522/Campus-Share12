@@ -52,11 +52,11 @@ export default function ReportAction({
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#000a1e]/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-primary/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl max-w-md w-full shadow-2xl overflow-hidden border border-outline-variant/30">
             <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low">
-              <h2 className="text-xl font-bold text-[#000a1e] font-headline">Report Issue</h2>
-              <button onClick={() => setIsOpen(false)} className="text-outline hover:text-[#000a1e] transition-colors">
+              <h2 className="text-xl font-bold text-primary font-headline">Report Issue</h2>
+              <button onClick={() => setIsOpen(false)} className="text-outline hover:text-primary transition-colors">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -68,19 +68,19 @@ export default function ReportAction({
                 <button 
                   disabled={loading}
                   onClick={() => handleReport("Inaccurate Listing")}
-                  className="w-full text-left px-4 py-3 rounded-lg border border-outline-variant/30 hover:bg-surface-container hover:border-[#000a1e]/30 transition-all flex items-center justify-between group disabled:opacity-50"
+                  className="w-full text-left px-4 py-3 rounded-lg border border-outline-variant/30 hover:bg-surface-container hover:border-primary/30 transition-all flex items-center justify-between group disabled:opacity-50"
                 >
-                  <span className="text-sm font-semibold text-[#000a1e]">Inaccurate Listing</span>
-                  <span className="material-symbols-outlined text-outline group-hover:text-[#000a1e]">chevron_right</span>
+                  <span className="text-sm font-semibold text-primary">Inaccurate Listing</span>
+                  <span className="material-symbols-outlined text-outline group-hover:text-primary">chevron_right</span>
                 </button>
                 
                 <button 
                   disabled={loading}
                   onClick={() => handleReport("Unresponsive")}
-                  className="w-full text-left px-4 py-3 rounded-lg border border-outline-variant/30 hover:bg-surface-container hover:border-[#000a1e]/30 transition-all flex items-center justify-between group disabled:opacity-50"
+                  className="w-full text-left px-4 py-3 rounded-lg border border-outline-variant/30 hover:bg-surface-container hover:border-primary/30 transition-all flex items-center justify-between group disabled:opacity-50"
                 >
-                  <span className="text-sm font-semibold text-[#000a1e]">Unresponsive</span>
-                  <span className="material-symbols-outlined text-outline group-hover:text-[#000a1e]">chevron_right</span>
+                  <span className="text-sm font-semibold text-primary">Unresponsive</span>
+                  <span className="material-symbols-outlined text-outline group-hover:text-primary">chevron_right</span>
                 </button>
                 
                 <button 
@@ -99,7 +99,7 @@ export default function ReportAction({
             </div>
             
             <div className="p-4 bg-surface-container-low flex justify-end">
-              <button disabled={loading} onClick={() => setIsOpen(false)} className="px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest text-[#000a1e] hover:bg-surface-container-highest transition-colors">
+              <button disabled={loading} onClick={() => setIsOpen(false)} className="px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest text-primary hover:bg-surface-container-highest transition-colors">
                 Cancel
               </button>
             </div>

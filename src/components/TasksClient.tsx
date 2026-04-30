@@ -75,7 +75,7 @@ function ClaimSheet({
   if (!task) return null;
   const dl = deadlineLabel(task.deadline);
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[#000a1e]/60 backdrop-blur-sm" onClick={onCancel}>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-primary/60 backdrop-blur-sm" onClick={onCancel}>
       <div className="bg-surface-container-lowest w-full max-w-lg rounded-t-3xl p-6 pb-10 shadow-2xl border-t border-outline-variant/10" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div className="w-10 h-1 bg-outline-variant/40 rounded-full mx-auto mb-5" />
 

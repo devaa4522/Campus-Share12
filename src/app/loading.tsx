@@ -3,12 +3,12 @@ export default function Loading() {
     <div className="flex flex-col items-center justify-center min-h-full pt-24 pb-20 px-6 max-w-7xl mx-auto w-full">
       <section className="w-full max-w-4xl bg-surface-container-lowest rounded-3xl p-8 shadow-[0px_12px_32px_rgba(0,10,30,0.06)] overflow-hidden relative group border border-outline-variant/10">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="font-headline text-lg font-bold text-[#000a1e]">Campus Share</h3>
+          <h3 className="font-headline text-lg font-bold text-primary">Campus Share</h3>
           <span className="material-symbols-outlined text-on-surface-variant text-sm">grid_view</span>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2 h-40 bg-surface-container-highest animate-pulse rounded-xl relative overflow-hidden">
-             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] animate-[shimmer_2s_infinite]"></div>
+             <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent translate-x-full animate-[shimmer_2s_infinite]"></div>
           </div>
           <div className="h-32 bg-surface-container-highest/60 animate-pulse rounded-xl"></div>
           <div className="h-32 bg-surface-container-highest/60 animate-pulse rounded-xl"></div>

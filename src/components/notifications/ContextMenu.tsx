@@ -42,7 +42,7 @@ export function ContextMenu({ x, y, actions, onClose }: ContextMenuProps) {
         animate={{ opacity: 1, scale: 1,    y: 0  }}
         exit={{   opacity: 0, scale: 0.88, y: -6  }}
         transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-        className="fixed z-[201] min-w-[176px] bg-[#000a1e]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+        className="fixed z-[201] min-w-[176px] bg-primary/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
         style={{ left: safeX, top: safeY }}
         role="menu"
         aria-label="Notification actions"

@@ -24,7 +24,7 @@ export default function TopNavLinks() {
             prefetch={true}
             className={`font-label text-sm transition-colors ${
               isActive 
-                ? "text-white border-b-2 border-[#006e0c] pb-1 font-bold"
+                ? "text-white border-b-2 border-secondary pb-1 font-bold"
                 : "text-slate-300 hover:text-white font-medium"
             }`}
           >

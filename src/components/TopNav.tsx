@@ -22,7 +22,7 @@ export default async function TopNav() {
   }
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-[#000a1e] border-b border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.3)] h-16 md:h-20 flex items-center transition-all duration-300">
+    <nav className="fixed top-0 w-full z-50 bg-primary border-b border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.3)] h-16 md:h-20 flex items-center transition-all duration-300">
       <div className="flex justify-between items-center px-6 md:px-8 w-full max-w-7xl mx-auto">
         <div className="flex-1">
           <Link

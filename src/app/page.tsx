@@ -28,7 +28,7 @@ export default async function HomePage() {
     <div className="min-h-full">
       {/* Hero Section */}
       <section
-        className="relative mb-12 rounded-[2rem] overflow-hidden min-h-[420px] flex flex-col justify-center items-center text-center px-6 mx-4 md:mx-6 mt-8"
+        className="relative mb-12 rounded-4xl overflow-hidden min-h-105 flex flex-col justify-center items-center text-center px-6 mx-4 md:mx-6 mt-8"
         style={{ background: "linear-gradient(to bottom right, #000a1e, #0f1c30)" }}
       >
         <div className="relative z-10 max-w-2xl">

@@ -61,7 +61,7 @@ export function SingleNotifRow({
               flex gap-3.5 select-none cursor-pointer transition-colors duration-150
               hover:bg-surface-container-low/60 active:bg-surface-container-low
               ${compact ? 'px-7 py-3' : 'px-5 py-4'}
-              ${!notif.is_read ? 'border-l-[3px] border-[#006e0c]' : 'border-l-[3px] border-transparent'}
+              ${!notif.is_read ? 'border-l-[3px] border-secondary' : 'border-l-[3px] border-transparent'}
             `}
             style={{
               background: notif.is_read ? 'transparent' : cfg.bg,

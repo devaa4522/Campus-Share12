@@ -107,13 +107,13 @@ export default function HubClient({ userId }: { userId: string }) {
               {/* Enhanced Search Bar */}
               <div className="relative flex-grow group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <span className="material-symbols-outlined text-white/50 group-focus-within:text-[#006e0c] transition-colors">search</span>
+                  <span className="material-symbols-outlined text-white/50 group-focus-within:text-secondary transition-colors">search</span>
                 </div>
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && fetchItems()}
-                  className="block w-full pl-12 pr-4 py-4 bg-white/10 border border-white/20 rounded-xl focus:ring-2 focus:ring-[#006e0c] focus:bg-white/15 outline-none transition-all duration-300 text-lg placeholder:text-white/40 text-white shadow-sm font-body"
+                  className="block w-full pl-12 pr-4 py-4 bg-white/10 border border-white/20 rounded-xl focus:ring-2 focus:ring-secondary focus:bg-white/15 outline-none transition-all duration-300 text-lg placeholder:text-white/40 text-white shadow-sm font-body"
                   placeholder="Search journals, supplies, or scholars..."
                   type="text"
                 />
@@ -121,7 +121,7 @@ export default function HubClient({ userId }: { userId: string }) {
               <button
                 type="button"
                 onClick={fetchItems}
-                className="px-8 py-4 bg-[#006e0c] hover:bg-[#006e0c]/90 text-white font-bold rounded-xl transition-all active:scale-95 font-body uppercase tracking-wider"
+                className="px-8 py-4 bg-secondary hover:bg-secondary/90 text-white font-bold rounded-xl transition-all active:scale-95 font-body uppercase tracking-wider"
               >
                 Search
               </button>
@@ -134,7 +134,7 @@ export default function HubClient({ userId }: { userId: string }) {
           </div>
 
           {/* Background Decoration */}
-          <div className="absolute -right-20 -top-20 w-80 h-80 bg-[#006e0c]/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute -right-20 -top-20 w-80 h-80 bg-secondary/10 rounded-full blur-3xl pointer-events-none"></div>
         </div>
       </header>
 
@@ -151,8 +151,8 @@ export default function HubClient({ userId }: { userId: string }) {
                     key={dept}
                     onClick={() => setActiveDepartment(isActive ? 'All' : dept)}
                     className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors active:scale-95 ${isActive
-                        ? 'border-[#006e0c] bg-[#006e0c]/10 text-[#006e0c]'
-                        : 'border-outline-variant/20 bg-surface-container-lowest text-on-surface-variant hover:border-[#006e0c] hover:text-[#006e0c]'
+                        ? 'border-secondary bg-secondary/10 text-secondary'
+                        : 'border-outline-variant/20 bg-surface-container-lowest text-on-surface-variant hover:border-secondary hover:text-secondary'
                       }`}
                   >
                     {dept}
@@ -165,20 +165,20 @@ export default function HubClient({ userId }: { userId: string }) {
           <section>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-headline text-xl font-bold">Min. Karma</h3>
-              <span className="text-[#006e0c] font-bold text-sm">{minKarma}+</span>
+              <span className="text-secondary font-bold text-sm">{minKarma}+</span>
             </div>
             <input
-              className="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-[#006e0c]"
+              className="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-secondary"
               max="1000" min="0" step="10" type="range"
               value={minKarma}
               onChange={(e) => setMinKarma(parseInt(e.target.value))}
             />
           </section>
 
-          <section className="p-6 rounded-xl bg-[#000a1e] text-white shadow-lg border border-white/5">
+          <section className="p-6 rounded-xl bg-primary text-white shadow-lg border border-white/5">
             <h4 className="font-headline text-lg mb-2 font-bold">Academic Ledger</h4>
             <p className="text-sm opacity-70 mb-4 leading-relaxed">Exchange research credits for institutional access or mentorship.</p>
-            <button onClick={() => router.push('/dashboard')} className="w-full py-3 bg-[#006e0c] rounded-lg font-bold text-sm uppercase tracking-widest hover:opacity-90 transition-opacity active:scale-95">
+            <button onClick={() => router.push('/dashboard')} className="w-full py-3 bg-secondary rounded-lg font-bold text-sm uppercase tracking-widest hover:opacity-90 transition-opacity active:scale-95">
               View Wallet
             </button>
           </section>
@@ -188,11 +188,11 @@ export default function HubClient({ userId }: { userId: string }) {
         <div className="lg:col-span-9">
           <div className="flex items-baseline justify-between mb-8 border-b border-outline-variant/10 pb-4">
             <p className="text-on-surface-variant text-sm">
-              <span className="font-bold text-[#000a1e]">{visibleItems.length}</span> active research match{visibleItems.length !== 1 ? 'es' : ''}
+              <span className="font-bold text-primary">{visibleItems.length}</span> active research match{visibleItems.length !== 1 ? 'es' : ''}
             </p>
             <div className="flex gap-2">
-              <span onClick={() => setIsListView(false)} className={`material-symbols-outlined p-2 rounded-lg cursor-pointer active:scale-95 text-sm transition-colors ${!isListView ? 'bg-[#000a1e] text-white' : 'text-outline-variant hover:bg-surface-container-low'}`}>grid_view</span>
-              <span onClick={() => setIsListView(true)} className={`material-symbols-outlined p-2 rounded-lg cursor-pointer active:scale-95 text-sm transition-colors ${isListView ? 'bg-[#000a1e] text-white' : 'text-outline-variant hover:bg-surface-container-low'}`}>list</span>
+              <span onClick={() => setIsListView(false)} className={`material-symbols-outlined p-2 rounded-lg cursor-pointer active:scale-95 text-sm transition-colors ${!isListView ? 'bg-primary text-white' : 'text-outline-variant hover:bg-surface-container-low'}`}>grid_view</span>
+              <span onClick={() => setIsListView(true)} className={`material-symbols-outlined p-2 rounded-lg cursor-pointer active:scale-95 text-sm transition-colors ${isListView ? 'bg-primary text-white' : 'text-outline-variant hover:bg-surface-container-low'}`}>list</span>
             </div>
           </div>
 
@@ -222,7 +222,7 @@ export default function HubClient({ userId }: { userId: string }) {
                 const trustScore = Math.min(100, Math.round((karmaScore / 2000) * 100));
 
                 return (
-                  <div key={item.id} onClick={() => router.push(`/items/${item.id}`)} className={`group bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/20 hover:border-[#006e0c]/50 transition-all duration-300 shadow-sm hover:shadow-xl cursor-pointer flex ${isListView ? 'flex-row items-stretch gap-6' : 'flex-col'}`}>
+                  <div key={item.id} onClick={() => router.push(`/items/${item.id}`)} className={`group bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/20 hover:border-secondary/50 transition-all duration-300 shadow-sm hover:shadow-xl cursor-pointer flex ${isListView ? 'flex-row items-stretch gap-6' : 'flex-col'}`}>
                     <div className={`relative rounded-lg bg-surface-container-low overflow-hidden ${isListView ? 'w-32 md:w-48 h-32 md:h-48 shrink-0' : 'aspect-[4/3] w-full mb-4'}`}>
                       {item.images && item.images[0] ? (
                         <Image 
@@ -242,10 +242,10 @@ export default function HubClient({ userId }: { userId: string }) {
                       {!isListView && (
                         <>
                           <div className="absolute top-2 left-2 flex gap-1.5 z-10">
-                            <span className="px-2 py-1 bg-[#000a1e]/90 text-white text-[10px] font-bold uppercase tracking-wider rounded backdrop-blur-md">{matchedDept}</span>
+                            <span className="px-2 py-1 bg-primary/90 text-white text-[10px] font-bold uppercase tracking-wider rounded backdrop-blur-md">{matchedDept}</span>
                           </div>
                           <div className="absolute top-2 right-2 z-10">
-                            <span className="px-2 py-1 bg-white/95 text-[#000a1e] text-[10px] font-black rounded shadow-sm flex items-center gap-1">⭐ {trustScore}% Trust</span>
+                            <span className="px-2 py-1 bg-white/95 text-primary text-[10px] font-black rounded shadow-sm flex items-center gap-1">⭐ {trustScore}% Trust</span>
                           </div>
                         </>
                       )}
@@ -255,11 +255,11 @@ export default function HubClient({ userId }: { userId: string }) {
                       <div>
                         {isListView && (
                           <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <span className="px-2 py-1 bg-[#000a1e]/90 text-white text-[10px] font-bold uppercase tracking-wider rounded backdrop-blur-md">{matchedDept}</span>
-                            <span className="px-2 py-1 bg-[#006e0c]/10 text-[#006e0c] text-[10px] font-black rounded shadow-sm flex items-center gap-1">⭐ {trustScore}% Trust</span>
+                            <span className="px-2 py-1 bg-primary/90 text-white text-[10px] font-bold uppercase tracking-wider rounded backdrop-blur-md">{matchedDept}</span>
+                            <span className="px-2 py-1 bg-secondary/10 text-secondary text-[10px] font-black rounded shadow-sm flex items-center gap-1">⭐ {trustScore}% Trust</span>
                           </div>
                         )}
-                        <h4 className="font-headline text-lg font-bold mb-2 group-hover:text-[#006e0c] transition-colors leading-snug truncate">{item.title}</h4>
+                        <h4 className="font-headline text-lg font-bold mb-2 group-hover:text-secondary transition-colors leading-snug truncate">{item.title}</h4>
                         <p className={`text-on-surface-variant text-sm leading-relaxed ${isListView ? 'line-clamp-2 mb-0' : 'mb-4 line-clamp-2'}`}>{item.description}</p>
                       </div>
 
@@ -278,9 +278,9 @@ export default function HubClient({ userId }: { userId: string }) {
                               <span className="material-symbols-outlined text-[16px]">person</span>
                             </div>
                           )}
-                          <span className="text-xs font-semibold text-[#000a1e] truncate max-w-[100px]">{item.profiles?.full_name?.split(' ')[0] || "Scholar"}</span>
+                          <span className="text-xs font-semibold text-primary truncate max-w-[100px]">{item.profiles?.full_name?.split(' ')[0] || "Scholar"}</span>
                         </div>
-                        <span className="text-[10px] font-bold text-[#006e0c] bg-[#006e0c]/5 px-2 py-1 rounded">{item.profiles?.karma_score || 0} Karma</span>
+                        <span className="text-[10px] font-bold text-secondary bg-secondary/5 px-2 py-1 rounded">{item.profiles?.karma_score || 0} Karma</span>
                       </div>
                     </div>
                   </div>

@@ -3,7 +3,7 @@
 
 
 import {
-  useEffect, useState, useRef, useCallback, useMemo,
+  useEffect, useState, useRef, useMemo,
   type ChangeEvent,
 } from "react";
 import { createClient }      from "@/utils/supabase/client";

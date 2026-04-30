@@ -8,7 +8,7 @@ import {
 import { createClient }      from "@/utils/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useRouter }         from "next/navigation";
-import Image                 from "next/image";
+// import Image                 from "next/image";
 import toast                 from "react-hot-toast";
 import QRCode                from "react-qr-code";
 import { Html5Qrcode }       from "html5-qrcode";

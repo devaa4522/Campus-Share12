@@ -113,13 +113,13 @@ export function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
             transition={{ type: 'spring', stiffness: 380, damping: 28 }}
             className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none
                        flex items-center gap-2 px-4 py-1.5 rounded-full
-                       bg-[#000a1e]/90 backdrop-blur-md border border-white/10 shadow-xl"
+                       bg-primary/90 backdrop-blur-md border border-white/10 shadow-xl"
           >
             {refreshing ? (
               <motion.span
                 animate={{ rotate: 360 }}
                 transition={{ duration: 0.85, repeat: Infinity, ease: 'linear' }}
-                className="material-symbols-outlined text-[16px] text-[#006e0c]"
+                className="material-symbols-outlined text-[16px] text-secondary"
               >
                 sync
               </motion.span>

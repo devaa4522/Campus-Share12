@@ -106,7 +106,26 @@ export default function BottomNav() {
     };
   }, [isHidden, pathname]);
 
+  const scrollCurrentPageToTop = () => {
+  if (pathname.startsWith("/dashboard")) {
+    const dashboardScroll = document.getElementById("dashboard-scroll");
+
+    if (dashboardScroll) {
+      dashboardScroll.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+      return;
+    }
+  }
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+};
   if (isHidden) return null;
+
 
   return (
     <nav
@@ -133,9 +152,16 @@ export default function BottomNav() {
               key={item.href}
               href={item.href}
               prefetch
+              onClick={(e) => {
+                if (isActive) {
+                  e.preventDefault();
+                  scrollCurrentPageToTop();
+                }
+              }}
               className="relative flex flex-col items-center justify-center gap-0.5 w-full h-full rounded-xl transition-all active:scale-90"
               style={{
                 color: isActive ? t.nav.active : t.nav.inactive,
+                
               }}
             >
               {item.type === "image" ? (
@@ -148,6 +174,7 @@ export default function BottomNav() {
                   style={{
                     opacity: isActive ? 1 : 0.55,
                     transform: isActive ? "scale(1.08)" : "scale(1)",
+                    filter: isActive ? "none" : "grayscale(1)",
                   }}
                 />
               ) : (

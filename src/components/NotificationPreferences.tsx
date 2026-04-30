@@ -47,7 +47,7 @@ export default function NotificationPreferences() {
 
   if (!pushSupported) {
     return (
-      <div className="bg-[#000a1e]/50 rounded-2xl p-6 border border-white/5">
+      <div className="bg-primary/50 rounded-2xl p-6 border border-white/5">
         <div className="flex items-center gap-3 text-white/30">
           <span className="material-symbols-outlined text-2xl">browser_not_supported</span>
           <div>
@@ -62,14 +62,14 @@ export default function NotificationPreferences() {
   return (
     <div className="space-y-4">
       {/* OS-Level Push Toggle */}
-      <div className="bg-[#000a1e] rounded-2xl p-6 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden group">
-        <div className="absolute -right-8 -top-8 w-32 h-32 bg-[#006e0c]/5 rounded-full blur-3xl group-hover:bg-[#006e0c]/10 transition-colors duration-500" />
+      <div className="bg-primary rounded-2xl p-6 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden group">
+        <div className="absolute -right-8 -top-8 w-32 h-32 bg-secondary/5 rounded-full blur-3xl group-hover:bg-secondary/10 transition-colors duration-500" />
         
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#006e0c] text-xl">
+                <span className="material-symbols-outlined text-secondary text-xl">
                   notifications_active
                 </span>
                 OS Push Notifications
@@ -93,7 +93,7 @@ export default function NotificationPreferences() {
                 whileTap={{ scale: 0.95 }}
                 onClick={handleEnablePush}
                 disabled={isEnabling}
-                className="px-5 py-2.5 bg-gradient-to-r from-[#006e0c] to-[#008f10] text-white text-sm font-black rounded-xl shadow-lg shadow-[#006e0c]/30 hover:shadow-[#006e0c]/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2.5 bg-gradient-to-r from-secondary to-[#008f10] text-white text-sm font-black rounded-xl shadow-lg shadow-secondary/30 hover:shadow-secondary/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isEnabling ? (
                   <>
@@ -111,10 +111,10 @@ export default function NotificationPreferences() {
           </div>
 
           {pushEnabled && (
-            <div className="flex items-center gap-2 bg-[#006e0c]/10 border border-[#006e0c]/20 rounded-lg p-3 mt-3">
-              <span className="material-symbols-outlined text-[#006e0c] text-lg">check_circle</span>
+            <div className="flex items-center gap-2 bg-secondary/10 border border-secondary/20 rounded-lg p-3 mt-3">
+              <span className="material-symbols-outlined text-secondary text-lg">check_circle</span>
               <p className="text-xs text-white/70 font-medium">
-                Push notifications are <span className="text-[#006e0c] font-bold">active</span> on this device
+                Push notifications are <span className="text-secondary font-bold">active</span> on this device
               </p>
             </div>
           )}
@@ -123,7 +123,7 @@ export default function NotificationPreferences() {
 
       {/* Notification Type Preferences */}
       {pushEnabled && (
-        <div className="bg-[#000a1e] rounded-2xl p-6 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+        <div className="bg-primary rounded-2xl p-6 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
           <h3 className="text-base font-bold text-white mb-1">Notification Types</h3>
           <p className="text-[11px] font-bold text-white/30 uppercase tracking-widest mb-5">
             Choose what alerts you want
@@ -134,12 +134,12 @@ export default function NotificationPreferences() {
               <div 
                 key={key} 
                 className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-300 ${
-                  enabled ? 'bg-[#006e0c]/5 border-[#006e0c]/20' : 'bg-white/5 border-white/5'
+                  enabled ? 'bg-secondary/5 border-secondary/20' : 'bg-white/5 border-white/5'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                    enabled ? 'bg-[#006e0c] text-white' : 'bg-white/10 text-white/40'
+                    enabled ? 'bg-secondary text-white' : 'bg-white/10 text-white/40'
                   }`}>
                     <span className="material-symbols-outlined text-[18px]">
                       {PREF_ICONS[key] || "notifications"}
@@ -155,7 +155,7 @@ export default function NotificationPreferences() {
                 <button
                   onClick={() => toggle(key as keyof typeof prefs)}
                   className={`w-10 h-5 rounded-full transition-all duration-500 relative ${
-                    enabled ? 'bg-[#006e0c]' : 'bg-white/10'
+                    enabled ? 'bg-secondary' : 'bg-white/10'
                   }`}
                 >
                   <motion.div 

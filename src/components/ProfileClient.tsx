@@ -154,7 +154,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
         {!isEditing && (
           <button
             onClick={() => setIsEditing(true)}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-[#000a1e] text-white rounded-lg font-bold shadow-md hover:bg-[#000a1e]/90 transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-lg font-bold shadow-md hover:bg-primary/90 transition-all active:scale-95"
           >
             <span className="material-symbols-outlined text-[18px]">edit</span>
             Edit Portfolio
@@ -181,7 +181,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
             <div className="flex flex-col md:flex-row md:items-center gap-3 justify-center md:justify-start">
               <h2 className="font-headline text-2xl font-semibold bg-transparent border-none focus:ring-0 p-0 text-center md:text-left">{fullName || "Your Name"}</h2>
               {profile.is_verified && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#006e0c]/10 text-[#006e0c] rounded-full text-xs font-bold uppercase tracking-wider border border-[#006e0c]/20">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary/10 text-secondary rounded-full text-xs font-bold uppercase tracking-wider border border-secondary/20">
                   <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
                   Verified Student
                 </div>
@@ -191,12 +191,12 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
             <p className="text-on-surface-variant text-sm italic py-2">{profile.bio ? `"${profile.bio}"` : ""}</p>
             <div className="flex flex-wrap gap-2 justify-center md:justify-start pt-2">
               {profile.department && (
-                <span className="px-3 py-1 bg-surface-container-low text-[#000a1e] text-xs rounded-lg font-bold tracking-wide border border-outline-variant/20 shadow-sm">
+                <span className="px-3 py-1 bg-surface-container-low text-primary text-xs rounded-lg font-bold tracking-wide border border-outline-variant/20 shadow-sm">
                   {profile.department}
                 </span>
               )}
               {profile.year_of_study && (
-                <span className="px-3 py-1 bg-surface-container-low text-[#000a1e] text-xs rounded-lg font-bold tracking-wide border border-outline-variant/20 shadow-sm">
+                <span className="px-3 py-1 bg-surface-container-low text-primary text-xs rounded-lg font-bold tracking-wide border border-outline-variant/20 shadow-sm">
                   {profile.year_of_study}
                 </span>
               )}
@@ -205,19 +205,19 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
         </div>
 
         {/* Trust Score & Badges Card */}
-        <div className="md:col-span-4 bg-[#000a1e] rounded-xl p-8 flex flex-col justify-between text-white overflow-hidden relative shadow-[0_12px_32px_rgba(0,10,30,0.15)]">
+        <div className="md:col-span-4 bg-primary rounded-xl p-8 flex flex-col justify-between text-white overflow-hidden relative shadow-[0_12px_32px_rgba(0,10,30,0.15)]">
           <div className="relative z-10">
             <h3 className="font-headline text-xl mb-6 font-bold flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#006e0c]">verified</span>
+              <span className="material-symbols-outlined text-secondary">verified</span>
               Campus Trust
             </h3>
             <div className="space-y-5">
               <div className="flex justify-between items-baseline">
                 <span className="opacity-80 text-sm font-medium tracking-wide">Reliability Score</span>
-                <span className="font-black text-2xl text-[#006e0c] drop-shadow-sm">{trustScore}%</span>
+                <span className="font-black text-2xl text-secondary drop-shadow-sm">{trustScore}%</span>
               </div>
               <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
-                <div className="bg-[#006e0c] h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${trustScore}%` }} />
+                <div className="bg-secondary h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${trustScore}%` }} />
               </div>
               <div className="p-4 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm">
                 <p className="text-xs opacity-80 leading-relaxed font-medium">
@@ -236,9 +236,9 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
         </div>
 
         {/* --- Trust & Safety Console (Private) --- */}
-        <div className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-[0_12px_32px_rgba(0,10,30,0.06)] border-t-4 border-[#006e0c]">
-          <h2 className="text-2xl font-headline font-bold mb-6 text-[#000a1e] flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#006e0c]">admin_panel_settings</span>
+        <div className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-[0_12px_32px_rgba(0,10,30,0.06)] border-t-4 border-secondary">
+          <h2 className="text-2xl font-headline font-bold mb-6 text-primary flex items-center gap-2">
+            <span className="material-symbols-outlined text-secondary">admin_panel_settings</span>
             Trust & Safety Console
           </h2>
 
@@ -246,14 +246,14 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
             {/* Sanctions & Ban Status */}
             <div className="space-y-4">
               {isBanned && (
-                <div className="flex items-start gap-4 p-5 bg-[#ba1a1a]/10 rounded-xl border border-[#ba1a1a]/20">
-                  <span className="material-symbols-outlined text-[#ba1a1a] text-3xl">gavel</span>
+                <div className="flex items-start gap-4 p-5 bg-error/10 rounded-xl border border-error/20">
+                  <span className="material-symbols-outlined text-error text-3xl">gavel</span>
                   <div>
-                    <h4 className="font-bold text-[#ba1a1a] mb-1">Account Shadowbanned</h4>
+                    <h4 className="font-bold text-error mb-1">Account Shadowbanned</h4>
                     <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
                       Your listings are temporarily hidden from the Hub due to multiple community reports.
                     </p>
-                    <div className="inline-flex items-center gap-2 bg-[#ba1a1a] text-white px-3 py-1.5 rounded text-xs font-bold tracking-widest uppercase">
+                    <div className="inline-flex items-center gap-2 bg-error text-white px-3 py-1.5 rounded text-xs font-bold tracking-widest uppercase">
                       <span className="material-symbols-outlined text-[14px]">timer</span>
                       Lifts in {timeLeftStr}
                     </div>
@@ -264,7 +264,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
 
             {/* Flags Gauge */}
             <div className="bg-surface-container-low p-6 rounded-xl border border-outline-variant/20">
-              <h3 className="text-sm font-bold mb-4 flex items-center gap-2 text-[#000a1e]">
+              <h3 className="text-sm font-bold mb-4 flex items-center gap-2 text-primary">
                 <span className="material-symbols-outlined text-outline text-[20px]">flag</span>
                 Active Safety Flags
               </h3>
@@ -273,7 +273,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
                 const flagsCount = profile.flags_count ?? 0;
                 const maxFlags = 12;
                 const fillWidth = Math.min(100, (flagsCount / maxFlags) * 100);
-                let colorClass = "bg-[#006e0c]";
+                let colorClass = "bg-secondary";
                 if (flagsCount >= 3 && flagsCount <= 5) colorClass = "bg-[#eab308]";
                 if (flagsCount >= 6) colorClass = "bg-[#ba1a1a]";
 
@@ -306,15 +306,15 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
 
         {/* --- Category Reliability --- */}
         <div className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-[0_12px_32px_rgba(0,10,30,0.06)] border border-outline-variant/20 mt-2">
-          <h2 className="text-2xl font-headline font-bold mb-6 text-[#000a1e] flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#006e0c]">workspace_premium</span>
+          <h2 className="text-2xl font-headline font-bold mb-6 text-primary flex items-center gap-2">
+            <span className="material-symbols-outlined text-secondary">workspace_premium</span>
             Category Reliability
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {reliableCategories.length > 0 ? (
               reliableCategories.map((cat, idx) => (
                 <div key={idx} className="p-5 bg-surface-container-low rounded-xl border border-outline-variant/30 flex flex-col gap-2 items-center text-center">
-                  <span className="text-xl font-bold text-[#000a1e]">{cat.count}</span>
+                  <span className="text-xl font-bold text-primary">{cat.count}</span>
                   <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">{cat.name} Tracker</span>
                 </div>
               ))
@@ -328,7 +328,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
 
         {/* --- Recent Exchanges --- */}
         <div className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-[0_12px_32px_rgba(0,10,30,0.06)] border border-outline-variant/20 mt-2">
-          <h2 className="text-2xl font-headline font-bold mb-6 text-[#000a1e] flex items-center gap-2">
+          <h2 className="text-2xl font-headline font-bold mb-6 text-primary flex items-center gap-2">
             <span className="material-symbols-outlined text-outline">history</span>
             Recent Exchanges
           </h2>
@@ -341,11 +341,11 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
                       <span className="material-symbols-outlined">inventory_2</span>
                     </div>
                     <div>
-                      <h4 className="font-bold text-[#000a1e] text-sm">{excl.items?.title || "Unknown Listing"}</h4>
+                      <h4 className="font-bold text-primary text-sm">{excl.items?.title || "Unknown Listing"}</h4>
                       <p className="text-xs text-on-surface-variant">{new Date(excl.created_at).toLocaleDateString()}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1 bg-[#006e0c]/10 text-[#006e0c] rounded text-[11px] font-bold uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 px-3 py-1 bg-secondary/10 text-secondary rounded text-[11px] font-bold uppercase tracking-wider">
                     <span className="material-symbols-outlined text-[14px]">check_circle</span>
                     Successful Trade
                   </div>
@@ -377,7 +377,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
               </div>
             </div>
             <div className="flex justify-between items-center bg-surface-container-low p-3 rounded-lg">
-              <span className="text-xs font-bold text-[#000a1e]/60 uppercase tracking-wider">{profilePublic ? "Public" : "Private"}</span>
+              <span className="text-xs font-bold text-primary/60 uppercase tracking-wider">{profilePublic ? "Public" : "Private"}</span>
               <button
                 type="button"
                 onClick={togglePublicProfile}
@@ -393,7 +393,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
         <div className="md:col-span-12 flex justify-center pt-4">
           <button
             onClick={() => setIsSignOutModalOpen(true)}
-            className="text-sm font-medium text-on-surface-variant hover:text-[#ba1a1a] transition-colors flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-[#ba1a1a]/10"
+            className="text-sm font-medium text-on-surface-variant hover:text-error transition-colors flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-error/10"
           >
             <span className="material-symbols-outlined">logout</span>
             Sign out
@@ -405,14 +405,14 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
       {isEditing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" style={{ margin: 0 }}>
           {/* Backdrop */}
-          <div onClick={handleCancel} className="absolute inset-0 bg-[#000a1e]/60 backdrop-blur-sm animate-in fade-in duration-200"></div>
+          <div onClick={handleCancel} className="absolute inset-0 bg-primary/60 backdrop-blur-sm animate-in fade-in duration-200"></div>
           
           {/* Modal Content */}
           <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 border border-outline-variant/20">
             {/* Header */}
             <div className="px-6 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-lowest shrink-0">
-              <h2 className="text-xl font-headline font-bold text-[#000a1e]">Edit Portfolio</h2>
-              <button onClick={handleCancel} className="p-2 text-on-surface-variant hover:text-[#000a1e] hover:bg-surface-container rounded-full transition-colors active:scale-95">
+              <h2 className="text-xl font-headline font-bold text-primary">Edit Portfolio</h2>
+              <button onClick={handleCancel} className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-full transition-colors active:scale-95">
                 <span className="material-symbols-outlined text-xl">close</span>
               </button>
             </div>
@@ -423,7 +423,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
               {/* Avatar & Name Row */}
               <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-outline-variant/10">
                 <div className="relative shrink-0">
-                  <div className="w-32 h-32 rounded-2xl overflow-hidden bg-surface-container-high focus-within:ring-4 focus-within:ring-[#006e0c]/20 transition-all border-4 border-white shadow-sm relative">
+                  <div className="w-32 h-32 rounded-2xl overflow-hidden bg-surface-container-high focus-within:ring-4 focus-within:ring-secondary/20 transition-all border-4 border-white shadow-sm relative">
                     {profile.avatar_url ? (
                       <Image src={profile.avatar_url} alt="Profile" fill sizes="128px" className="object-cover" />
                     ) : (
@@ -432,19 +432,19 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
                       </div>
                     )}
                   </div>
-                  <label className="absolute -bottom-2 -right-2 bg-[#006e0c] text-white p-2 rounded-xl shadow-lg flex items-center justify-center hover:bg-[#006e0c]/90 transition-colors cursor-pointer border-2 border-white transform hover:scale-105 active:scale-95">
+                  <label className="absolute -bottom-2 -right-2 bg-secondary text-white p-2 rounded-xl shadow-lg flex items-center justify-center hover:bg-secondary/90 transition-colors cursor-pointer border-2 border-white transform hover:scale-105 active:scale-95">
                     <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
                     <span className="material-symbols-outlined text-[16px]">edit</span>
                   </label>
                 </div>
                 
                 <div className="flex-1 w-full space-y-2">
-                  <label className="font-headline text-sm font-semibold text-[#000a1e]">Given Name</label>
+                  <label className="font-headline text-sm font-semibold text-primary">Given Name</label>
                   <div className="relative group">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant group-focus-within:text-[#006e0c] transition-colors">person</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant group-focus-within:text-secondary transition-colors">person</span>
                     <input
                       type="text"
-                      className="w-full pl-12 pr-4 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-[#006e0c] focus:ring-1 focus:ring-[#006e0c] focus:bg-white text-[#000a1e] transition-all outline-none font-medium"
+                      className="w-full pl-12 pr-4 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-secondary focus:ring-1 focus:ring-secondary focus:bg-white text-primary transition-all outline-none font-medium"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Your Full Name"
@@ -456,13 +456,13 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Branch */}
                 <div className="space-y-2">
-                  <label className="font-headline text-sm font-semibold text-[#000a1e]">Academic Department</label>
+                  <label className="font-headline text-sm font-semibold text-primary">Academic Department</label>
                   <div className="relative group">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant pointer-events-none group-focus-within:text-[#006e0c] transition-colors">domain</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant pointer-events-none group-focus-within:text-secondary transition-colors">domain</span>
                     <select
                       value={branch}
                       onChange={(e) => setBranch(e.target.value)}
-                      className="w-full pl-12 pr-10 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-[#006e0c] focus:ring-1 focus:ring-[#006e0c] focus:bg-white appearance-none outline-none text-[#000a1e] font-medium transition-all"
+                      className="w-full pl-12 pr-10 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-secondary focus:ring-1 focus:ring-secondary focus:bg-white appearance-none outline-none text-primary font-medium transition-all"
                     >
                       <option value="">Select branch...</option>
                       {branches.map((b) => <option key={b} value={b}>{b}</option>)}
@@ -473,13 +473,13 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
 
                 {/* Year */}
                 <div className="space-y-2">
-                  <label className="font-headline text-sm font-semibold text-[#000a1e]">Academic Year</label>
+                  <label className="font-headline text-sm font-semibold text-primary">Academic Year</label>
                   <div className="relative group">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant pointer-events-none group-focus-within:text-[#006e0c] transition-colors">history_edu</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline-variant pointer-events-none group-focus-within:text-secondary transition-colors">history_edu</span>
                     <select
                       value={yearOfStudy}
                       onChange={(e) => setYearOfStudy(e.target.value)}
-                      className="w-full pl-12 pr-10 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-[#006e0c] focus:ring-1 focus:ring-[#006e0c] focus:bg-white appearance-none outline-none text-[#000a1e] font-medium transition-all"
+                      className="w-full pl-12 pr-10 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-secondary focus:ring-1 focus:ring-secondary focus:bg-white appearance-none outline-none text-primary font-medium transition-all"
                     >
                       <option value="">Select year...</option>
                       {ACADEMIC_YEARS.map((y) => <option key={y.value} value={y.value}>{y.label}</option>)}
@@ -491,13 +491,13 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
                 {/* Bio */}
                 <div className="md:col-span-2 space-y-2 pt-2">
                   <div className="flex justify-between items-center">
-                    <label className="font-headline text-sm font-semibold text-[#000a1e]">Bio & Professional Summary</label>
-                    <span className="text-[11px] text-[#000a1e]/60 font-bold bg-[#000a1e]/5 px-2.5 py-1 rounded-full uppercase tracking-wider">{bio.length}/160</span>
+                    <label className="font-headline text-sm font-semibold text-primary">Bio & Professional Summary</label>
+                    <span className="text-[11px] text-primary/60 font-bold bg-primary/5 px-2.5 py-1 rounded-full uppercase tracking-wider">{bio.length}/160</span>
                   </div>
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value.slice(0, 160))}
-                    className="w-full p-4 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-[#006e0c] focus:ring-1 focus:ring-[#006e0c] focus:bg-white transition-all outline-none resize-none text-[#000a1e] leading-relaxed"
+                    className="w-full p-4 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:border-secondary focus:ring-1 focus:ring-secondary focus:bg-white transition-all outline-none resize-none text-primary leading-relaxed"
                     placeholder="Tell the campus community about your academic focus and goals..."
                     rows={4}
                   />
@@ -509,14 +509,14 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
             {/* Footer */}
             <div className="px-6 py-5 border-t border-outline-variant/20 bg-surface-container-low flex flex-col sm:flex-row items-center justify-between shrink-0 gap-4 sm:gap-0">
               <div className="flex items-center gap-2 text-on-surface-variant w-full sm:w-auto justify-center sm:justify-start">
-                <span className="material-symbols-outlined text-[#006e0c] text-[18px]">lock</span>
-                <span className="text-[11px] font-bold uppercase tracking-widest text-[#000a1e]/60">Privacy Locked</span>
+                <span className="material-symbols-outlined text-secondary text-[18px]">lock</span>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-primary/60">Privacy Locked</span>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                 <button type="button" onClick={handleCancel} className="px-5 py-2.5 rounded-xl font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors text-sm border border-transparent hover:border-outline-variant/30 flex-1 sm:flex-none">
                   Cancel
                 </button>
-                <button type="button" onClick={handleSave} disabled={saving} className="px-8 py-2.5 rounded-xl bg-[#006e0c] hover:bg-[#006e0c]/90 shadow-md hover:shadow-lg text-white font-bold transition-all active:scale-95 text-sm disabled:opacity-50 flex items-center justify-center gap-2 flex-1 sm:flex-none">
+                <button type="button" onClick={handleSave} disabled={saving} className="px-8 py-2.5 rounded-xl bg-secondary hover:bg-secondary/90 shadow-md hover:shadow-lg text-white font-bold transition-all active:scale-95 text-sm disabled:opacity-50 flex items-center justify-center gap-2 flex-1 sm:flex-none">
                   {saving ? (
                     <>
                       <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
@@ -533,17 +533,17 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
 
       {/* Sign Out Confirmation Modal */}
       {isSignOutModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" style={{ margin: 0 }}>
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 sm:p-6" style={{ margin: 0 }}>
           {/* Backdrop */}
-          <div onClick={() => !isSigningOut && setIsSignOutModalOpen(false)} className="absolute inset-0 bg-[#000a1e]/60 backdrop-blur-sm animate-in fade-in duration-200"></div>
+          <div onClick={() => !isSigningOut && setIsSignOutModalOpen(false)} className="absolute inset-0 bg-primary/60 backdrop-blur-sm animate-in fade-in duration-200"></div>
           
           {/* Modal Content */}
           <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col p-8 text-center animate-in fade-in zoom-in-95 duration-200 border border-outline-variant/20">
-            <div className="w-16 h-16 bg-[#ba1a1a]/10 text-[#ba1a1a] rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-error/10 text-error rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-[32px]">logout</span>
             </div>
             
-            <h2 className="text-xl font-headline font-bold text-[#000a1e] mb-2">Sign Out</h2>
+            <h2 className="text-xl font-headline font-bold text-primary mb-2">Sign Out</h2>
             <p className="text-sm text-on-surface-variant leading-relaxed mb-8">
               Are you sure you want to sign out? You will need to log back in to access the Campus Share hub.
             </p>
@@ -561,7 +561,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
                 type="button" 
                 onClick={handleSignOut} 
                 disabled={isSigningOut}
-                className="px-5 py-2.5 flex-1 rounded-xl bg-[#ba1a1a] hover:bg-[#ba1a1a]/90 shadow-md text-white font-bold transition-all active:scale-95 text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                className="px-5 py-2.5 flex-1 rounded-xl bg-error hover:bg-error/90 shadow-md text-white font-bold transition-all active:scale-95 text-sm disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isSigningOut ? (
                   <>

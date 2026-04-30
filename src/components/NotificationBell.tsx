@@ -123,7 +123,7 @@ function PushBanner({
       exit={{   height: 0, opacity: 0 }}
       className="overflow-hidden border-b border-white/6 shrink-0"
     >
-      <div className="px-5 py-3 flex items-center gap-3 bg-[#006e0c]/8">
+      <div className="px-5 py-3 flex items-center gap-3 bg-secondary/8">
         <span className="text-base shrink-0">📲</span>
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-semibold text-white/75">Enable push notifications</p>
@@ -131,7 +131,7 @@ function PushBanner({
         </div>
         <button
           onClick={onEnable}
-          className="shrink-0 bg-[#006e0c] text-white text-[11px] font-bold
+          className="shrink-0 bg-secondary text-white text-[11px] font-bold
                      px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
         >
           Enable
@@ -242,7 +242,7 @@ export function NotificationBell() {
               className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1
                          flex items-center justify-center
                          bg-error text-white text-[10px] font-black
-                         rounded-full border-2 border-[#000a1e]"
+                         rounded-full border-2 border-primary"
             >
               {unreadCount > 99 ? '99+' : unreadCount}
             </motion.span>
@@ -263,7 +263,7 @@ export function NotificationBell() {
               sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-3
               sm:w-[400px]
               flex flex-col max-h-[72vh] rounded-2xl
-              bg-[#000a1e]/96 backdrop-blur-3xl
+              bg-primary/96 backdrop-blur-3xl
               border border-white/8
               shadow-[0_28px_72px_rgba(0,0,0,0.65)]
               overflow-hidden z-[100]
@@ -283,8 +283,8 @@ export function NotificationBell() {
                       initial={{ scale: 0, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{   scale: 0, opacity: 0 }}
-                      className="text-[10px] font-black bg-[#006e0c]/18 text-[#006e0c]
-                                 border border-[#006e0c]/35 px-2 py-0.5 rounded-full
+                      className="text-[10px] font-black bg-secondary/18 text-secondary
+                                 border border-secondary/35 px-2 py-0.5 rounded-full
                                  uppercase tracking-wider"
                     >
                       {unreadCount} new
@@ -297,8 +297,8 @@ export function NotificationBell() {
                 {mounted && unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-[11px] font-bold text-[#006e0c]
-                               hover:text-[#006e0c]/80 transition-colors"
+                    className="text-[11px] font-bold text-secondary
+                               hover:text-secondary/80 transition-colors"
                   >
                     Mark all read
                   </button>
@@ -380,7 +380,7 @@ export function NotificationBell() {
             <div className="shrink-0 border-t border-white/5 bg-white/2">
               <button
                 onClick={() => { setOpen(false); router.push('/notifications'); }}
-                className="w-full py-3 text-[12px] font-bold text-[#006e0c]
+                className="w-full py-3 text-[12px] font-bold text-secondary
                            hover:bg-white/4 transition-colors border-b border-white/4"
               >
                 View full inbox
@@ -402,9 +402,9 @@ export function NotificationBell() {
                   {mounted && !pushEnabled && (
                     <button
                       onClick={handleEnablePush}
-                      className="text-[10px] font-bold text-[#006e0c]
-                                 border border-[#006e0c]/25 px-2.5 py-1 rounded-lg
-                                 bg-[#006e0c]/8 hover:bg-[#006e0c]/15 transition-colors"
+                      className="text-[10px] font-bold text-secondary
+                                 border border-secondary/25 px-2.5 py-1 rounded-lg
+                                 bg-secondary/8 hover:bg-secondary/15 transition-colors"
                     >
                       Enable push
                     </button>

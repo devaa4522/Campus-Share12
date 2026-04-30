@@ -3,7 +3,7 @@ export default function Loading() {
     <div className="flex flex-col pt-24 pb-20 px-6 max-w-7xl mx-auto w-full">
       <section className="w-full bg-surface-container-lowest rounded-3xl p-8 shadow-[0px_12px_32px_rgba(0,10,30,0.06)] overflow-hidden relative group border border-outline-variant/10">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="font-headline text-lg font-bold text-[#000a1e]">Task Marketplace</h3>
+          <h3 className="font-headline text-lg font-bold text-primary">Task Marketplace</h3>
           <span className="material-symbols-outlined text-on-surface-variant text-sm">task_alt</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
