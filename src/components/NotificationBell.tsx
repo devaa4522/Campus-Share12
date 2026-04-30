@@ -8,6 +8,7 @@ import { useNotificationsContext } from '@/components/NotificationsProvider';
 import { AppNotification, TYPE_CONFIG } from '@/types/notifications';
 import { formatNotification, getDeepLink } from '@/lib/notification-utils';
 import { groupByTime } from '@/lib/notification-logic';
+import Link from "next/link";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -378,13 +379,17 @@ export function NotificationBell() {
 
             {/* Footer */}
             <div className="shrink-0 border-t border-white/5 bg-white/2">
-              <button
-                onClick={() => { setOpen(false); router.prefetch('/notifications'); }}
-                className="w-full py-3 text-[12px] font-bold text-secondary
-                           hover:bg-white/4 transition-colors border-b border-white/4"
+              <Link
+                href="/notifications"
+                prefetch={true}
+                onMouseEnter={() => router.prefetch("/notifications")}
+                onTouchStart={() => router.prefetch("/notifications")}
+                onClick={() => setOpen(false)}
+                className="block w-full py-3 text-center text-[12px] font-bold text-secondary
+                          hover:bg-white/4 transition-colors border-b border-white/4"
               >
                 View full inbox
-              </button>
+              </Link>
               {pushSupported && (
                 <div className="px-5 py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-2">
