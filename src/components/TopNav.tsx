@@ -27,6 +27,7 @@ export default async function TopNav() {
         <div className="flex-1">
           <Link
             href="/"
+            prefetch={true}
             className="font-headline text-2xl font-bold tracking-tighter whitespace-nowrap text-white"
           >
             Campus Share
@@ -45,6 +46,7 @@ export default async function TopNav() {
               <div className="flex items-center gap-2">
                 <Link 
                   href="/messages" 
+                  prefetch={true}
                   className="w-10 h-10 flex items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 active:scale-95"
                 >
                   <span className="material-symbols-outlined text-2xl">mail</span>
@@ -57,6 +59,7 @@ export default async function TopNav() {
                 {/* Avatar */}
               <Link
                 href="/profile"
+                prefetch={true}
                 className="w-10 h-10 flex items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300 active:scale-95 relative overflow-hidden border border-white/10 group shadow-inner"
               >
                 {profile.avatar_url ? (
@@ -78,6 +81,7 @@ export default async function TopNav() {
           ) : (
             <Link
               href="/login"
+              prefetch={true}
               className="px-5 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:opacity-90 transition-opacity"
             >
               Sign In

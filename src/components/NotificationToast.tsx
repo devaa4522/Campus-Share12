@@ -39,7 +39,7 @@ export function NotificationToastContainer() {
       try { await markAsRead(notif.id); } catch { /* provider already rolled back/logged */ }
     }
     const link = getDeepLink(notif.type, notif.data);
-    if (link) router.push(link);
+    if (link) router.prefetch(link);
     dismiss(notif.id);
   };
 

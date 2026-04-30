@@ -341,7 +341,7 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
           <div className="flex flex-col gap-3">
             {recentExchanges.length > 0 ? (
               recentExchanges.map((excl, i) => (
-                <div key={i} className="flex justify-between items-center p-4 border border-outline-variant/30 rounded-lg bg-surface-container-lowest hover:bg-surface-container transition-colors cursor-pointer" onClick={() => router.push(`/items/${excl.item_id}`)}>
+                <div key={i} className="flex justify-between items-center p-4 border border-outline-variant/30 rounded-lg bg-surface-container-lowest hover:bg-surface-container transition-colors cursor-pointer" onClick={() => router.prefetch(`/items/${excl.item_id}`)}>
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 bg-surface-container-highest rounded flex items-center justify-center text-on-surface-variant">
                       <span className="material-symbols-outlined">inventory_2</span>

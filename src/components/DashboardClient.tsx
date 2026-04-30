@@ -601,7 +601,7 @@ export default function DashboardClient({
     const { data, error } = await createClient().rpc("create_item_conversation", { p_request_id: req.id });
     const convId = (data as { conversation_id?: string } | null)?.conversation_id;
     if (error || !convId) { toast.error("Could not open chat."); return; }
-    router.push(`/messages?id=${convId}`);
+    router.prefetch(`/messages?id=${convId}`);
   }
 
   async function handleMessageForTask(taskId: string) {
@@ -613,7 +613,7 @@ export default function DashboardClient({
     toast.error("Could not open chat.");
     return;
   }
-  router.push(`/messages?id=${convId}`);
+  router.prefetch(`/messages?id=${convId}`);
 }
 
   // Stats

@@ -52,13 +52,13 @@ export default function PostPage() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { router.push("/login"); return; }
+      if (!user) { router.prefetch("/login"); return; }
       const { data: profile } = await supabase
         .from("profiles")
         .select("college_domain, college_type")
         .eq("id", user.id)
         .single();
-      if (!profile?.college_domain) { router.push("/onboarding"); return; }
+      if (!profile?.college_domain) { router.prefetch("/onboarding"); return; }
       setCollegeDomain(profile.college_domain);
       setCollegeType((profile.college_type as CollegeType) ?? "GENERAL");
       setAuthChecked(true);
@@ -111,7 +111,7 @@ export default function PostPage() {
     setSubmitting(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
+    if (!user) { router.prefetch("/login"); return; }
 
     const imageUrls: string[] = [];
     for (const file of images) {
@@ -138,7 +138,7 @@ export default function PostPage() {
       setSubmitting(false);
       return;
     }
-    router.push("/dashboard");
+    router.prefetch("/dashboard");
     router.refresh();
   }
 

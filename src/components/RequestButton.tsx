@@ -17,7 +17,7 @@ export default function RequestButton({
 
   async function handleRequest() {
     if (!isLoggedIn) {
-      router.push("/login");
+      router.prefetch("/login");
       return;
     }
 

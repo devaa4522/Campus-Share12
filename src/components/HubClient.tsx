@@ -78,7 +78,7 @@ export default function HubClient({ userId }: { userId: string }) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight font-headline">The Hub</h1>
               <button
-                onClick={() => router.push('/post')}
+                onClick={() => router.prefetch('/post')}
                 className="flex items-center justify-center gap-2 bg-secondary hover:bg-secondary/90 text-white px-5 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl active:scale-95 whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-[20px]">add</span>
@@ -181,7 +181,7 @@ export default function HubClient({ userId }: { userId: string }) {
           <section className="p-6 rounded-xl bg-primary text-white shadow-lg border border-white/5">
             <h4 className="font-headline text-lg mb-2 font-bold">Academic Ledger</h4>
             <p className="text-sm opacity-70 mb-4 leading-relaxed">Exchange research credits for institutional access or mentorship.</p>
-            <button onClick={() => router.push('/dashboard')} className="w-full py-3 bg-secondary rounded-lg font-bold text-sm uppercase tracking-widest hover:opacity-90 transition-opacity active:scale-95">
+            <button onClick={() => router.prefetch('/dashboard')} className="w-full py-3 bg-secondary rounded-lg font-bold text-sm uppercase tracking-widest hover:opacity-90 transition-opacity active:scale-95">
               View Wallet
             </button>
           </section>
@@ -217,7 +217,7 @@ export default function HubClient({ userId }: { userId: string }) {
                 const trustScore = Math.min(100, Math.round((karmaScore / 2000) * 100));
 
                 return (
-                  <div key={item.id} onClick={() => router.push(`/items/${item.id}`)} className={`group bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/20 hover:border-secondary/50 transition-all duration-300 shadow-sm hover:shadow-xl cursor-pointer flex ${isListView ? 'flex-row items-stretch gap-6' : 'flex-col'}`}>
+                  <div key={item.id} onClick={() => router.prefetch(`/items/${item.id}`)} className={`group bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/20 hover:border-secondary/50 transition-all duration-300 shadow-sm hover:shadow-xl cursor-pointer flex ${isListView ? 'flex-row items-stretch gap-6' : 'flex-col'}`}>
                     <div className={`relative rounded-lg bg-surface-container-low overflow-hidden ${isListView ? 'w-32 md:w-48 h-32 md:h-48 shrink-0' : 'aspect-[4/3] w-full mb-4'}`}>
                       {item.images && item.images[0] ? (
                         <Image 

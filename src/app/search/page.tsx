@@ -22,7 +22,7 @@ export default function SearchPage() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { router.push("/login"); return; }
+      if (!user) { router.prefetch("/login"); return; }
       setUserId(user.id);
       setAuthed(true);
     });

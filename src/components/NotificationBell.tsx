@@ -40,7 +40,7 @@ function BellRow({
       try { await onRead(notif.id); } catch { /* provider already rolled back/logged */ }
     }
     onNavigate();
-    router.push(getDeepLink(notif.type, notif.data));
+    router.prefetch(getDeepLink(notif.type, notif.data));
   };
 
   return (
@@ -379,7 +379,7 @@ export function NotificationBell() {
             {/* Footer */}
             <div className="shrink-0 border-t border-white/5 bg-white/2">
               <button
-                onClick={() => { setOpen(false); router.push('/notifications'); }}
+                onClick={() => { setOpen(false); router.prefetch('/notifications'); }}
                 className="w-full py-3 text-[12px] font-bold text-secondary
                            hover:bg-white/4 transition-colors border-b border-white/4"
               >

@@ -11,6 +11,7 @@ import { NotificationToastContainer } from '@/components/NotificationToast';
 import { NotificationsProvider } from '@/components/NotificationsProvider';
 import "./globals.css";
 import "@/bones/registry";
+import { RouteWarmup } from "@/components/RouteWarmup";
 
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
@@ -71,16 +72,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="flex flex-col min-h-dvh overflow-x-hidden bg-surface text-on-surface font-body">
-        {/*
-          NotificationsProvider wraps everything so both NotificationBell
-          (in TopNav) and NotificationsClient (in /notifications page) share
-          the exact same state and the single Realtime channel.
-        */}
         <NotificationsProvider>
           <ServiceWorkerRegister />
           <OfflineBanner />
           <Toaster position="top-center" />
           <NotificationToastContainer />
+
+          <RouteWarmup />
 
           <TopNav />
 

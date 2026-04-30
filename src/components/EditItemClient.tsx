@@ -38,7 +38,7 @@ export default function EditItemClient({ item }: { item: Item }) {
     } else {
       toast.success("Item updated successfully!");
       router.refresh();
-      router.push("/dashboard");
+      router.prefetch("/dashboard");
     }
     setSaving(false);
   }

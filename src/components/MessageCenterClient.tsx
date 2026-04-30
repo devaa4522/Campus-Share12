@@ -1017,7 +1017,7 @@ export default function MessageCenterClient({
                 onlinePeers={onlinePeers}
                 peerTypingMap={peerTypingMap}
                 searchQuery={convListSearch}
-                onClick={() => router.push(`/messages?id=${conv.id}`)}
+                onClick={() => router.prefetch(`/messages?id=${conv.id}`)}
               />
             ));
           })()}
@@ -1037,7 +1037,7 @@ export default function MessageCenterClient({
           >
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <button
-                onClick={() => router.push("/messages")}
+                onClick={() => router.prefetch("/messages")}
                 className="md:hidden material-symbols-outlined p-1.5 -ml-1 active:scale-90"
                 style={{ color: t.textMuted }}
               >

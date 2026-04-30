@@ -36,7 +36,7 @@ export function SingleNotifRow({
       try { await onRead(); } catch { /* provider already rolled back/logged */ }
     }
 
-    router.push(getDeepLink(notif.type, notif.data));
+    router.prefetch(getDeepLink(notif.type, notif.data));
   };
 
   return (
