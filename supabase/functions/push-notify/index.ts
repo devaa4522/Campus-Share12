@@ -208,20 +208,60 @@ async function sendOnePush(sub: Sub, message: string): Promise<number> {
 // ── Deep link ──
 function getDeepLink(type: string, data?: Record<string, unknown>): string {
   const d = data ?? {};
+  const itemDealId = String(d.deal_id ?? d.item_request_id ?? "");
+  const taskDealId = String(d.task_id ?? d.deal_id ?? "");
   const routes: Record<string, string> = {
-    new_request: `/dashboard?deal=${String(d.deal_id ?? "")}`,
-    request_accepted: `/dashboard?deal=${String(d.deal_id ?? "")}&scan=true`,
-    request_rejected: `/hub`,
-    qr_handshake: `/dashboard?deal=${String(d.deal_id ?? "")}`,
+    new_request: `/dashboard?deal=${itemDealId}&type=item`,
+    request_accepted: `/dashboard?deal=${itemDealId}&type=item&scan=true`,
+    request_rejected: `/dashboard?deal=${itemDealId}&type=item`,
+    qr_handshake: `/dashboard?deal=${itemDealId}&type=item`,
     deal_completed: `/profile`,
-    new_message: `/messages?id=${String(d.conversation_id ?? "")}`,
-    task_claimed: `/dashboard?deal=${String(d.task_id ?? "")}&type=task`,
-    task_completed: `/dashboard?deal=${String(d.task_id ?? "")}&type=task`,
+    new_message: `/messages?id=${String(d.conversation_id ?? d.conv_id ?? "")}`,
+    task_claimed: `/dashboard?deal=${taskDealId}&type=task`,
+    task_completed: `/dashboard?deal=${taskDealId}&type=task`,
     karma_received: `/profile`,
     karma_penalty: `/profile`,
-    system: `/`,
+    announcement: String(d.url ?? "/notifications"),
+    system: String(d.url ?? "/"),
   };
-  return routes[type] ?? "/";
+  return String(d.url ?? routes[type] ?? "/notifications");
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function valueAsString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function normalizePushPayload(raw: unknown): PushPayload | null {
+  const body = asRecord(raw);
+  if (!body) return null;
+
+  const row = asRecord(body.record) ?? asRecord(body.new) ?? body;
+  const data = asRecord(row.data) ?? {};
+
+  const notificationId = valueAsString(row.notification_id) ?? valueAsString(row.id);
+  const userId = valueAsString(row.user_id);
+  const type = valueAsString(row.type) ?? "system";
+  const title = valueAsString(row.title) ?? "CampusShare";
+  const bodyText = valueAsString(row.body) ?? "You have a new update.";
+
+  if (!notificationId || !userId) return null;
+
+  return {
+    notification_id: notificationId,
+    user_id: userId,
+    type,
+    title,
+    body: bodyText,
+    sender_avatar: valueAsString(row.sender_avatar) ?? valueAsString(data.sender_avatar),
+    data,
+    timestamp: typeof row.timestamp === "number" ? row.timestamp : Date.now(),
+  };
 }
 
 // ── Main handler ──
@@ -264,10 +304,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     const rawBody = await req.json() as unknown;
-    const payload = rawBody as PushPayload;
+    const payload = normalizePushPayload(rawBody);
 
-    if (!payload.user_id || !payload.title || !payload.body) {
-      return jsonResponse({ error: "Missing user_id, title, or body" }, 400);
+    if (!payload) {
+      console.error("[push-notify] Invalid payload shape", rawBody);
+      return jsonResponse({ error: "Invalid push payload" }, 400);
     }
 
     console.log("[push-notify] Processing:", {
