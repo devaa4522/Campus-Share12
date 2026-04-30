@@ -59,18 +59,15 @@ export default function OnboardingPage() {
     // Ghost-proofing: create a reproducible hash based on college and student ID
     const studentIdHash = await sha256(`${collegeDomain}:${studentId.trim().toUpperCase()}`);
 
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        college_domain: collegeDomain,
-        college_type: collegeType,
-        department,
-        degree,
-        branch,
-        year_of_study: year,
-        student_id_hash: studentIdHash,
-      })
-      .eq("id", user.id);
+    const { error: updateError } = await supabase.rpc("complete_onboarding", {
+      p_college_domain: collegeDomain,
+      p_college_type: collegeType,
+      p_department: department,
+      p_degree: degree,
+      p_branch: branch,
+      p_year_of_study: year,
+      p_student_id_hash: studentIdHash,
+    });
 
     if (updateError) {
       setError("Failed to save. Please try again.");

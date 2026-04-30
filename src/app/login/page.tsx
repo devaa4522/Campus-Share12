@@ -57,11 +57,11 @@ export default function LoginPage() {
       if (signUpData.user) {
         const domain = parseCollegeDomain(email);
         const collegeType = detectCollegeType(domain);
-        await supabase.from("profiles").update({
-          college_domain: domain,
-          college_type: collegeType,
-          full_name: fullName,
-        }).eq("id", signUpData.user.id);
+        await supabase.rpc("initialize_profile_from_signup", {
+          p_college_domain: domain,
+          p_college_type: collegeType,
+          p_full_name: fullName,
+        });
       }
 
       // Hard redirect to onboarding (don't set onboarding cookie yet)

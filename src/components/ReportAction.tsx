@@ -25,11 +25,11 @@ export default function ReportAction({
       return;
     }
 
-    const { error } = await supabase.from("reports").insert({
-      reporter_id: user.id,
-      reported_id: targetUserId,
-      item_id: itemId || null,
-      reason: reason
+    const { error } = await supabase.rpc("submit_report", {
+      p_reported_id: targetUserId,
+      p_item_id: itemId ?? null,
+      p_task_id: null,
+      p_reason: reason,
     });
 
     if (error) {

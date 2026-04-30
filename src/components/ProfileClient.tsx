@@ -79,19 +79,19 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
     if (error) return;
 
     const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
-    await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", profile.id);
+    await supabase.rpc("update_my_avatar", { p_avatar_url: publicUrl });
     setProfile((p) => ({ ...p, avatar_url: publicUrl }));
   }
 
   async function handleSave() {
     setSaving(true);
     const supabase = createClient();
-    const { error } = await supabase.from("profiles").update({
-      full_name: fullName,
-      bio,
-      branch,
-      year_of_study: yearOfStudy,
-    }).eq("id", profile.id);
+    const { error } = await supabase.rpc("update_my_profile", {
+      p_full_name: fullName,
+      p_bio: bio,
+      p_branch: branch,
+      p_year_of_study: yearOfStudy,
+    });
 
     if (!error) {
       setProfile((p) => ({ ...p, full_name: fullName, bio, branch, year_of_study: yearOfStudy }));
@@ -113,14 +113,20 @@ export default function ProfileClient({ profile: initialProfile, email, itemCoun
     const newValue = !notificationsEnabled;
     setNotificationsEnabled(newValue);
     const supabase = createClient();
-    await supabase.from("profiles").update({ notifications_enabled: newValue }).eq("id", profile.id);
+    await supabase.rpc("set_my_notification_preferences", {
+      p_notifications_enabled: newValue,
+      p_profile_public: null,
+    });
   }
 
   async function togglePublicProfile() {
     const newValue = !profilePublic;
     setProfilePublic(newValue);
     const supabase = createClient();
-    await supabase.from("profiles").update({ profile_public: newValue }).eq("id", profile.id);
+    await supabase.rpc("set_my_notification_preferences", {
+      p_notifications_enabled: null,
+      p_profile_public: newValue,
+    });
   }
 
   async function handleSignOut() {

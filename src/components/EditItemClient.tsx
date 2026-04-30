@@ -24,15 +24,13 @@ export default function EditItemClient({ item }: { item: Item }) {
   async function handleSave() {
     setSaving(true);
     const supabase = createClient();
-    const { error } = await supabase
-      .from("items")
-      .update({
-        title,
-        description,
-        is_hidden: isHidden,
-        thumbnail_url: thumbnailUrl,
-      })
-      .eq("id", item.id);
+    const { error } = await supabase.rpc("update_item", {
+      p_item_id: item.id,
+      p_title: title,
+      p_description: description,
+      p_is_hidden: isHidden,
+      p_thumbnail_url: thumbnailUrl,
+    });
 
     if (error) {
       console.error(error);

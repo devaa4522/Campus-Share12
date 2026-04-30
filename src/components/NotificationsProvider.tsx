@@ -303,7 +303,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       const existing = await reg.pushManager.getSubscription();
       if (existing) {
         await existing.unsubscribe();
-        await supabase.from('push_subscriptions').delete().eq('endpoint', existing.endpoint);
+        await supabase.rpc('delete_push_subscription', { p_endpoint: existing.endpoint });
       }
 
       // Convert VAPID key
@@ -331,17 +331,12 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { await subscription.unsubscribe(); return false; }
 
-      const { error } = await supabase.from('push_subscriptions').upsert(
-        {
-          user_id:     user.id,
-          endpoint:    subJson.endpoint,
-          p256dh:      subJson.keys.p256dh,
-          auth:        subJson.keys.auth,
-          user_agent:  navigator.userAgent,
-          last_used_at: new Date().toISOString(),
-        },
-        { onConflict: 'endpoint' }
-      );
+      const { error } = await supabase.rpc('upsert_push_subscription', {
+        p_endpoint: subJson.endpoint,
+        p_p256dh: subJson.keys.p256dh,
+        p_auth: subJson.keys.auth,
+        p_user_agent: navigator.userAgent,
+      });
 
       if (error) { await subscription.unsubscribe(); return false; }
 
@@ -361,7 +356,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       const reg = await navigator.serviceWorker.getRegistration('/');
       const sub = await reg?.pushManager.getSubscription();
       if (sub) {
-        await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+        await supabase.rpc('delete_push_subscription', { p_endpoint: sub.endpoint });
         await sub.unsubscribe();
       }
     } catch (err) {

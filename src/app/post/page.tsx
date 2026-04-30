@@ -123,17 +123,14 @@ export default function PostPage() {
       }
     }
 
-    const { error: insertError } = await supabase.from("items").insert({
-      user_id: user.id,
-      title: data.title,
-      description: data.description,
-      category: data.category,
-      condition: data.condition,
-      price_type: data.price_type,
-      price_amount: data.price_type === "Free" ? 0 : (data.price_amount ?? 0),
-      status: "available",
-      images: imageUrls,
-      college_domain: collegeDomain,
+    const { error: insertError } = await supabase.rpc("create_item", {
+      p_title: data.title,
+      p_description: data.description,
+      p_category: data.category,
+      p_condition: data.condition,
+      p_price_type: data.price_type,
+      p_price_amount: data.price_type === "Free" ? 0 : (data.price_amount ?? 0),
+      p_images: imageUrls,
     });
 
     if (insertError) {

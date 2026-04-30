@@ -421,6 +421,62 @@ export type Database = {
         Args: { p_user_id?: string } | Record<string, never>;
         Returns: void;
       };
+      initialize_profile_from_signup: {
+        Args: { p_college_domain: string; p_college_type: string; p_full_name: string | null };
+        Returns: Json;
+      };
+      complete_onboarding: {
+        Args: {
+          p_college_domain: string;
+          p_college_type: string;
+          p_department: string;
+          p_degree: string;
+          p_branch: string;
+          p_year_of_study: string;
+          p_student_id_hash?: string | null;
+        };
+        Returns: Json;
+      };
+      update_my_profile: {
+        Args: { p_full_name?: string | null; p_bio?: string | null; p_branch?: string | null; p_year_of_study?: string | null };
+        Returns: Json;
+      };
+      update_my_avatar: {
+        Args: { p_avatar_url: string };
+        Returns: Json;
+      };
+      set_my_notification_preferences: {
+        Args: { p_notifications_enabled?: boolean | null; p_profile_public?: boolean | null };
+        Returns: Json;
+      };
+      create_item: {
+        Args: {
+          p_title: string;
+          p_description: string;
+          p_category: string;
+          p_condition: string;
+          p_price_type?: string;
+          p_price_amount?: number;
+          p_images?: string[];
+        };
+        Returns: Json;
+      };
+      update_item: {
+        Args: { p_item_id: string; p_title: string; p_description: string; p_is_hidden?: boolean; p_thumbnail_url?: string | null };
+        Returns: Json;
+      };
+      submit_report: {
+        Args: { p_reported_id?: string | null; p_item_id?: string | null; p_task_id?: string | null; p_reason: string };
+        Returns: Json;
+      };
+      upsert_push_subscription: {
+        Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_user_agent?: string | null };
+        Returns: Json;
+      };
+      delete_push_subscription: {
+        Args: { p_endpoint: string };
+        Returns: void;
+      };
       create_task: {
         Args: {
           p_title: string;
