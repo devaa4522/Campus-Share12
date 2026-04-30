@@ -1,5 +1,5 @@
 import { PageSkeleton } from "@/components/boneyard/PageSkeletons";
 
 export default function Loading() {
-  return <PageSkeleton name="dashboard" variant="deals" />;
+  return <PageSkeleton name="profile" variant="profile" />;
 }

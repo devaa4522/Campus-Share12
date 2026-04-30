@@ -3,6 +3,7 @@
 
 import dynamic from "next/dynamic";
 import { t } from "@/lib/design/tokens";
+import { BoneyardSkeleton } from "@/components/boneyard/BoneyardSkeleton";
 
 // ── Skeleton Components ───────────────────────────────────────
 
@@ -214,13 +215,19 @@ export function ChatThreadSkeleton() {
 // ── Full Page Skeleton (sidebar + chat) ───────────────────────
 
 export function MessageCenterSkeleton() {
-  return (
+  const content = (
     <div className="flex w-full h-full overflow-hidden">
       <ConversationListSkeleton />
       <div className="hidden md:flex flex-1">
         <ChatThreadSkeleton />
       </div>
     </div>
+  );
+
+  return (
+    <BoneyardSkeleton name="message-center-dynamic" loading>
+      {content}
+    </BoneyardSkeleton>
   );
 }
 

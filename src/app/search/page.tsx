@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import type { ItemWithProfile } from "@/lib/types";
 import ItemCard from "@/components/ItemCard";
+import { CardGridSkeleton } from "@/components/boneyard/PageSkeletons";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 export default function SearchPage() {
   const router = useRouter();
@@ -15,6 +17,7 @@ export default function SearchPage() {
   const [activeCondition, setActiveCondition] = useState<string>("All");
   const [authed, setAuthed] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const showResultsSkeleton = useDelayedLoading(loading, 180);
 
   useEffect(() => {
     const supabase = createClient();
@@ -137,16 +140,7 @@ export default function SearchPage() {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-surface-container-lowest rounded-xl p-6 animate-pulse">
-                  <div className="aspect-video w-full rounded-lg mb-4 bg-surface-container-high" />
-                  <div className="h-4 bg-surface-container-high rounded w-1/3 mb-3" />
-                  <div className="h-6 bg-surface-container-high rounded w-3/4 mb-2" />
-                  <div className="h-4 bg-surface-container-high rounded w-full" />
-                </div>
-              ))}
-            </div>
+            showResultsSkeleton ? <CardGridSkeleton name="search-results-grid" /> : <div className="min-h-[360px]" />
           ) : items.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {items.map((item) => (

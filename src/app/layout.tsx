@@ -10,6 +10,7 @@ import { Toaster } from 'react-hot-toast';
 import { NotificationToastContainer } from '@/components/NotificationToast';
 import { NotificationsProvider } from '@/components/NotificationsProvider';
 import "./globals.css";
+import "@/bones/registry";
 
 const notoSerif = Noto_Serif({
   subsets: ["latin"],

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import type { ItemWithProfile } from "@/lib/types";
+import { CardGridSkeleton } from "@/components/boneyard/PageSkeletons";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 
 export default function HubClient({ userId }: { userId: string }) {
   const router = useRouter();
@@ -15,6 +17,7 @@ export default function HubClient({ userId }: { userId: string }) {
   const [minKarma, setMinKarma] = useState<number>(0);
   const [isListView, setIsListView] = useState(false);
   const [currentTime, setCurrentTime] = useState<number | null>(null);
+  const showResultsSkeleton = useDelayedLoading(loading, 180);
 
   useEffect(() => {
     const t = setTimeout(() => setCurrentTime(Date.now()), 0);
@@ -197,15 +200,7 @@ export default function HubClient({ userId }: { userId: string }) {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-surface-container-lowest rounded-xl p-6 animate-pulse">
-                  <div className="aspect-video w-full rounded-lg mb-4 bg-surface-container-high" />
-                  <div className="h-4 bg-surface-container-high rounded w-1/3 mb-3" />
-                  <div className="h-6 bg-surface-container-high rounded w-3/4 mb-2" />
-                </div>
-              ))}
-            </div>
+            showResultsSkeleton ? <CardGridSkeleton name="hub-results-grid" /> : <div className="min-h-[360px]" />
           ) : visibleItems.length > 0 ? (
             <div className={isListView ? "flex flex-col gap-4" : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"}>
               {visibleItems.map((item, index) => {

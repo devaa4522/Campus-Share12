@@ -10,6 +10,8 @@ import { groupByTime, groupByDeal } from '@/lib/notification-logic';
 import { SectionHeader }  from './notifications/SectionHeader';
 import { SingleNotifRow } from './notifications/SingleNotifRow';
 import { DealGroupRow }   from './notifications/DealGroupRow';
+import { BoneyardSkeleton } from '@/components/boneyard/BoneyardSkeleton';
+import { useDelayedLoading } from '@/hooks/useDelayedLoading';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -40,6 +42,7 @@ export default function NotificationsClient() {
   const [clearing,     setClearing]     = useState(false);
 
   const [confirmClear, setConfirmClear] = useState(false);
+  const showSkeleton = useDelayedLoading(isLoading, 180);
 
   useEffect(() => {
     void refresh();
@@ -146,7 +149,11 @@ export default function NotificationsClient() {
   );
 
   const renderContent = () => {
-    if (isLoading) return renderSkeleton();
+    if (isLoading) return showSkeleton ? (
+      <BoneyardSkeleton name="notifications-list" loading>
+        {renderSkeleton()}
+      </BoneyardSkeleton>
+    ) : <div className="min-h-[360px]" />;
     if (filtered.length === 0) return renderEmpty();
 
     if (groupMode === 'deal') {
