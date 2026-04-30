@@ -10,13 +10,12 @@ import { BoneyardSkeleton } from "@/components/boneyard/BoneyardSkeleton";
 function ConversationSkeleton() {
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 animate-pulse">
-      {/* Avatar */}
       <div
         className="w-12 h-12 rounded-full shrink-0"
         style={{ background: t.surfaceSoft }}
       />
+
       <div className="flex-1 min-w-0 space-y-2">
-        {/* Name row */}
         <div className="flex justify-between items-center">
           <div
             className="h-3 rounded-full w-28"
@@ -27,12 +26,12 @@ function ConversationSkeleton() {
             style={{ background: t.surfaceSoft }}
           />
         </div>
-        {/* Preview row */}
+
         <div
           className="h-2.5 rounded-full w-3/4"
           style={{ background: t.surfaceSoft }}
         />
-        {/* Deal chip */}
+
         <div
           className="h-2 rounded-full w-20"
           style={{ background: t.surfaceSoft }}
@@ -82,7 +81,7 @@ export function ConversationListSkeleton() {
       {/* Header skeleton */}
       <div
         className="px-5 pt-8 pb-4"
-        style={{ borderBottom: `1px solid ${t.border}` }}
+        // style={{ borderBottom: `1px solid ${t.border}` }}
       >
         <div
           className="h-7 rounded-full w-32 mb-4 animate-pulse"
@@ -96,8 +95,8 @@ export function ConversationListSkeleton() {
 
       {/* Conversation rows */}
       <div
-        className="flex-1 divide-y"
-        style={{ borderColor: t.border }}
+        className="flex-1 overflow-y-auto"
+        // style={{ borderColor: t.border }}
       >
         {[...Array(7)].map((_, i) => (
           <ConversationSkeleton key={i} />

@@ -977,7 +977,7 @@ export default function MessageCenterClient({
               value={convListSearch}
               onChange={e => setConvListSearch(e.target.value)}
               placeholder="Search by name…"
-              className="bg-transparent flex-1 text-sm outline-none"
+              className="bg-transparent flex-1 text-sm border-none outline-none ring-0 p-0"
               style={{ color: t.text }}
               aria-label="Search conversations"
             />
@@ -1277,7 +1277,7 @@ export default function MessageCenterClient({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="material-symbols-outlined p-2.5 rounded-full shrink-0 transition-colors active:scale-90"
+                className="material-symbols-outlined p-2.5 mb-1.5 rounded-full shrink-0 transition-colors active:scale-90"
                 style={{
                   color:      t.textMuted,
                   background: t.surfaceSoft,
@@ -1313,7 +1313,7 @@ export default function MessageCenterClient({
                   }}
                   placeholder="Type a message…"
                   rows={1}
-                  className="bg-transparent flex-1 text-sm outline-none resize-none no-scrollbar"
+                  className="flex-1 resize-none bg-transparent text-sm no-scrollbar border-none outline-none ring-0 shadow-none appearance-none focus:border-none focus:outline-none focus:ring-0 focus:shadow-none"
                   style={{ color: t.text, maxHeight: "8rem", overflowY: "auto" }}
                   disabled={uploading}
                   aria-label="Message input"
