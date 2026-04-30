@@ -12,6 +12,7 @@ import { NotificationsProvider } from '@/components/NotificationsProvider';
 import "./globals.css";
 import "@/bones/registry";
 import { RouteWarmup } from "@/components/RouteWarmup";
+import { RouteTransitionOverlay } from "@/components/RouteTransitionOverlay";
 
 const notoSerif = Noto_Serif({
   subsets: ["latin"],
@@ -79,6 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <NotificationToastContainer />
 
           <RouteWarmup />
+          <RouteTransitionOverlay />
 
           <TopNav />
 
