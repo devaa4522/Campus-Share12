@@ -80,9 +80,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <NotificationToastContainer />
 
           <RouteWarmup />
+          <RouteTransitionOverlay />
 
           <TopNav />
-          <RouteTransitionOverlay />
 
           <MainWrapper>
             {children}

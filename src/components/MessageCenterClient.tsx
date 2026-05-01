@@ -93,6 +93,9 @@ export default function MessageCenterClient({
   const [uploading,         setUploading]         = useState(false);
   const [forwardingMsg,     setForwardingMsg]     = useState<ExtendedMessage | null>(null);
 
+  const [localActiveConversationId, setLocalActiveConversationId] =
+  useState(activeConversationId);
+
   // ── Refs ─────────────────────────────────────────────────────
   const messagesEndRef    = useRef<HTMLDivElement>(null);
   const scrollContainerRef= useRef<HTMLDivElement>(null);
@@ -107,16 +110,24 @@ export default function MessageCenterClient({
   const conversationsRef  = useRef(conversations);   // always-fresh read for handlers
   const isAtBottomRef     = useRef(true);
   const [showScrollFab,   setShowScrollFab]   = useState(false);
+  
 
   useEffect(() => { userIdRef.current      = userId;        }, [userId]);
-  useEffect(() => { activeConversationIdRef.current = activeConversationId; }, [activeConversationId]);
   useEffect(() => { dealInfoRef.current    = dealInfo;      }, [dealInfo]);
   useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
-
+  useEffect(() => {
+    setLocalActiveConversationId(activeConversationId);
+  }, [activeConversationId]);
+  
   // ── Derived ──────────────────────────────────────────────────
+  const currentConversationId = localActiveConversationId ?? activeConversationId;
+  useEffect(() => {
+  activeConversationIdRef.current = currentConversationId;
+}, [currentConversationId]);
+
   const activeConversation = useMemo(
-    () => conversations.find(c => c.id === activeConversationId),
-    [conversations, activeConversationId]
+    () => conversations.find(c => c.id === currentConversationId),
+    [conversations, currentConversationId]
   );
 
   const peer = useMemo(
@@ -184,10 +195,10 @@ export default function MessageCenterClient({
 
   // ── Auto-focus input ─────────────────────────────────────────
   useEffect(() => {
-    if (!activeConversationId) return;
-    const t = setTimeout(() => inputRef.current?.focus(), 150);
-    return () => clearTimeout(t);
-  }, [activeConversationId]);
+        if (!currentConversationId) return;
+        const timer = setTimeout(() => inputRef.current?.focus(), 80);
+        return () => clearTimeout(timer);
+      }, [currentConversationId]);
 
   // ── Smart scroll — only auto-scroll when near the bottom ─────
   const [newMsgCount,         setNewMsgCount]         = useState(0);
@@ -212,7 +223,7 @@ export default function MessageCenterClient({
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, [activeConversationId]);
+  }, [currentConversationId]);
 
   // When conversation opens, mark where unread starts
   useEffect(() => {
@@ -225,7 +236,7 @@ export default function MessageCenterClient({
     isAtBottomRef.current = true;
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "instant" as ScrollBehavior }), 50);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConversationId]);
+  }, [currentConversationId]);
 
   // Auto-scroll on new messages (only if already at bottom)
   const prevMsgLen = useRef(0);
@@ -318,26 +329,27 @@ export default function MessageCenterClient({
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConversationId, activeConversation?.deal_id]);
+  }, [currentConversationId, activeConversation?.deal_id]);
 
   // ── Mark read ────────────────────────────────────────────────
   useEffect(() => {
-    if (!activeConversationId) return;
-    const conv = conversations.find(c => c.id === activeConversationId);
+    if (!currentConversationId) return;
+
+    const conv = conversations.find(c => c.id === currentConversationId);
     const hasUnread = conv?.messages.some(
       m => !m.is_read && m.sender_id !== userId
     );
     if (!hasUnread) return;
 
     supabase.rpc("mark_conversation_as_read", {
-      p_conversation_id: activeConversationId,
+      p_conversation_id: currentConversationId,
     }).then(({ error }) => {
       if (error) console.error("[Messages] mark_conversation_as_read failed:", error);
     });
 
     setConversations(prev =>
       prev.map(c =>
-        c.id !== activeConversationId ? c : {
+        c.id !== currentConversationId ? c : {
           ...c,
           messages: c.messages.map(m =>
             m.sender_id !== userId ? { ...m, is_read: true } : m
@@ -345,7 +357,7 @@ export default function MessageCenterClient({
         }
       )
     );
-  }, [activeConversationId, conversations, supabase, userId]);
+  }, [currentConversationId, conversations, supabase, userId]);
 
   // ── Realtime ─────────────────────────────────────────────────
   useEffect(() => {
@@ -573,7 +585,7 @@ export default function MessageCenterClient({
   const sendMessage = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!activeConversationId || (!newMessage.trim() && !pendingAttachment)) return;
+      if (!currentConversationId || (!newMessage.trim() && !pendingAttachment)) return;
 
       let content = newMessage.trim();
       let msgType: MsgType = "text";
@@ -613,7 +625,7 @@ export default function MessageCenterClient({
       const tempId = `temp-${Date.now()}`;
       const tempMsg: ExtendedMessage = {
         id:              tempId,
-        conversation_id: activeConversationId,
+        conversation_id: currentConversationId,
         sender_id:       userId,
         content,
         msg_type:        msgType,
@@ -627,7 +639,7 @@ export default function MessageCenterClient({
 
       setConversations(prev =>
         prev.map(c =>
-          c.id !== activeConversationId ? c : {
+          c.id !== currentConversationId ? c : {
             ...c,
             messages: [...c.messages, tempMsg],
           }
@@ -649,7 +661,7 @@ export default function MessageCenterClient({
         setEditingMsg(null);
       } else {
         const { error } = await supabase.rpc("send_message", {
-          p_conversation_id: activeConversationId,
+          p_conversation_id: currentConversationId,
           p_content: content,
           p_msg_type: msgType,
           p_reply_to_id: replyingTo?.id ?? null,
@@ -662,7 +674,7 @@ export default function MessageCenterClient({
       inputRef.current?.focus();
     },
     [
-      activeConversationId,
+      currentConversationId,
       newMessage,
       pendingAttachment,
       userId,
@@ -674,10 +686,10 @@ export default function MessageCenterClient({
 
   const handleReaction = useCallback(
     async (msgId: string, emoji: string) => {
-      if (!activeConversationId) return;
+      if (!currentConversationId) return;
 
       // Compute new reactions synchronously before any state update
-      const conv = conversationsRef.current.find(c => c.id === activeConversationId);
+      const conv = conversationsRef.current.find(c => c.id === currentConversationId);
       const msg  = conv?.messages.find(m => m.id === msgId);
       const r    = { ...(msg?.reactions ?? {}) };
       if (!r[emoji]) r[emoji] = { emoji, user_ids: [] };
@@ -689,7 +701,7 @@ export default function MessageCenterClient({
       // Optimistic update
       setConversations(prev =>
         prev.map(c =>
-          c.id !== activeConversationId ? c : {
+          c.id !== currentConversationId ? c : {
             ...c,
             messages: c.messages.map(m =>
               m.id !== msgId ? m : { ...m, reactions: r }
@@ -708,16 +720,16 @@ export default function MessageCenterClient({
         toast.error("Reaction failed");
       }
     },
-    [activeConversationId, supabase, userId]
+    [currentConversationId, supabase, userId]
   );
 
   const handleDelete = useCallback(
     async (msgId: string) => {
-      if (!activeConversationId) return;
+      if (!currentConversationId) return;
 
       setConversations(prev =>
         prev.map(c =>
-          c.id !== activeConversationId ? c : {
+          c.id !== currentConversationId ? c : {
             ...c,
             messages: c.messages.map(m =>
               m.id === msgId ? { ...m, is_deleted: true, content: "" } : m
@@ -730,7 +742,7 @@ export default function MessageCenterClient({
 
       toast.success("Message deleted");
     },
-    [activeConversationId, supabase]
+    [currentConversationId, supabase]
   );
 
   const handleTyping = useCallback(() => {
@@ -752,7 +764,7 @@ export default function MessageCenterClient({
 
   const handleVoiceSend = useCallback(
     async (blob: Blob) => {
-      if (!activeConversationId) return;
+      if (!currentConversationId) return;
       setUploading(true);
 
       const name = `voice-${Date.now()}.webm`;
@@ -774,7 +786,7 @@ export default function MessageCenterClient({
         .getPublicUrl(data.path);
 
       const { error: sendError } = await supabase.rpc("send_message", {
-        p_conversation_id: activeConversationId,
+        p_conversation_id: currentConversationId,
         p_content: publicUrl,
         p_msg_type: "audio",
         p_reply_to_id: null,
@@ -784,7 +796,7 @@ export default function MessageCenterClient({
         toast.error(sendError.message || "Could not send voice message");
       }
     },
-    [activeConversationId, supabase, userId]
+    [currentConversationId, supabase, userId]
   );
 
   const handleAccept = useCallback(async () => {
@@ -890,11 +902,13 @@ export default function MessageCenterClient({
   );
 
   const handleDeleteSelected = useCallback(async () => {
+    if (!currentConversationId) return;
+
     const ids = [...selectedIds];
     // Optimistic
     setConversations(prev =>
       prev.map(c =>
-        c.id !== activeConversationId ? c : {
+        c.id !== currentConversationId ? c : {
           ...c,
           messages: c.messages.map(m =>
             ids.includes(m.id) && m.sender_id === userId
@@ -906,14 +920,14 @@ export default function MessageCenterClient({
     );
     // DB - only own messages
     for (const id of ids) {
-      const conv = conversationsRef.current.find(c => c.id === activeConversationId);
+      const conv = conversationsRef.current.find(c => c.id === currentConversationId);
       const msg  = conv?.messages.find(m => m.id === id);
       if (msg?.sender_id === userId) {
         await supabase.rpc("soft_delete_message", { p_msg_id: id });
       }
     }
     setSelectedIds(new Set());
-  }, [selectedIds, activeConversationId, userId, supabase]);
+  }, [selectedIds, currentConversationId, userId, supabase]);
 
   const handleFileSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -942,7 +956,7 @@ export default function MessageCenterClient({
       {/* Conversation list (desktop sidebar) */}
       <aside
         className={`${
-          activeConversationId ? "hidden md:flex" : "flex"
+          currentConversationId ? "hidden md:flex" : "flex"
         } flex-col w-full md:w-80 shrink-0`}
         style={{
           borderRight: `1px solid ${t.border}`,
@@ -1013,11 +1027,15 @@ export default function MessageCenterClient({
                 key={conv.id}
                 conv={conv}
                 userId={userId}
-                isActive={conv.id === activeConversationId}
+                isActive={conv.id === currentConversationId}
                 onlinePeers={onlinePeers}
                 peerTypingMap={peerTypingMap}
                 searchQuery={convListSearch}
-                onClick={() => router.prefetch(`/messages?id=${conv.id}`)}
+                onClick={() => {
+                                setLocalActiveConversationId(conv.id);
+                                router.prefetch(`/messages?id=${conv.id}`);
+                                router.push(`/messages?id=${conv.id}`, { scroll: false });
+                              }}
               />
             ));
           })()}
@@ -1025,7 +1043,7 @@ export default function MessageCenterClient({
       </aside>
 
       {/* Chat thread */}
-      {activeConversationId && activeConversation ? (
+      {currentConversationId && activeConversation ? (
         <div className="flex-1 flex flex-col w-full overflow-hidden">
           {/* Header */}
           <header
@@ -1037,7 +1055,11 @@ export default function MessageCenterClient({
           >
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <button
-                onClick={() => router.prefetch("/messages")}
+                onClick={() => {
+                  setLocalActiveConversationId(undefined);
+                  router.prefetch("/messages");
+                  router.push("/messages", { scroll: false });
+                }}
                 className="md:hidden material-symbols-outlined p-1.5 -ml-1 active:scale-90"
                 style={{ color: t.textMuted }}
               >
@@ -1095,17 +1117,21 @@ export default function MessageCenterClient({
               {/* Deal card */}
               {dealInfo && (
                 <DealStatusCard
-                  dealInfo={dealInfo}
-                  isLender={dealInfo.owner_id === userId}
-                  isBorrower={dealInfo.requester_id === userId}
-                  activeConversationId={activeConversationId}
-                  onAccept={handleAccept}
-                  onDecline={handleDecline}
-                  onInitiateReturn={handleInitiateReturn}
-                  onShowQr={() => setShowQrModal(activeConversationId)}
-                  onScanQr={() => setShowScannerModal(activeConversationId)}
-                  onCancelDeal={() => setShowCancelModal(true)}
-                />
+                dealInfo={dealInfo}
+                isLender={dealInfo.owner_id === userId}
+                isBorrower={dealInfo.requester_id === userId}
+                activeConversationId={currentConversationId}
+                onAccept={handleAccept}
+                onDecline={handleDecline}
+                onInitiateReturn={handleInitiateReturn}
+                onShowQr={() => {
+                  if (currentConversationId) setShowQrModal(currentConversationId);
+                }}
+                onScanQr={() => {
+                  if (currentConversationId) setShowScannerModal(currentConversationId);
+                }}
+                onCancelDeal={() => setShowCancelModal(true)}
+              />
               )}
 
               {/* Message list */}
@@ -1555,7 +1581,7 @@ export default function MessageCenterClient({
               </div>
               <div className="max-h-72 overflow-y-auto no-scrollbar py-1">
                 {sortConversations(conversations)
-                  .filter(c => c.id !== activeConversationId)
+                  .filter(c => c.id !== currentConversationId)
                   .map(c => {
                     const p = c.p1.id === userId ? c.p2 : c.p1;
                     return (
@@ -1602,7 +1628,7 @@ export default function MessageCenterClient({
                   <button
                     onClick={() => {
                       const id = [...selectedIds][0];
-                      const conv = conversationsRef.current.find(c => c.id === activeConversationId);
+                      const conv = conversationsRef.current.find(c => c.id === currentConversationId);
                       const msg  = conv?.messages.find(m => m.id === id);
                       if (msg) { setForwardingMsg(msg); setSelectedIds(new Set()); }
                     }}
@@ -1630,7 +1656,7 @@ export default function MessageCenterClient({
               <button
                 onClick={() => {
                   const id = [...selectedIds][0];
-                  const conv = conversationsRef.current.find(c => c.id === activeConversationId);
+                  const conv = conversationsRef.current.find(c => c.id === currentConversationId);
                   const msg  = conv?.messages.find(m => m.id === id);
                   if (msg?.content) { navigator.clipboard?.writeText([...selectedIds].map(sid => conv?.messages.find(m=>m.id===sid)?.content ?? "").join("\n")); toast.success("Copied"); }
                   setSelectedIds(new Set());
